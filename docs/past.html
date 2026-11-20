@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Past nights · meetra</title>
+<meta name="description" content="A look inside past meetra nights — from first introductions to the group photo.">
+<meta name="theme-color" content="#FFF7EC">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316122B'/><text x='50' y='72' font-size='64' text-anchor='middle' fill='%23FFC93C' font-family='Arial' font-weight='900'>m</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <section class="page-hero">
+    <span class="eyebrow">Past nights</span>
+    <h1>Been there, <span class="serif">together.</span></h1>
+    <p>From the first awkward hello to the group photo at the end. A look inside the plans that already happened.</p>
+    <div id="note" style="margin-top:16px"></div>
+  </section>
+  <div class="chips" id="chips"></div>
+  <div class="stories" id="stories"></div>
+  <div class="more-row" id="more"></div>
+</main>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+const A = APP; A.header("past"); A.footer(); A.title("Past nights");
+let cat = "all", limit = 9;
+const extras = ["📸", "🥂", "😂", "🎉", "🤝", "☕", "🌟", "🫶"];
+if (CONFIG.showSampleNotice) A.$("#note").innerHTML = `<span class="notice">📷 Add real photos by setting <b>image</b> on a plan in assets/js/data.js</span>`;
+
+function render() {
+  const list = A.PAST.filter(e => A.inCity(e) && (cat === "all" || e.cat === cat));
+  A.$("#chips").innerHTML = CATEGORIES.map(c => `<button class="pill ${cat === c.id ? "on" : ""}" data-c="${c.id}">${c.icon} ${c.label}</button>`).join("");
+  A.$("#stories").innerHTML = list.slice(0, limit).map(e => {
+    const h = A.hash(e.id), a = { ...e, emoji: extras[h % 8], pal: (e.pal + 3) % 10, pattern: "dots" }, b = { ...e, emoji: extras[(h >> 3) % 8], pal: (e.pal + 6) % 10, pattern: "stripes" };
+    const went = e.seats - (h % 4);
+    return `<a class="story reveal" href="${A.url(e)}">
+      <div class="collage">${A.poster(e)}${A.poster(a, { badge: false })}${A.poster(b, { badge: false })}</div>
+      <div class="sb"><span class="eyebrow">${A.relDay(e.date)} · ${A.esc(e.area)}</span><h3>${A.esc(e.title)}</h3>
+      <span class="muted" style="font-size:14px">${went} strangers · hosted by ${A.esc(A.hostNames(e))}</span></div></a>`;
+  }).join("") || `<div class="empty" style="grid-column:1/-1"><b>No past nights here yet.</b>Check back after the first few plans.</div>`;
+  A.$("#more").innerHTML = list.length > limit ? `<button class="btn btn-sun" id="mb">Load more stories ↓</button>` : "";
+  A.reveal();
+}
+A.$("#chips").onclick = e => { const b = e.target.closest("[data-c]"); if (!b) return; cat = b.dataset.c; limit = 9; render(); };
+A.$("#more").onclick = e => { if (e.target.id === "mb") { limit += 9; render(); } };
+document.addEventListener("citychange", render);
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>For brands & venues · meetra</title>
+<meta name="description" content="Bring a room full of curious, new faces to your café, studio or brand.">
+<meta name="theme-color" content="#FFF7EC">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316122B'/><text x='50' y='72' font-size='64' text-anchor='middle' fill='%23FFC93C' font-family='Arial' font-weight='900'>m</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <section class="page-hero">
+    <span class="eyebrow">For brands & venues</span>
+    <h1>Fill your space with <span class="serif">new regulars.</span></h1>
+    <p>We bring small groups of curious people to cafés, studios, courts and rooftops — on the quiet nights you most want filled.</p>
+  </section>
+
+  <section class="steps" style="margin-bottom:56px">
+    <div class="step reveal"><span class="num">🏠</span><h3>Venues</h3><p>Host our weekly plans on your slow weekdays. Guests order from your menu; we bring 10–30 people a night.</p></div>
+    <div class="step reveal"><span class="num">✨</span><h3>Brands</h3><p>Sponsor a series — a run club, a tasting, a workshop — and meet your audience in person, not in a feed.</p></div>
+    <div class="step reveal"><span class="num">🏢</span><h3>Teams</h3><p>Private socials for new joiners and remote teams, run by our hosts from start to finish.</p></div>
+  </section>
+
+  <section class="split" style="padding-bottom:40px">
+    <div>
+      <h2 class="h2">Venues we'd <span class="serif" style="color:var(--violet)">love</span> to work with</h2>
+      <p class="muted" style="margin:14px 0 20px;max-width:440px">Cafés with a big table, board-game cafés, rooftops, sports courts, art studios, bookshops and homestays near the city.</p>
+      <div class="logos"><span>your café</span><span>your studio</span><span>your rooftop</span><span>your brand</span></div>
+    </div>
+    <div class="panel reveal">
+      <h2 style="font-size:30px;letter-spacing:-.04em;margin-bottom:16px">Let's talk</h2>
+      <form id="f">
+        <div class="field"><label for="n">Your name</label><input id="n" required></div>
+        <div class="field"><label for="b">Venue or brand</label><input id="b" required></div>
+        <div class="field"><label for="t">I'm interested in</label><select id="t"><option>Hosting plans at my venue</option><option>Sponsoring a series</option><option>A private team social</option><option>Something else</option></select></div>
+        <div class="field"><label for="m">Anything else?</label><textarea id="m"></textarea></div>
+        <button class="btn btn-ink btn-block" type="submit">Send on WhatsApp →</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+const A = APP; A.header(""); A.footer(); A.title("For brands & venues");
+A.$("#f").onsubmit = e => {
+  e.preventDefault();
+  const v = id => A.$(id).value.trim();
+  A.whatsappDone(A.$("#f"), `Hi ${CONFIG.brand}! Partnership enquiry.\n\nName: ${v("#n")}\nVenue/brand: ${v("#b")}\nInterested in: ${v("#t")}\n${v("#m")}`, "Thanks — one last tap");
+};
+A.reveal();
+</script>
+</body>
+</html>
