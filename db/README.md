@@ -33,6 +33,7 @@ One file: **`schema.sql`**. Run it once in Supabase → SQL Editor. There is no 
 | `user_private` | Full name, date of birth, gender, WhatsApp, email, Instagram, LinkedIn, verified marks | The member, the hosts concerned, admins |
 | `plan_requests` | **Seat requests and waiting list** for website plans: status pending / approved / waitlisted / declined / cancelled | The member (own), admins |
 | `plan_interest` | **Swipes**: interested or skip, per device per plan | Admins only (anyone sees totals) |
+| `host_applications` | **Host waiting list**: plan pitch, city, status applied → shortlisted → call booked → trial → live (or waiting list / rejected / withdrawn), a note from the team | The applicant (own), admins |
 | `hosts`, `events`, `seat_requests`, `saved_events`, `reviews` | For when plans move into the database | See `schema.sql` |
 
 Profile photos go in the Storage bucket **`avatars`**; each member can only upload into their own folder.
@@ -44,6 +45,8 @@ Profile photos go in the Storage bucket **`avatars`**; each member can only uplo
 | `plan_counts(refs[])` | anyone | Seats filled, waiting-list size, ♥ interested, per plan (numbers only) |
 | `record_interest(device, plan, reaction)` | anyone | Saves a swipe; swiping again changes the answer |
 | `my_waitlist_position(plan)` | logged in | "You're #3 on the waiting list" |
+| `my_host_queue_position()` | logged in | "You're #4 in line for Jaipur" (shortlisted first, then profile score, then who applied earlier) |
+| `admin_host_applications()` | admins | Every host application with contact details and score |
 | `admin_interest_summary()` | admins | Interested / skipped / requests / filled / waiting for every plan |
 | `admin_plan_queue(plan)` | admins | Everyone who asked, best score first, with contact details |
 | `admin_fill_plan(plan, seats)` | admins | Keeps those already approved, approves the next best until full, waitlists the rest in order |
@@ -56,7 +59,8 @@ Profile photos go in the Storage bucket **`avatars`**; each member can only uplo
 | `/event/` | Real seats left and ♥ count; **Request a seat**, or **Join the waiting list** when full; shows your status, your waiting-list place and a Cancel button |
 | `/swipe/` (Discover) | One card per upcoming plan; right = interested (also saved), left = skip |
 | `/saved/` (Your plans) | Your requests with status |
-| `/admin/` | Interest table, request queue, auto-fill |
+| `/host/` | Apply to host, see your place in line, the 5-step tracker, the team's note, withdraw |
+| `/admin/` | Interest table, request queue, auto-fill, host applications |
 | Every page | Header **Log in**, or your photo with score, *My profile / Your plans / Discover / Admin / Log out*; a yellow bar nudges members with a score under 70 |
 
 With login switched off (empty keys in `config.ts`), requests still go by WhatsApp and swipes are kept only in the visitor's browser.

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
+import { AdminHosts } from "./AdminHosts";
 import { CONFIG } from "@/lib/config";
 import { type MeetEvent, eventUrl, relDay } from "@/lib/events";
 
@@ -21,7 +22,7 @@ export default function AdminPage() {
   const auth = useAuth();
   const { all, inCity, byId, today, toast, ready } = useApp();
   const router = useRouter();
-  const [tab, setTab] = useState<"interest" | "requests">("interest");
+  const [tab, setTab] = useState<"interest" | "requests" | "hosts">("interest");
   const [sum, setSum] = useState<Sum[] | null>(null);
   const [upcomingOnly, setUpcomingOnly] = useState(true);
   const [sortKey, setSortKey] = useState<keyof Row>("interested");
@@ -97,9 +98,10 @@ export default function AdminPage() {
       <div className="tabs" style={{ display: "flex", gap: 8, margin: "18px 0 20px", flexWrap: "wrap" }}>
         <button className={`pill ${tab === "interest" ? "on" : ""}`} onClick={() => setTab("interest")}>♥ Interest</button>
         <button className={`pill ${tab === "requests" ? "on" : ""}`} onClick={() => setTab("requests")}>🎟 Requests &amp; waiting list</button>
+        <button className={`pill ${tab === "hosts" ? "on" : ""}`} onClick={() => setTab("hosts")}>🎙️ Host applications</button>
       </div>
 
-      {tab === "interest" ? (
+      {tab === "hosts" ? <AdminHosts /> : tab === "interest" ? (
         <motion.section key="i" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="kpis">
             {([["interested", "♥ interested"], ["skipped", "✕ skipped"], ["requests", "seat requests"], ["waitlisted", "on waiting lists"]] as [keyof Sum, string][]).map(([k, l], i) => (

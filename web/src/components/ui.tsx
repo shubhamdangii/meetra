@@ -2,6 +2,7 @@
 import { motion, type HTMLMotionProps } from "framer-motion";
 import Link from "next/link";
 import { useApp } from "./AppProvider";
+import { useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
 import { DOW, MON, type MeetEvent, eventUrl, hostNames, palette, priceLabel, priceShort } from "@/lib/events";
@@ -60,11 +61,13 @@ export function SaveButton({ id, label = false, className = "" }: { id: string; 
 export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: number; extra?: React.ReactNode }) {
   const { city } = useApp();
   const low = e.left <= 4;
+  const tilt = useTilt(6);
   return (
-    <motion.article className="card"
+    <motion.article className="card" style={{ ...tilt.style, ["--gx" as string]: tilt.glareX }} {...tilt.handlers}
       initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "0px 0px -30px 0px" }}
       transition={{ duration: 0.5, ease, delay: (index % 4) * 0.06 }}
-      whileHover={{ x: -3, y: -3, boxShadow: "7px 7px 0 #16122B" }}>
+      whileHover={{ y: -4, boxShadow: "7px 7px 0 #16122B" }}>
+      <span className="glare" aria-hidden="true" />
       <Poster e={e} />
       <SaveButton id={e.id} />
       {e.tags.length > 0 && <div className="tagrow">{e.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}

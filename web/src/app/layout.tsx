@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Instrument_Serif } from "next/font/google";
 import { AppProvider } from "@/components/AppProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Footer, Header } from "@/components/Chrome";
+import { ScrollProgress } from "@/components/fx";
 import { CONFIG } from "@/lib/config";
 import "./globals.css";
 
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <AppProvider>
+            <ScrollProgress />
             <Header />
             <main id="main">{children}</main>
             <Footer />

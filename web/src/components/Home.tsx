@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "./AppProvider";
 import { Chips, Empty, EventCard, Poster, Reveal, ease } from "./ui";
+import { CountUp, Gallery } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
 import { MON, type MeetEvent, cityName, eventUrl, hostNames, relDay } from "@/lib/events";
@@ -89,7 +90,7 @@ export function Marquee() {
   );
 }
 
-/* ---------- explore preview: this weekend / week / next / later ---------- */
+/* ---------- explore: one swipeable row per time bucket ---------- */
 export function ExplorePreview() {
   const { ready, upcoming, inCity, today, city } = useApp();
   const [cat, setCat] = useState("all");
@@ -98,10 +99,9 @@ export function ExplorePreview() {
   const td = today.getDay(), satOff = (6 - td + 7) % 7, sunOff = td === 0 ? 0 : 7 - td;
   const weekend = (e: MeetEvent) => (e.day === satOff || e.day === sunOff) && e.day <= 6;
   const buckets = [
-    { t: "This weekend", w: "weekend", f: weekend },
-    { t: "This week", w: "week", f: (e: MeetEvent) => e.day <= 6 && !weekend(e) },
-    { t: "Next week", w: "next", f: (e: MeetEvent) => e.day > 6 && e.day <= 13 },
-    { t: "Looking ahead", w: "later", f: (e: MeetEvent) => e.day > 13 },
+    { t: "This weekend", em: "🔥", w: "weekend", f: weekend },
+    { t: "This week", em: "📅", w: "week", f: (e: MeetEvent) => e.day <= 6 && !weekend(e) },
+    { t: "Next week", em: "👀", w: "next", f: (e: MeetEvent) => e.day > 6 && e.day <= 13 },
   ];
   const fmt = (d: Date) => `${d.getDate()} ${MON[d.getMonth()]}`;
   return (
@@ -110,7 +110,7 @@ export function ExplorePreview() {
         <div>
           <span className="eyebrow">What&apos;s on</span>
           <h2 className="h2">Find your <span className="serif" style={{ color: "var(--violet)" }}>next</span> meetup</h2>
-          <p>{ready ? `${upcoming.filter(inCity).length} hosted plans in and around ${cityName(city).replace("All cities", "our cities")}.` : "Hosted plans every day."}</p>
+          <p>{ready ? `${upcoming.filter(inCity).length} hosted plans in and around ${cityName(city).replace("All cities", "our cities")}. Swipe the rows →` : "Hosted plans every day."}</p>
         </div>
         <div className="toolbar">
           <label className="search"><span>🔍</span><input type="search" placeholder="Search dinners, treks, quiz…" aria-label="Search meetups" onChange={(e) => setQ(e.target.value.trim().toLowerCase())} /></label>
@@ -118,22 +118,26 @@ export function ExplorePreview() {
       </div>
       <Chips value={cat} onChange={setCat} />
       {!ready ? (
-        <div className="grid">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" />)}</div>
+        <div className="gallery"><div className="gallery-track">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ width: 260, height: 360 }} />)}</div></div>
       ) : (
         <AnimatePresence mode="popLayout">
           {buckets.map((b) => {
             const items = list.filter(b.f); if (!items.length) return null;
+            const more = `/events/?when=${b.w}${cat !== "all" ? `&cat=${cat}` : ""}`;
             return (
               <motion.div key={b.t + cat + q} className="group" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="group-head"><h3>{b.t}</h3><span>{fmt(items[0].date)}{items.length > 1 ? " – " + fmt(items[items.length - 1].date) : ""} · {items.length} plans</span></div>
-                <div className="grid">{items.slice(0, 4).map((e, i) => <EventCard key={e.id} e={e} index={i} />)}</div>
-                {items.length > 4 && <div className="more-row"><Link className="btn btn-white btn-sm" href={`/events/?when=${b.w}${cat !== "all" ? `&cat=${cat}` : ""}`}>Show all {items.length} plans ↓</Link></div>}
+                <div className="group-head"><h3>{b.em} {b.t}</h3><span>{fmt(items[0].date)}{items.length > 1 ? " – " + fmt(items[items.length - 1].date) : ""} · <Link href={more} style={{ textDecoration: "underline" }}>{items.length} plans</Link></span></div>
+                <Gallery label={b.t}>
+                  {items.slice(0, 10).map((e, i) => <EventCard key={e.id} e={e} index={i} />)}
+                  {items.length > 10 && <Link className="g-more" href={more}><b>+{items.length - 10}</b><span>more plans {b.t.toLowerCase()}</span><i>See all →</i></Link>}
+                </Gallery>
               </motion.div>
             );
           })}
           {!list.length && <Empty key="empty" title="Nothing matches that.">Try another category or search.</Empty>}
         </AnimatePresence>
       )}
+      {ready && <div className="more-row"><Link className="btn btn-white" href="/events/">See every plan, day by day →</Link></div>}
     </section>
   );
 }
@@ -142,17 +146,17 @@ export function Hosts() {
   const { city, upcoming } = useApp();
   const firstPlan: Record<string, string> = {};
   upcoming.forEach((e) => e.hosts.forEach((h) => { firstPlan[h] = firstPlan[h] || e.title.split(" · ")[0]; }));
-  const list = Object.entries(HOSTS as Record<string, any>).filter(([k, h]) => k !== "team" && (city === "all" || h.city === city)).slice(0, 6);
+  const list = Object.entries(HOSTS as Record<string, any>).filter(([k, h]) => k !== "team" && (city === "all" || h.city === city));
   return (
-    <div className="hosts">
+    <Gallery label="Hosts" className="on-dark">
       {list.map(([k, h], i) => (
         <motion.div key={k} className="host" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          transition={{ delay: i * 0.07, duration: 0.5, ease }} whileHover={{ y: -6, rotate: -2 }}>
+          transition={{ delay: Math.min(i, 5) * 0.07, duration: 0.5, ease }} whileHover={{ y: -6, rotate: -2 }}>
           <div className="av" style={{ background: h.color }}>{h.name[0]}</div>
           <b>{h.name}<span className="verified">✓</span></b><small>{firstPlan[k] || ""}</small>
         </motion.div>
       ))}
-    </div>
+    </Gallery>
   );
 }
 
@@ -160,13 +164,13 @@ export function Wall() {
   const rots = [-2, 1.5, -1, 2.2, -1.6, 0.8];
   return (
     <>
-      <div className="wall">
+      <Gallery label="Reviews" auto={4200}>
         {(REVIEWS as any[]).map((r, i) => {
           const parts = r.head.split(r.hl);
           return (
             <motion.figure key={r.name} className={`quote c${i % 6}`}
               initial={{ opacity: 0, y: 30, rotate: 0 }} whileInView={{ opacity: 1, y: 0, rotate: rots[i % rots.length] }}
-              viewport={{ once: true, margin: "0px 0px -40px 0px" }} transition={{ duration: 0.6, ease, delay: (i % 3) * 0.08 }}
+              viewport={{ once: true }} transition={{ duration: 0.6, ease, delay: Math.min(i, 3) * 0.08 }}
               whileHover={{ rotate: 0, scale: 1.02 }}>
               <div className="who"><span className="av">{r.name[0]}</span>{r.name}</div>
               <span className="tag">{r.plan}</span>
@@ -175,7 +179,7 @@ export function Wall() {
             </motion.figure>
           );
         })}
-      </div>
+      </Gallery>
       {CONFIG.showSampleNotice && <span className="notice">✏️ Sample reviews: replace them in src/lib/data.ts with real ones after your first meetups.</span>}
     </>
   );
@@ -187,11 +191,23 @@ export function Stats() {
   const month = evs.filter((e) => e.day < 30).length;
   const hosts = new Set(evs.flatMap((e) => e.hosts)).size;
   const cats = new Set(evs.map((e) => e.cat)).size;
+  const rows: [number, string, string][] = [[month, "+", "plans in the next 4 weeks"], [hosts, "", "verified hosts"], [cats, "", "kinds of plans"]];
   return (
     <div className="stats">
-      {[[month + "+", "plans in the next 4 weeks"], [hosts, "verified hosts"], [cats, "kinds of plans"]].map(([n, l]) => (
-        <Reveal key={String(l)} className="stat"><b>{n}</b><span>{l}</span></Reveal>
+      {rows.map(([n, suf, l]) => (
+        <Reveal key={l} className="stat"><b><CountUp to={n} suffix={suf} /></b><span>{l}</span></Reveal>
       ))}
     </div>
+  );
+}
+
+/* ---------- how it works, as swipeable cards ---------- */
+export function Steps({ items }: { items: string[][] }) {
+  return (
+    <Gallery label="How it works">
+      {items.map(([n, t, d], i) => (
+        <Reveal key={n} delay={i * 0.1} className="step"><span className="num">{n}</span><h3>{t}</h3><p>{d}</p></Reveal>
+      ))}
+    </Gallery>
   );
 }

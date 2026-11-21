@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { Reveal } from "../ui";
+import { burst } from "../fx";
 import { CONFIG } from "@/lib/config";
 
 type Form = {
@@ -154,6 +155,7 @@ export default function ProfilePage() {
     const m = await auth.refreshMe();
     setMsg({ text: `Saved ✓ Your priority score is ${m?.profile_score ?? score}/100.`, ok: true });
     toast(`Saved · score ${m?.profile_score ?? score}/100`);
+    if ((m?.profile_score ?? score) >= 70) burst(window.innerWidth / 2, window.innerHeight / 2, ["⭐", "🎉", "✨", "💪"]);
     const next = auth.takeNext("");
     if (next) setTimeout(() => router.push(next), 900);
   }

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { EventCard, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
+import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
 import { catOf, fmtDay, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
@@ -18,6 +19,8 @@ const STATUS = {
   waitlisted: ["🕒", "You're on the waiting list", "If a seat opens up, the highest-priority person on the list gets it. Complete your profile to move up."],
   declined: ["🙏", "Not this time", "This plan is full. Try another date — there's something on every day."],
 } as const;
+
+const MOBILE_STATUS: Record<string, string> = { pending: "⏳ Requested", approved: "✅ You're in", waitlisted: "🕒 On waiting list", declined: "Not this time" };
 
 export default function EventPage() {
   const params = useSearchParams();
@@ -33,6 +36,13 @@ export default function EventPage() {
     return upcoming.find((x) => `${x.key}-${x.city}` === key) ?? found;
   }, [rawId, byId, upcoming]);
   useEffect(() => { if (ready && e && e.id !== rawId && byId(rawId)) toast("That date has passed — showing the next one"); }, [ready, e, rawId, byId, toast]);
+  // Tab title ("Introverts' Dinner · Jaipur · meetra"). Set after Next applies its own page title.
+  useEffect(() => {
+    if (!e) return;
+    const t = `${e.title} · ${CONFIG.cities[e.city].name} · ${CONFIG.brand}`;
+    document.title = t; const id = setTimeout(() => { document.title = t; }, 60);
+    return () => clearTimeout(id);
+  }, [e]);
 
   const [counts, setCounts] = useState<{ approved_seats: number; waitlisted: number; interested: number } | null>(null);
   const [myReq, setMyReq] = useState<MyReq>(null);
@@ -78,6 +88,7 @@ export default function EventPage() {
   async function request(ev: React.FormEvent) {
     ev.preventDefault();
     if (!e) return;
+    const submitBtn = (ev.currentTarget as HTMLFormElement).querySelector("button[type=submit]");
     if (auth.enabled) {
       if (!auth.requireLogin(`/event/?id=${e.id}`)) return;
       if (!auth.client || !auth.me) return toast("Still loading your account — try again in a second.");
@@ -91,6 +102,7 @@ export default function EventPage() {
       setBusy(false);
       if (res.error) return toast("Couldn't send your request: " + res.error.message);
       addRequest({ id: e.id, name, friend, at: Date.now() });
+      burstFrom(submitBtn, full ? ["⏳", "✨", "🙌"] : ["🎉", "🥳", "✨", "💖", "🍕"]);
       setMyReq(res.data as MyReq);
       toast(full ? "Added to the waiting list ✓" : "Request sent ✓");
       return;
@@ -119,7 +131,6 @@ export default function EventPage() {
 
   return (
     <div className="wrap">
-      <title>{`${e.title} · ${city} · ${CONFIG.brand}`}</title>
       <nav className="crumbs"><Link href="/events/">Explore</Link> / <Link href={`/events/?cat=${e.cat}`}>{cat.label}</Link> / <span>{city}</span></nav>
       <div className="ev-head">
         <div>
@@ -208,7 +219,7 @@ export default function EventPage() {
                   )}
                   <p className="fine">{!auth.enabled ? "Opens WhatsApp with your request. Your host confirms there, then you pay. Only your host sees your number."
                     : auth.session ? "Your request is saved. The team confirms on WhatsApp, then you pay. Only your host sees your number."
-                    : "You'll log in with Google or WhatsApp first (takes 10 seconds)."}</p>
+                    : (CONFIG.loginWithWhatsApp ? "You'll log in with Google or WhatsApp first (takes 10 seconds)." : "You'll log in with Google first (takes 10 seconds).")}</p>
                 </motion.form>
               )}
             </AnimatePresence>
@@ -219,7 +230,7 @@ export default function EventPage() {
       {sameKey.length > 0 && <section className="sec" style={{ paddingBottom: 0 }}><div className="group-head"><h3>More dates for {e.title.split(" · ")[0]}</h3></div><div className="grid">{sameKey.map((x, i) => <EventCard key={x.id} e={x} index={i} />)}</div></section>}
       <section className="sec"><div className="group-head"><h3>More plans to try</h3><Link className="btn btn-white btn-sm" href="/events/">Explore all →</Link></div><div className="grid">{others.map((x, i) => <EventCard key={x.id} e={x} index={i} />)}</div></section>
 
-      <div className="mobile-book"><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className="btn btn-sun btn-sm" href="#book">{full ? "Join waiting list" : "Request a seat"}</a></div>
+      <div className="mobile-book"><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className={`btn btn-sm ${showStatus ? "btn-white" : "btn-sun"}`} href="#book">{showStatus ? MOBILE_STATUS[myReq!.status] ?? "Your request" : full ? "Join waiting list" : "Request a seat"}</a></div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { deviceId, useAuth } from "../AuthProvider";
 import { Poster } from "../ui";
+import { burst } from "../fx";
 import { type MeetEvent, eventUrl, hostNames, priceLabel, priceShort, relDay } from "@/lib/events";
 import { store } from "@/lib/store";
 
@@ -70,6 +71,7 @@ export default function SwipePage() {
     setSwipes((s) => { const n = { ...s, [top.id]: r }; store.set(KEY, n); return n; });
     setUndo((u) => [...u, top.id]);
     if (r === "interested" && !isSaved(top.id)) toggleSave(top.id);
+    if (r === "interested") burst(window.innerWidth / 2, window.innerHeight * 0.45, ["💖", "🔥", "✨", "😍"], 14);
     if (auth.client) auth.client.rpc("record_interest", { p_device: deviceId(), p_plan_ref: top.id, p_reaction: r }).then(() => {}, () => {});
   }, [top, isSaved, toggleSave, auth.client]);
   const open = useCallback(() => { if (top) router.push(eventUrl(top)); }, [top, router]);

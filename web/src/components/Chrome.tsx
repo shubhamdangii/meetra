@@ -8,6 +8,7 @@ import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { CONFIG } from "@/lib/config";
 import { cityName } from "@/lib/events";
+import { store } from "@/lib/store";
 
 const LINKS = [
   { key: "events", href: "/events/", label: "Explore", icon: "🔍" },
@@ -102,12 +103,16 @@ function AccountSlot() {
 function ProfileNudge() {
   const { session, me } = useAuth();
   const path = usePathname();
-  if (!session || !me || me.profile_score >= 70 || /\/(profile|admin|login)\/?$/.test(path)) return null;
+  const [hidden, setHidden] = useState(true);
+  useEffect(() => { setHidden(store.get("mt-nudge-off", 0) > Date.now()); }, []);
+  if (hidden || !session || !me || me.profile_score >= 70 || /\/(profile|admin|login|swipe)\/?$/.test(path)) return null;
+  const close = () => { store.set("mt-nudge-off", Date.now() + 3 * 864e5); setHidden(true); }; // back in 3 days
   return (
     <motion.div className="nudge" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}>
       <div className="wrap">
-        <span>👋 Your profile score is {me.profile_score}/100. Seats go to the most complete profiles first.</span>
-        <Link className="btn btn-sun btn-sm" href="/profile/">Add details →</Link>
+        <span>⭐ Profile {me.profile_score}/100 · fuller profiles get seats first</span>
+        <Link className="btn btn-sun btn-sm" href="/profile/">Boost it →</Link>
+        <button type="button" className="nudge-x" onClick={close} aria-label="Hide this reminder">×</button>
       </div>
     </motion.div>
   );
