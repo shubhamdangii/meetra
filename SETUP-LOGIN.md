@@ -58,7 +58,7 @@ update public.users set role = 'admin'
 where auth_id = (select id from auth.users where email = 'YOUR-EMAIL@gmail.com');
 ```
 Admins can see every member's private details. Give this role only to people you fully trust.
-Then open **Admin** from your photo menu (or `admin.html`) to see swipe interest per plan and to approve requests by priority.
+Then open **Admin** from your photo menu (or `/admin/`) to see swipe interest per plan and to approve requests by priority.
 
 ## 6. Put it live
 Commit and push the changed `config.ts`. GitHub Pages updates within a minute.
@@ -73,7 +73,7 @@ Commit and push the changed `config.ts`. GitHub Pages updates within a minute.
    - **Verified by login:** WhatsApp verified +10, email verified +5
 3. **Request a seat** only needs login. Everyone can request; **seats go to the highest scores first**, then whoever asked earlier.
 4. **Waiting list:** when a plan is full, the button says **Join the waiting list**. Members see their place ("You're #3") in the same priority order, and can cancel any time.
-5. **Discover** (`swipe.html`): swipe right ♥ for interested, left ✕ to skip. Works without login too. ♥ plans are also saved to *Your plans*. The team sees the counts on the admin page.
+5. **Discover** (`/swipe/`): swipe right ♥ for interested, left ✕ to skip. Works without login too. ♥ plans are also saved to *Your plans*. The team sees the counts on the admin page.
 6. **Your plans** shows each request's status: pending, you're in, waiting list.
 7. **Log out:** photo menu at the top right, or the bottom of the profile page.
 

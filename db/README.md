@@ -7,7 +7,7 @@ One file: **`schema.sql`**. Run it once in Supabase → SQL Editor. There is no 
 - **Nobody is blocked for a short profile.** Every member gets a **priority score (0–100)** from how much they've filled in and verified. Seats and waiting-list places go to the highest score first, then whoever asked earlier.
 - **Verified marks** (`phone_verified_at`, `email_verified_at`) are copied from the login system. Members can't set them. Changing a verified phone or email removes the mark until it's confirmed again.
 - **Members are 18+.** Checked on the date of birth.
-- **Plans still live in `docs/assets/js/data.js`.** Requests, the waiting list and swipe interest refer to a plan by its website id (`plan_ref`, e.g. `introverts-dinner-jaipur-20261123`). The seat count for auto-fill comes from `data.js`.
+- **Plans still live in `web/src/lib/data.ts`.** Requests, the waiting list and swipe interest refer to a plan by its website id (`plan_ref`, e.g. `introverts-dinner-jaipur-20261123`). The seat count for auto-fill comes from `data.ts`.
 - **Swipe interest works without login.** It's counted per browser, using a random device id, so the same person on two phones counts twice.
 - **Hosts see a guest's private details** only for guests of their own events (the `events` / `seat_requests` tables), and only until 7 days after it ends. Until hosts have accounts, admins handle plan requests.
 - **Money in paise** (₹99 = `9900`), **times in UTC**, shown in India time.
@@ -23,7 +23,7 @@ One file: **`schema.sql`**. Run it once in Supabase → SQL Editor. There is no 
 | Email / **verified** | 5 / +5 |
 | Instagram · LinkedIn · house rules accepted | 5 each |
 
-`users.profile_score` is recalculated automatically whenever the profile or login changes. The same weights are in `docs/profile.html`; keep both in sync if you change them.
+`users.profile_score` is recalculated automatically whenever the profile or login changes. The same weights are in `web/src/components/pages/ProfilePage.tsx`; keep both in sync if you change them.
 
 ## Tables
 | Table | Holds | Who can read it |
@@ -51,12 +51,12 @@ Profile photos go in the Storage bucket **`avatars`**; each member can only uplo
 ## How the pages use it
 | Page | Uses |
 |---|---|
-| `login.html` | Google or WhatsApp code; afterwards returns to the page you came from |
-| `profile.html` | Live priority score, `users`, `user_private`, Storage `avatars`, verify phone or email |
-| `event.html` | Real seats left and ♥ count; **Request a seat**, or **Join the waiting list** when full; shows your status, your waiting-list place and a Cancel button |
-| `swipe.html` (Discover) | One card per upcoming plan; right = interested (also saved), left = skip |
-| `saved.html` (Your plans) | Your requests with status |
-| `admin.html` | Interest table, request queue, auto-fill |
+| `/login/` | Google or WhatsApp code; afterwards returns to the page you came from |
+| `/profile/` | Live priority score, `users`, `user_private`, Storage `avatars`, verify phone or email |
+| `/event/` | Real seats left and ♥ count; **Request a seat**, or **Join the waiting list** when full; shows your status, your waiting-list place and a Cancel button |
+| `/swipe/` (Discover) | One card per upcoming plan; right = interested (also saved), left = skip |
+| `/saved/` (Your plans) | Your requests with status |
+| `/admin/` | Interest table, request queue, auto-fill |
 | Every page | Header **Log in**, or your photo with score, *My profile / Your plans / Discover / Admin / Log out*; a yellow bar nudges members with a score under 70 |
 
 With login switched off (empty keys in `config.ts`), requests still go by WhatsApp and swipes are kept only in the visitor's browser.
@@ -84,7 +84,7 @@ If a secret is ever pushed by mistake, rotate it in Supabase or Google or Twilio
 It has not yet been run on a real Supabase project.
 
 ## Still missing
-1. **Plans in the database:** plans and seat counts still come from `data.js`. Moving them in gives hosts their own dashboards.
+1. **Plans in the database:** plans and seat counts still come from `data.ts`. Moving them in gives hosts their own dashboards.
 2. **Notifications:** nobody is messaged automatically when approved or promoted from the waiting list yet. The team messages them from the admin page (WhatsApp link).
 3. **Payments:** Razorpay/UPI with a server-side webhook.
 4. **Show-up history** in the score (attended vs no-show), once attendance is recorded.
