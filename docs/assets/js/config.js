@@ -28,8 +28,8 @@ window.CONFIG = {
      ❌ NEVER put the "service_role" / "secret" key, the database password
         or any payment key in this file or anywhere in this repo.
      Leave both empty and login stays switched off. */
-  supabaseUrl: "",          // e.g. "https://abcdefgh.supabase.co"
-  supabaseAnonKey: "",      // e.g. "eyJhbGciOi…" or "sb_publishable_…"
+  supabaseUrl: "https://eqzwolwhecotwiphmjrd.supabase.co",          // e.g. "https://abcdefgh.supabase.co"
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxendvbHdoZWNvdHdpcGhtanJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMzcwMDQsImV4cCI6MjExMDgxMzAwNH0.vLSh3R25fNUzIN9UJ_VMlrd1KU_PWATJyQzy03HO-5w",      // e.g. "eyJhbGciOi…" or "sb_publishable_…"
   loginWithGoogle: true,
-  loginWithWhatsApp: true   // needs a WhatsApp sender set up in Supabase (see SETUP-LOGIN.md)
+  loginWithWhatsApp: false  // switch to true once Twilio WhatsApp is connected in Supabase (see SETUP-LOGIN.md)
 };
