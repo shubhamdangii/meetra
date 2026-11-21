@@ -42,6 +42,7 @@ export default function HomePage() {
       <section className="wrap sec" id="how" style={{ paddingTop: 10 }}>
         <div className="sec-head"><div><span className="eyebrow">How it works</span><h2 className="h2"><Wavy text="Three steps to" /> <span className="hl"><Wavy text="new friends" /></span></h2></div></div>
         <Steps items={STEPS} />
+        <Reveal style={{ marginTop: 22 }}><Link href="/games/" className="games-teaser"><span className="dice" aria-hidden="true">🎲</span><div><b>Party games for any table</b><span>Card decks, Undercover, Mafia, Heads Up and more. One phone, free.</span></div><span className="btn btn-ink btn-sm">Play →</span><span className="tz-go" aria-hidden="true">→</span></Link></Reveal>
       </section>
 
       <section className="wrap">

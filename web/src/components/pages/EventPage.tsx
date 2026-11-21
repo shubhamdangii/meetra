@@ -9,13 +9,14 @@ import { EventCard, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
 import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
-import { catOf, fmtDay, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
+import { addressDropAt, catOf, fmtDay, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
+import { CalendarButton } from "../plans";
 
 type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled"; party_size: number } | null;
 
 const STATUS = {
   pending: ["⏳", "Request sent", "The team is reviewing requests. Seats go to the most complete profiles first."],
-  approved: ["🎉", "You're in!", "We'll share the exact spot on WhatsApp. See you there."],
+  approved: ["🎉", "You're in!", "Your door pass is ready. Show its QR code at the door."],
   waitlisted: ["🕒", "You're on the waiting list", "If a seat opens up, the highest-priority person on the list gets it. Complete your profile to move up."],
   declined: ["🙏", "Not this time", "This plan is full. Try another date — there's something on every day."],
 } as const;
@@ -203,7 +204,11 @@ export default function EventPage() {
                   <motion.div className="st-ic" initial={{ rotate: -20, scale: 0.5 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }}>{STATUS[myReq!.status as keyof typeof STATUS][0]}</motion.div>
                   <b>{myReq!.status === "waitlisted" && pos ? `You're #${pos} on the waiting list` : STATUS[myReq!.status as keyof typeof STATUS][1]}</b>
                   <p>{STATUS[myReq!.status as keyof typeof STATUS][2]}</p>
-                  {myReq!.status !== "declined" && <button className="linkish" type="button" onClick={cancel}>Cancel my request</button>}
+                  {myReq!.status === "approved" && <>
+                    <p className="drop-note">{Date.now() >= addressDropAt(e).getTime() ? "📍 Exact spot is on your WhatsApp." : `📍 Exact spot drops ${fmtWhen(addressDropAt(e))}`}</p>
+                    <div className="plan-btns" style={{ justifyContent: "center" }}><Link className="btn btn-ink btn-sm" href={`/ticket/?id=${e.id}`}>My door pass 🎫</Link><CalendarButton e={e} /></div>
+                  </>}
+                  {myReq!.status !== "declined" && <button className="linkish" type="button" onClick={cancel}>{myReq!.status === "approved" ? "I can't make it" : "Cancel my request"}</button>}
                 </motion.div>
               ) : (
                 <motion.form key="form" onSubmit={request} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

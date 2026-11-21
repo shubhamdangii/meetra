@@ -15,6 +15,7 @@ const LINKS = [
   { key: "events", href: "/events/", label: "Explore", icon: "🔍" },
   { key: "swipe", href: "/swipe/", label: "Discover", icon: "🔥" },
   { key: "past", href: "/past/", label: "Past nights", icon: "📸" },
+  { key: "games", href: "/games/", label: "Games", icon: "🎲" },
   { key: "saved", href: "/saved/", label: "Your plans", icon: "♥" },
   { key: "host", href: "/host/", label: "Host", icon: "✨" },
 ];
@@ -23,7 +24,8 @@ function activeKey(path: string) {
   const p = path.replace(/\/+$/, "/");
   if (p === "/" ) return "home";
   if (p.startsWith("/event")) return "events";
-  if (p.startsWith("/profile")) return "saved";
+  if (p.startsWith("/profile") || p.startsWith("/ticket")) return "saved";
+  if (p.startsWith("/game")) return "games";
   return LINKS.find((l) => p.startsWith(l.href))?.key ?? "";
 }
 
@@ -90,7 +92,8 @@ function AccountSlot() {
           <motion.div className="city-menu account-menu open" role="menu" {...menuMotion}>
             <div className="acct-head"><b>{name}</b><small>Profile score {me?.profile_score ?? 0}/100{me?.profile_complete ? " · complete ✓" : ""}</small></div>
             <Link href="/profile/" role="menuitem" onClick={() => setOpen(false)}><span>My profile</span>{me && !me.profile_complete && <small className="dot">●</small>}</Link>
-            <Link href="/saved/" role="menuitem" onClick={() => setOpen(false)}><span>Your plans</span></Link>
+            <Link href="/saved/" role="menuitem" onClick={() => setOpen(false)}><span>Your plans &amp; passes</span></Link>
+            <Link href="/games/" role="menuitem" onClick={() => setOpen(false)}><span>Party games</span></Link>
             <Link href="/swipe/" role="menuitem" onClick={() => setOpen(false)}><span>Discover plans</span></Link>
             {me?.role === "admin" && <Link href="/admin/" role="menuitem" onClick={() => setOpen(false)}><span>Admin</span></Link>}
             <button role="menuitem" onClick={() => { setOpen(false); logout(); }}><span>Log out</span></button>
@@ -146,7 +149,7 @@ export function Header() {
       </header>
       <ProfileNudge />
       <nav className="tabbar" aria-label="Main (mobile)">
-        {[{ key: "home", href: "/", label: "Home", icon: "⌂" }, ...LINKS.filter((l) => l.key !== "past")].map((l) => (
+        {[{ key: "home", href: "/", label: "Home", icon: "⌂" }, ...LINKS.filter((l) => l.key !== "past" && l.key !== "games")].map((l) => (
           <Link key={l.key} href={l.href} className={active === l.key ? "active" : ""} onClick={() => buzz()}>
             {active === l.key && <motion.i layoutId="tab-on" className="tab-bg" transition={{ type: "spring", stiffness: 420, damping: 30 }} />}
             <motion.span key={String(active === l.key)} initial={active === l.key ? { scale: 0.4, rotate: -20, y: 6 } : false} animate={{ scale: 1, rotate: 0, y: 0 }} transition={{ type: "spring", stiffness: 500, damping: 12 }}>{l.icon}</motion.span>
@@ -165,7 +168,7 @@ export function Footer() {
       <div className="wrap">
         <div className="foot-grid">
           <div><Link className="logo" href="/" style={{ color: "#fff" }}>{CONFIG.brand}<i>.</i></Link><p>{CONFIG.tagline} Now in {live}.</p></div>
-          <div><h5>Explore</h5><Link href="/events/">Find a meetup</Link><Link href="/events/?when=weekend">This weekend</Link><Link href="/swipe/">Discover</Link><Link href="/past/">Past nights</Link></div>
+          <div><h5>Explore</h5><Link href="/events/">Find a meetup</Link><Link href="/events/?when=weekend">This weekend</Link><Link href="/swipe/">Discover</Link><Link href="/past/">Past nights</Link><Link href="/games/">Party games</Link></div>
           <div><h5>{CONFIG.brand}</h5><Link href="/about/">How it works</Link><Link href="/about/#safety">Help &amp; safety</Link><Link href="/host/">Host a meetup</Link><Link href="/partners/">For brands &amp; venues</Link></div>
           <div><h5>Say hi</h5><a href={CONFIG.instagram} target="_blank" rel="noopener noreferrer">Instagram</a><a href={CONFIG.whatsappCommunity} target="_blank" rel="noopener noreferrer">WhatsApp community</a><a href={`mailto:${CONFIG.email}`}>{CONFIG.email}</a></div>
         </div>

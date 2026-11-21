@@ -1,47 +1,64 @@
 "use client";
+// /saved/ — "Your plans": seat requests with their status, door passes,
+// calendar files, past plans and saved-for-later.
+import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
-import { Empty, EventCard } from "../ui";
-
-const LABEL: Record<string, [string, string]> = {
-  pending: ["⏳ Pending", "#fff"], approved: ["🎉 You're in", "#C9F5E4"], waitlisted: ["🕒 Waiting list", "#FFE9A8"], declined: ["Not this time", "#FFE3EC"],
-};
+import { CalendarButton, InviteBox, STATUS_UI, useMyRequests, type MyRequest } from "../plans";
+import { Empty, EventCard, Poster } from "../ui";
+import { buzz } from "../fx";
+import { type MeetEvent, addressDropAt, eventUrl, fmtWhen, startsAt } from "@/lib/events";
 
 export default function SavedPage() {
-  const { ready, upcoming, byId, requests, savedIds } = useApp();
+  const { ready, upcoming, byId, requests, savedIds, toast } = useApp();
   const auth = useAuth();
-  const [db, setDb] = useState<Record<string, string> | null>(null);
+  const { rows, setRows } = useMyRequests();
+  const now = Date.now();
 
-  useEffect(() => {
-    if (!auth.client || !auth.me) return;
-    auth.client.from("plan_requests").select("plan_ref,status").eq("user_id", auth.me.id)
-      .then(({ data }) => data && setDb(Object.fromEntries(data.map((r: any) => [r.plan_ref, r.status]))));
-  }, [auth.client, auth.me]);
-
-  let reqIds = requests.map((r) => r.id);
-  if (db) reqIds = [...new Set([...Object.keys(db), ...reqIds])].filter((id) => db[id] !== "cancelled");
-  const reqs = reqIds.map(byId).filter((e): e is NonNullable<typeof e> => !!e && e.day >= 0);
+  // Logged in: the database is the truth. Logged out: requests saved on this device.
+  const mine: { e: MeetEvent; r: MyRequest | null }[] = rows
+    ? rows.filter((r) => r.status !== "cancelled").map((r) => ({ e: byId(r.plan_ref)!, r })).filter((x) => x.e)
+    : requests.map((q) => ({ e: byId(q.id)!, r: null })).filter((x) => x.e);
+  const live = mine.filter((x) => endTime(x.e) > now).sort((a, b) => a.e.date.getTime() - b.e.date.getTime());
+  const past = mine.filter((x) => endTime(x.e) <= now).sort((a, b) => b.e.date.getTime() - a.e.date.getTime());
+  const nextPass = live.find((x) => x.r?.status === "approved");
   const saved = upcoming.filter((e) => savedIds.includes(e.id));
   const find = <Link className="btn btn-sun btn-sm" href="/events/" style={{ marginTop: 16 }}>Find a plan →</Link>;
+
+  async function cancel(r: MyRequest) {
+    if (!auth.client || !confirm("Cancel your spot on this plan?")) return;
+    const { error } = await auth.client.from("plan_requests").update({ status: "cancelled" }).eq("id", r.id);
+    if (error) return toast("Couldn't cancel: " + error.message);
+    setRows((l) => l && l.map((x) => (x.id === r.id ? { ...x, status: "cancelled" } : x))); toast("Spot cancelled"); buzz();
+  }
 
   return (
     <div className="wrap">
       <section className="page-hero">
         <span className="eyebrow">Your plans</span>
         <h1>Your little <span className="serif">calendar.</span></h1>
-        <p>{db ? "Your seat requests with their status, and plans you've saved." : "Seats you've requested and plans you've saved. Saved on this device."}</p>
+        <p>{rows ? "Requests, waitlists and door passes live here." : "Seats you've asked for and plans you've saved. Log in to see your door passes."}</p>
+        {nextPass && (
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", delay: 0.3 }}>
+            <Link className="pass-chip" href={`/ticket/?id=${nextPass.e.id}`}><b>🎫 Open door pass</b><span>{nextPass.e.title}</span></Link>
+          </motion.div>
+        )}
       </section>
+
       <div className="group">
-        <div className="group-head"><h3>Requested seats</h3><span>{reqs.length ? `${reqs.length} upcoming` : ""}</span></div>
-        <div className="grid">
-          {!ready ? <div className="skeleton" /> : reqs.length ? reqs.map((e, i) => {
-            const st = db?.[e.id];
-            return <EventCard key={e.id} e={e} index={i} extra={st && LABEL[st] ? <span className="tag" style={{ alignSelf: "flex-start", background: LABEL[st][1], marginBottom: 4 }}>{LABEL[st][0]}</span> : undefined} />;
-          }) : <Empty title="No seat requests yet.">Request a seat on any plan and it shows up here.<div>{find}</div></Empty>}
-        </div>
+        <div className="group-head"><h3>Coming up</h3><span>{live.length ? `${live.length} plan${live.length > 1 ? "s" : ""}` : ""}</span></div>
+        {!ready || (auth.session && !rows && auth.enabled) ? <div className="skeleton" style={{ minHeight: 140 }} /> : live.length ? (
+          <div className="plan-list">
+            <AnimatePresence>
+              {live.map(({ e, r }, i) => <PlanRow key={e.id} e={e} r={r} i={i} onCancel={cancel} />)}
+            </AnimatePresence>
+          </div>
+        ) : <Empty title="No plans yet.">Request a seat on any plan and it shows up here with its status.<div>{find}</div></Empty>}
       </div>
+
+      {live.some((x) => x.r?.status === "approved") && <div className="group"><InviteBox e={nextPass?.e} /></div>}
+
       <div className="group">
         <div className="group-head"><h3>Saved for later ♥</h3><span>{saved.length ? `${saved.length} saved` : ""}</span></div>
         <div className="grid">
@@ -49,6 +66,49 @@ export default function SavedPage() {
             : <Empty title="Nothing saved yet.">Tap the ♡ on any plan, or swipe right on <Link href="/swipe/" style={{ textDecoration: "underline" }}>Discover</Link>.<div>{find}</div></Empty>}
         </div>
       </div>
+
+      {past.length > 0 && (
+        <div className="group">
+          <div className="group-head"><h3>Past plans</h3><span>{past.length}</span></div>
+          <div className="plan-list past">{past.map(({ e, r }, i) => <PlanRow key={e.id} e={e} r={r} i={i} past />)}</div>
+        </div>
+      )}
     </div>
+  );
+}
+
+const endTime = (e: MeetEvent) => startsAt(e).getTime() + 3 * 36e5;
+
+function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyRequest | null; i: number; past?: boolean; onCancel?: (r: MyRequest) => void }) {
+  const st = r ? STATUS_UI[r.status] : null;
+  const label = !r ? "Sent on WhatsApp 💬" : past ? st?.past : st?.label;
+  const tone = !r ? "#E7F9EF" : past ? (r.status === "approved" ? "#C9F5E4" : "#F1EEF6") : st?.tone;
+  const drop = addressDropAt(e);
+  const dropped = Date.now() >= drop.getTime();
+  return (
+    <motion.article className={`plan-row ${past ? "is-past" : ""}`} layout initial={{ opacity: 0, y: 24, rotate: i % 2 ? 1.5 : -1.5 }} animate={{ opacity: 1, y: 0, rotate: 0 }}
+      exit={{ opacity: 0, x: -60 }} transition={{ type: "spring", stiffness: 220, damping: 22, delay: Math.min(i, 6) * 0.05 }}>
+      <Link href={eventUrl(e)} className="plan-main">
+        <Poster e={e} badge={false} className="plan-thumb" />
+        <span className="plan-txt">
+          <small>{fmtWhen(startsAt(e))}</small>
+          <b>{e.title}</b>
+          <small>{e.area}</small>
+          <motion.span className="plan-status" style={{ background: tone }} initial={{ scale: 0.6 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 12, delay: 0.2 }}>{label}</motion.span>
+        </span>
+      </Link>
+      {!past && r?.status === "approved" && (
+        <div className="plan-acts">
+          <span className="drop">{dropped ? "📍 Exact spot sent on WhatsApp" : `📍 Exact spot drops ${fmtWhen(drop)}`}</span>
+          <div className="plan-btns">
+            <Link className="btn btn-ink btn-sm" href={`/ticket/?id=${e.id}`}>My door pass 🎫</Link>
+            <CalendarButton e={e} />
+          </div>
+        </div>
+      )}
+      {!past && r?.status === "waitlisted" && <p className="plan-note">We&apos;ll WhatsApp you the moment a seat opens up.</p>}
+      {!past && r?.status === "pending" && <p className="plan-note">The team is building the table. You&apos;ll hear back on WhatsApp.</p>}
+      {!past && r && r.status !== "declined" && onCancel && <button className="linkish plan-cancel" onClick={() => onCancel(r)}>{r.status === "approved" ? "I can't make it" : "Cancel my spot"}</button>}
+    </motion.article>
   );
 }

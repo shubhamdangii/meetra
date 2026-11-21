@@ -84,3 +84,30 @@ export type PriceBand = "all" | "free" | "99" | "more";
 export const PRICE_BANDS: [PriceBand, string][] = [["all", "Any price"], ["free", "Free"], ["99", "₹99"], ["more", "Above ₹99"]];
 export const priceOk = (e: MeetEvent, b: string) =>
   b === "all" || (b === "free" ? e.priceType === "free" || e.price === 0 : b === "99" ? e.priceType !== "free" && e.price > 0 && e.price <= 99 : e.priceType !== "free" && e.price > 99);
+
+/* ---------- plan times (used by Your plans, the door pass and calendar files) ---------- */
+export const startsAt = (e: MeetEvent) => { const d = new Date(e.date); const m = mins(e.time); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d; };
+export const endsAt = (e: MeetEvent) => { const s = startsAt(e); const m = mins(e.end); if (!m) return new Date(s.getTime() + 2 * 36e5); const d = new Date(e.date); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d <= s ? new Date(d.getTime() + 864e5) : d; };
+/** The exact spot is shared 2 hours before the start (8 pm the night before for morning plans). */
+export const addressDropAt = (e: MeetEvent) => {
+  const s = startsAt(e);
+  if (s.getHours() < 10) { const d = new Date(s); d.setDate(d.getDate() - 1); d.setHours(20, 0, 0, 0); return d; }
+  return new Date(s.getTime() - 2 * 36e5);
+};
+export const fmtTime = (d: Date) => d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s+/g, " ").toLowerCase();
+export const fmtWhen = (d: Date) => `${DOW[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}, ${fmtTime(d)}`;
+
+/** Downloads an .ics file so the plan lands in the phone's calendar. */
+export function downloadCalendar(e: MeetEvent) {
+  const z = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const esc = (s: string) => s.replace(/[\,;]/g, (m) => "\\" + m).replace(/\n/g, "\n");
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//${CONFIG.brand}//plans//EN`, "BEGIN:VEVENT",
+    `UID:${e.id}@${CONFIG.brand}`, `DTSTAMP:${z(new Date())}`, `DTSTART:${z(startsAt(e))}`, `DTEND:${z(endsAt(e))}`,
+    `SUMMARY:${esc(`${e.title} · ${CONFIG.brand}`)}`, `LOCATION:${esc(`${e.area}, ${CONFIG.cities[e.city].name}`)}`,
+    `DESCRIPTION:${esc(`Hosted by ${hostNames(e)}. The exact spot is shared on WhatsApp before the plan. Show your door pass at the door.`)}`,
+    "BEGIN:VALARM", "TRIGGER:-PT3H", "ACTION:DISPLAY", "DESCRIPTION:Plan today", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  a.download = `${e.key}.ics`; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
