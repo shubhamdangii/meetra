@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ExplorePreview, Faces, HeroCount, HeroStack, Hosts, Marquee, Stats, Steps, Wall } from "@/components/Home";
-import { Magnetic, WordReveal } from "@/components/fx";
+import { Magnetic, WordReveal, Wavy } from "@/components/fx";
 import { Reveal } from "@/components/ui";
 
 const FAQ = [
@@ -40,14 +40,14 @@ export default function HomePage() {
       <ExplorePreview />
 
       <section className="wrap sec" id="how" style={{ paddingTop: 10 }}>
-        <div className="sec-head"><div><span className="eyebrow">How it works</span><h2 className="h2">Three steps to <span className="hl">new friends</span></h2></div></div>
+        <div className="sec-head"><div><span className="eyebrow">How it works</span><h2 className="h2"><Wavy text="Three steps to" /> <span className="hl"><Wavy text="new friends" /></span></h2></div></div>
         <Steps items={STEPS} />
       </section>
 
       <section className="wrap">
         <Reveal className="band">
           <div className="sec-head">
-            <div><span className="eyebrow" style={{ color: "var(--sun)" }}>The people behind every plan</span><h2 className="h2">Meet your <span className="serif">hosts.</span></h2><p>Real people, verified by our team, who love bringing strangers together.</p></div>
+            <div><span className="eyebrow" style={{ color: "var(--sun)" }}>The people behind every plan</span><h2 className="h2"><Wavy text="Meet your" /> <span className="serif"><Wavy text="hosts." /></span></h2><p>Real people, verified by our team, who love bringing strangers together.</p></div>
             <Magnetic><Link className="btn btn-sun" href="/host/">Become a host →</Link></Magnetic>
           </div>
           <Hosts />
@@ -55,7 +55,7 @@ export default function HomePage() {
       </section>
 
       <section className="wrap sec">
-        <div className="sec-head"><div><span className="eyebrow">What people say after</span><h2 className="h2">The group chat, <span className="serif" style={{ color: "var(--pink)" }}>after.</span> 👀</h2></div></div>
+        <div className="sec-head"><div><span className="eyebrow">What people say after</span><h2 className="h2"><Wavy text="The group chat," /> <span className="serif" style={{ color: "var(--pink)" }}><Wavy text="after." /></span> 👀</h2></div></div>
         <Wall />
         <Stats />
       </section>
@@ -64,7 +64,7 @@ export default function HomePage() {
         <div className="faq-grid">
           <div className="faq-big">
             <span className="eyebrow">Questions we get asked most</span>
-            <h2 style={{ marginTop: 10 }}>Coming alone? <span className="serif">Most people do.</span></h2>
+            <h2 style={{ marginTop: 10 }}><Wavy text="Coming alone?" /> <span className="serif"><Wavy text="Most people do." /></span></h2>
             <p className="muted" style={{ marginTop: 18, maxWidth: 380 }}>Safety, payments, house rules and more: <Link href="/about/" style={{ textDecoration: "underline" }}>read how it all works</Link>.</p>
           </div>
           <div>{FAQ.map(([q, a], i) => <details key={q} className="acc" open={i === 0}><summary>{q}</summary><div className="acc-body">{a}</div></details>)}</div>
@@ -74,7 +74,7 @@ export default function HomePage() {
       <section className="wrap sec" style={{ paddingTop: 0 }}>
         <Reveal className="cta-band">
           <div>
-            <h2>Got a plan people would <span className="serif">love?</span></h2>
+            <h2><Wavy text="Got a plan people would" /> <span className="serif"><Wavy text="love?" /></span></h2>
             <p>Run a book club, a trek, a board-game night or anything you&apos;re great at. We bring the people, you bring the vibe.</p>
             <Magnetic><Link className="btn btn-sun" href="/host/">Join the host waiting list →</Link></Magnetic>
           </div>

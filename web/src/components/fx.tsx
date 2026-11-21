@@ -1,6 +1,7 @@
 "use client";
 // Motion toolkit: swipeable galleries, emoji bursts, 3D tilt, magnetic buttons, scroll progress.
-// Everything respects "reduce motion" in the visitor's phone/computer settings.
+// Short, playful effects run for everyone. Heavy motion (3D tilt, magnetic pull, auto-scrolling)
+// is switched off when the visitor's phone/computer asks for reduced motion.
 import { animate, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -9,7 +10,7 @@ const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("
 
 /* ---------- emoji burst: little emojis fly out from a point ---------- */
 export function burst(x: number, y: number, emojis = ["🎉", "✨", "💖", "🥳", "⭐"], count = 18) {
-  if (typeof document === "undefined" || reducedMotion()) return;
+  if (typeof document === "undefined") return;
   for (let i = 0; i < count; i++) {
     const el = document.createElement("span");
     el.className = "burst-bit";
@@ -152,18 +153,90 @@ export function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
 
 /* ---------- tiny vibration on Android phones (ignored elsewhere) ---------- */
 export function buzz(ms = 10) {
-  try { if (!reducedMotion() && "vibrate" in navigator) navigator.vibrate(ms); } catch {}
+  try { const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation; if ("vibrate" in navigator && (!ua || ua.hasBeenActive)) navigator.vibrate(ms); } catch {}
 }
 
 /* ---------- headings & highlights animate in as you scroll (works great on phones) ---------- */
 export function ScrollFX() {
   const path = usePathname();
   useEffect(() => {
-    if (reducedMotion() || !("IntersectionObserver" in window)) return;
+    // Reveal anything whose top is above 90% of the screen — including headings you flung past
+    // and ones re-created after a filter change. Checked on scroll and every half second.
     document.documentElement.classList.add("fx-ready");
-    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("fx-in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -12% 0px" });
-    const t = setTimeout(() => document.querySelectorAll(".h2, .group-head, .eyebrow, .faq-big h2, .cta-band h2, .page-hero h1").forEach((el) => io.observe(el)), 50);
-    return () => { clearTimeout(t); io.disconnect(); };
+    let raf = 0;
+    const reveal = () => {
+      raf = 0;
+      const limit = window.innerHeight * 0.9;
+      document.querySelectorAll(".h2:not(.fx-in), .group-head:not(.fx-in), .eyebrow:not(.fx-in), .faq-big h2:not(.fx-in), .cta-band h2:not(.fx-in), .page-hero h1:not(.fx-in)")
+        .forEach((el) => { if (el.getBoundingClientRect().top < limit) el.classList.add("fx-in"); });
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(reveal); };
+    reveal();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    const tick = setInterval(reveal, 500);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); clearInterval(tick); if (raf) cancelAnimationFrame(raf); };
   }, [path]);
+  return null;
+}
+
+/* ---------- letters that drop in, and do a wave whenever you scroll back up ---------- */
+export function Wavy({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const go = () => {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight) return;
+      el.classList.remove("wave"); void el.offsetWidth; el.classList.add("wave");
+    };
+    window.addEventListener("mt-scrollup", go);
+    return () => window.removeEventListener("mt-scrollup", go);
+  }, []);
+  let i = 0;
+  return (
+    <span ref={ref} className="wavy" aria-label={text}>
+      {text.split(" ").map((w, wi, arr) => (
+        <span key={wi} aria-hidden="true">
+          <span className="wword">{[...w].map((ch) => <span key={i} className="l" style={{ ["--i" as string]: i++ }}>{ch}</span>)}</span>
+          {wi < arr.length - 1 ? " " : ""}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/* ---------- scroll back up fast → dancing people & emojis float up, headings wave ---------- */
+const PARTY = ["🕺", "💃", "👯", "🥳", "🙌", "🎉", "✨", "😎", "🤩", "🪩", "👋", "💜"];
+export function ScrollUpFX() {
+  useEffect(() => {
+    let last = window.scrollY, up = 0, lastFire = 0;
+    const onScroll = () => {
+      const y = window.scrollY, d = y - last; last = y;
+      if (d >= 0) { up = 0; return; }
+      up -= d;
+      const now = Date.now();
+      if (up > 160 && now - lastFire > 1600 && y > 300) {
+        up = 0; lastFire = now;
+        window.dispatchEvent(new Event("mt-scrollup"));
+        const n = window.innerWidth < 720 ? 7 : 10;
+        for (let k = 0; k < n; k++) {
+          const el = document.createElement("span");
+          el.className = "rise-bit"; el.textContent = PARTY[Math.floor(Math.random() * PARTY.length)];
+          el.style.left = `${6 + Math.random() * 88}vw`; el.style.fontSize = `${24 + Math.random() * 18}px`;
+          document.body.appendChild(el);
+          const sway = (Math.random() - 0.5) * 80;
+          const a = el.animate([
+            { transform: "translate(0,0) scale(.3) rotate(0deg)", opacity: 0 },
+            { transform: `translate(${sway / 2}px,-18vh) scale(1.1) rotate(${sway / 4}deg)`, opacity: 1, offset: 0.25 },
+            { transform: `translate(${sway}px,-55vh) scale(1) rotate(${-sway / 3}deg)`, opacity: 0 },
+          ], { duration: 1500 + Math.random() * 700, delay: k * 70, easing: "cubic-bezier(.2,.7,.3,1)", fill: "both" });
+          a.onfinish = () => el.remove();
+        }
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return null;
 }

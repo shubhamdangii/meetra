@@ -360,7 +360,7 @@ section{position:relative}
 /* reveal on scroll */
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
 .reveal.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+/* reduced motion: heavy motion is handled in fx.tsx; light CSS animations keep running */
 
 /* ---------- responsive ---------- */
 @media (max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}.hosts{grid-template-columns:repeat(3,1fr)}}
@@ -692,3 +692,46 @@ html,body{overflow-x:clip}
 .notice{margin-top:14px}
 .swipe-wrap{padding-top:24px}
 @media (max-width:820px){.swipe-wrap{padding-top:20px}}
+
+/* ---------- v4: stats, hero spacing, price filter, letters, scroll-up party ---------- */
+/* stats: the count-up <span> was picking up the small label size */
+.stat b span{font-size:inherit;font-weight:inherit;color:inherit;letter-spacing:inherit}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:26px 0 8px}
+.stat{background:#fff;border:2px solid var(--ink);border-radius:18px;box-shadow:3px 3px 0 var(--ink);padding:16px 14px;text-align:center}
+.stat b{font-size:clamp(34px,6vw,60px)}
+.stat span{display:block;margin-top:6px;line-height:1.25}
+@media (max-width:720px){.stat{padding:14px 8px}.stat b{font-size:32px}.stat span{font-size:12px}}
+/* hero: tighter on phones (cards end ~360px down the stage) */
+@media (max-width:720px){
+  .hero{row-gap:18px;padding-bottom:24px}
+  .hero-stage{height:372px}
+  .stack-hint{bottom:0}
+  .hero-proof{margin-top:22px}
+}
+/* price filter */
+.price-seg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 22px}
+.price-seg-label{font-weight:700;font-size:14px;margin-right:2px}
+.pseg{position:relative;isolation:isolate;border:2px solid var(--ink);background:#fff;border-radius:999px;padding:7px 14px;font-weight:700;font-size:14px}
+.pseg.on{color:#16122B}
+.pseg-bg{position:absolute;inset:-2px;border-radius:999px;background:var(--sun);border:2px solid var(--ink);z-index:-1}
+.pseg-txt{display:inline-flex;align-items:center;gap:6px}
+.pseg-txt i{font-style:normal;font-size:11px;background:var(--soft);border-radius:999px;padding:1px 7px;color:var(--ink-2)}
+.pseg.on .pseg-txt i{background:#fff}
+@media (max-width:720px){.price-seg{gap:6px}.pseg{padding:6px 11px;font-size:13px}.price-seg-label{width:100%;font-size:13px}}
+/* letters */
+.wavy{display:inline}
+.wword{display:inline-block;white-space:nowrap}
+.wavy .l{display:inline-block;will-change:transform}
+.wavy.wave .l{animation:letterWave .7s calc(var(--i) * 28ms) cubic-bezier(.3,1.6,.5,1) both}
+@keyframes letterWave{0%{transform:none}35%{transform:translateY(-.32em) rotate(-8deg) scale(1.15);color:var(--pink)}70%{transform:translateY(.05em) rotate(3deg)}100%{transform:none}}
+.fx-ready .h2:not(.fx-in) .wavy .l,.fx-ready .faq-big h2:not(.fx-in) .wavy .l,.fx-ready .cta-band h2:not(.fx-in) .wavy .l{opacity:0;transform:translateY(.7em) rotate(12deg)}
+.fx-ready .wavy .l{transition:opacity .35s calc(var(--i) * 22ms),transform .55s calc(var(--i) * 22ms) cubic-bezier(.3,1.5,.5,1)}
+/* scroll-up party */
+.rise-bit{position:fixed;bottom:-40px;z-index:80;pointer-events:none;will-change:transform,opacity}
+@media (max-width:720px){
+  .price-seg{flex-wrap:wrap}
+  .pseg{padding:6px 8px;font-size:13px;white-space:nowrap;flex:0 1 auto}
+  .pseg-txt{gap:4px}.pseg-txt i{padding:1px 5px;font-size:10px}
+  .group-head{flex-wrap:wrap;row-gap:2px}
+  .group-head h3{font-size:22px;white-space:nowrap}
+}

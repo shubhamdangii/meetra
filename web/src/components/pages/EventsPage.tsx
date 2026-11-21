@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { Chips, Empty, EventCard } from "../ui";
 import { CATEGORIES } from "@/lib/data";
-import { DOW, type MeetEvent, addDays, cityName, fmtDay, hostNames, relDay } from "@/lib/events";
+import { DOW, PRICE_BANDS, type MeetEvent, addDays, cityName, fmtDay, hostNames, priceOk, relDay } from "@/lib/events";
 
 const WHENS = ["all", "today", "tomorrow", "weekend", "week", "next", "later"];
 
@@ -17,7 +17,7 @@ export default function EventsPage() {
   const [q, setQ] = useState(params.get("q") ?? "");
   const cat = CATEGORIES.some((c: any) => c.id === params.get("cat")) ? (params.get("cat") as string) : "all";
   const when = WHENS.includes(params.get("when") ?? "") ? (params.get("when") as string) : "all";
-  const [price, setPrice] = useState("all");
+  const [price, setPrice] = useState(PRICE_BANDS.some(([v]) => v === params.get("price")) ? (params.get("price") as string) : "all");
   const [date, setDate] = useState<string | null>(null);
   const [shownDays, setShownDays] = useState(when === "all" ? 7 : 28);
 
@@ -30,9 +30,9 @@ export default function EventsPage() {
   const td = today.getDay(), satOff = (6 - td + 7) % 7, sunOff = td === 0 ? 0 : 7 - td;
   const whenOk = (e: MeetEvent) => ({ all: true, today: e.day === 0, tomorrow: e.day === 1, weekend: (e.day === satOff || e.day === sunOff) && e.day <= 6,
     week: e.day <= 6, next: e.day > 6 && e.day <= 13, later: e.day > 13 } as Record<string, boolean>)[when];
-  const priceOk = (e: MeetEvent) => price === "all" || (price === "free" ? e.priceType === "free" : price === "99" ? e.price <= 99 : e.price < 500);
+  const priceFits = (e: MeetEvent) => priceOk(e, price);
   const base = useMemo(() => upcoming.filter(inCity), [upcoming, inCity]);
-  const list = base.filter((e) => (cat === "all" || e.cat === cat) && whenOk(e) && priceOk(e) && (!date || fmtDay(e.date) === date)
+  const list = base.filter((e) => (cat === "all" || e.cat === cat) && whenOk(e) && priceFits(e) && (!date || fmtDay(e.date) === date)
     && (!q || `${e.title} ${e.area} ${hostNames(e)} ${e.cat}`.toLowerCase().includes(q.toLowerCase())));
 
   const byDay = new Map<string, MeetEvent[]>();
@@ -61,7 +61,7 @@ export default function EventsPage() {
             <option value="weekend">This weekend</option><option value="week">This week</option><option value="next">Next week</option><option value="later">Later</option>
           </select>
           <select className="select" value={price} aria-label="Price" onChange={(e) => setPrice(e.target.value)}>
-            <option value="all">Any price</option><option value="free">Free</option><option value="99">₹99 reservation</option><option value="500">Under ₹500</option>
+            {PRICE_BANDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
         <button className="btn btn-white btn-sm" onClick={() => { setQ(""); setPrice("all"); setDate(null); setShownDays(7); router.replace("/events/", { scroll: false }); }}>Reset filters</button>

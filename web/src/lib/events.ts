@@ -78,3 +78,9 @@ export const cityName = (c: string) => (c === "all" ? "All cities" : CONFIG.citi
 export function whatsappLink(text: string) {
   return `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
 }
+
+/** Price filter shared by Home and Explore: Free · ₹99 · more than ₹99 */
+export type PriceBand = "all" | "free" | "99" | "more";
+export const PRICE_BANDS: [PriceBand, string][] = [["all", "Any price"], ["free", "Free"], ["99", "₹99"], ["more", "Above ₹99"]];
+export const priceOk = (e: MeetEvent, b: string) =>
+  b === "all" || (b === "free" ? e.priceType === "free" || e.price === 0 : b === "99" ? e.priceType !== "free" && e.price > 0 && e.price <= 99 : e.priceType !== "free" && e.price > 99);

@@ -3,7 +3,7 @@ import { Bricolage_Grotesque, Instrument_Serif } from "next/font/google";
 import { AppProvider } from "@/components/AppProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Footer, Header } from "@/components/Chrome";
-import { ScrollFX, ScrollProgress } from "@/components/fx";
+import { ScrollFX, ScrollProgress, ScrollUpFX } from "@/components/fx";
 import { CONFIG } from "@/lib/config";
 import "./globals.css";
 
@@ -51,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AppProvider>
             <ScrollProgress />
             <ScrollFX />
+            <ScrollUpFX />
             <Header />
             <main id="main">{children}</main>
             <Footer />

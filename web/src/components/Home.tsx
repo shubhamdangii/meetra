@@ -1,14 +1,14 @@
 "use client";
 // Interactive parts of the home page.
-import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "./AppProvider";
 import { Chips, Empty, EventCard, Poster, Reveal, ease } from "./ui";
-import { buzz, CountUp, Gallery } from "./fx";
+import { buzz, CountUp, Gallery, Wavy } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
-import { MON, type MeetEvent, cityName, eventUrl, hostNames, relDay } from "@/lib/events";
+import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostNames, relDay } from "@/lib/events";
 
 /* ---------- hero: a stack of upcoming plans that shuffles itself ---------- */
 const STACK_POS = [
@@ -33,11 +33,8 @@ export function HeroStack() {
   }, []);
   const k = mobile ? 0.55 : 1;
   const dragged = useRef(false);
-  const { scrollY } = useScroll();
-  const py = useTransform(scrollY, [0, 600], [0, -70]);
-  const pr = useTransform(scrollY, [0, 600], [0, -4]);
   return (
-    <motion.div className="hero-stage" aria-label="Featured upcoming plans (swipe the top card)" style={{ y: py, rotate: pr }}>
+    <motion.div className="hero-stage" aria-label="Featured upcoming plans (swipe the top card)">
       <span className="doodle" style={{ left: -6, top: -6 }}>✨</span>
       <span className="doodle" style={{ right: 20, top: -10, animationDelay: "-2s" }}>🎉</span>
       {!ready && <div className="skeleton" style={{ position: "absolute", left: 110 * k, top: 30, width: mobile ? 230 : 300, height: 380 }} />}
@@ -104,7 +101,9 @@ export function ExplorePreview() {
   const { ready, upcoming, inCity, today, city } = useApp();
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
-  const list = upcoming.filter(inCity).filter((e) => (cat === "all" || e.cat === cat) && (!q || `${e.title} ${e.area} ${hostNames(e)}`.toLowerCase().includes(q)));
+  const [price, setPrice] = useState("all");
+  const base = upcoming.filter(inCity).filter((e) => (cat === "all" || e.cat === cat) && (!q || `${e.title} ${e.area} ${hostNames(e)}`.toLowerCase().includes(q)));
+  const list = base.filter((e) => priceOk(e, price));
   const td = today.getDay(), satOff = (6 - td + 7) % 7, sunOff = td === 0 ? 0 : 7 - td;
   const weekend = (e: MeetEvent) => (e.day === satOff || e.day === sunOff) && e.day <= 6;
   const buckets = [
@@ -118,7 +117,7 @@ export function ExplorePreview() {
       <div className="sec-head">
         <div>
           <span className="eyebrow">What&apos;s on</span>
-          <h2 className="h2">Find your <span className="serif" style={{ color: "var(--violet)" }}>next</span> meetup</h2>
+          <h2 className="h2"><Wavy text="Find your" /> <span className="serif" style={{ color: "var(--violet)" }}><Wavy text="next" /></span> <Wavy text="meetup" /></h2>
           <p>{ready ? `${upcoming.filter(inCity).length} hosted plans in and around ${cityName(city).replace("All cities", "our cities")}. ` : "Hosted plans every day."}</p>
         </div>
         <div className="toolbar">
@@ -126,15 +125,27 @@ export function ExplorePreview() {
         </div>
       </div>
       <Chips value={cat} onChange={setCat} />
+      <div className="price-seg" role="radiogroup" aria-label="Price">
+        <span className="price-seg-label">💸 Price</span>
+        {PRICE_BANDS.map(([v, l]) => {
+          const n = base.filter((e) => priceOk(e, v)).length;
+          return (
+            <motion.button key={v} type="button" role="radio" aria-checked={price === v} whileTap={{ scale: 0.9 }} className={`pseg ${price === v ? "on" : ""}`} onClick={() => { setPrice(v); buzz(); }}>
+              {price === v && <motion.span layoutId="price-on" className="pseg-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
+              <span className="pseg-txt">{v === "all" ? "All" : l}{ready && <i>{n}</i>}</span>
+            </motion.button>
+          );
+        })}
+      </div>
       {!ready ? (
         <div className="grid">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" />)}</div>
       ) : (
         <AnimatePresence mode="popLayout">
           {buckets.map((b) => {
             const items = list.filter(b.f); if (!items.length) return null;
-            const more = `/events/?when=${b.w}${cat !== "all" ? `&cat=${cat}` : ""}`;
+            const more = `/events/?when=${b.w}${cat !== "all" ? `&cat=${cat}` : ""}${price !== "all" ? `&price=${price}` : ""}`;
             return (
-              <motion.div key={b.t + cat + q} className="group" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div key={b.t + cat + q + price} className="group" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="group-head"><h3>{b.em} {b.t}</h3><span>{fmt(items[0].date)}{items.length > 1 ? " – " + fmt(items[items.length - 1].date) : ""} · <Link href={more} style={{ textDecoration: "underline" }}>{items.length} plans</Link></span></div>
                 <div className="grid">{items.slice(0, 4).map((e, i) => <EventCard key={e.id} e={e} index={i} />)}</div>
                 {items.length > 4 && <div className="more-row"><Link className="btn btn-white btn-sm" href={more}>See all {items.length} plans →</Link></div>}
