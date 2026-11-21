@@ -59,12 +59,12 @@ Profile photos go in the Storage bucket **`avatars`**; each member can only uplo
 | `admin.html` | Interest table, request queue, auto-fill |
 | Every page | Header **Log in**, or your photo with score, *My profile / Your plans / Discover / Admin / Log out*; a yellow bar nudges members with a score under 70 |
 
-With login switched off (empty keys in `config.js`), requests still go by WhatsApp and swipes are kept only in the visitor's browser.
+With login switched off (empty keys in `config.ts`), requests still go by WhatsApp and swipes are kept only in the visitor's browser.
 
 ## Keys
 | Key | In the public repo? |
 |---|---|
-| Project URL, **anon / publishable** key | ✅ Safe. Goes in `docs/assets/js/config.js`. |
+| Project URL, **anon / publishable** key | ✅ Safe. Goes in `web/src/lib/config.ts`. |
 | **service_role / secret** key | ❌ Never. It skips every privacy rule. |
 | Database password / connection string | ❌ Never |
 | JWT secret | ❌ Never |

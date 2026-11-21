@@ -53,7 +53,7 @@ create table public.cities (
 -- NO phone, email, full name or birth date here (see user_private).
 create table public.users (
   id           uuid primary key default gen_random_uuid(),
-  auth_id      uuid unique references auth.users (id) on delete set null,   -- Supabase login
+  auth_id      uuid unique references auth.users (id) on delete cascade,    -- Supabase login (deleting it deletes the profile)
   display_name text not null check (char_length(display_name) between 1 and 60),  -- first name shown to others
   avatar_url   text check (avatar_url is null or avatar_url ~ '^https://'),
   bio          text check (char_length(bio) <= 500),

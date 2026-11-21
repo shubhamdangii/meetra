@@ -12,7 +12,7 @@ The website already has the login, profile and logout pages. They stay switched 
 ## 2. Connect the website
 1. Supabase → **Project Settings → API** (or **API Keys**).
 2. Copy the **Project URL** and the **anon / publishable** key.
-3. Paste them into `docs/assets/js/config.js`:
+3. Paste them into `web/src/lib/config.ts`:
    ```js
    supabaseUrl: "https://abcdefgh.supabase.co",
    supabaseAnonKey: "eyJhbGciOi…",
@@ -22,9 +22,9 @@ The website already has the login, profile and logout pages. They stay switched 
 4. Supabase → **Authentication → URL Configuration**:
    - **Site URL:** `https://shubhamdangii.github.io/meetra/`
    - **Redirect URLs:** add all four:
-     - `https://shubhamdangii.github.io/meetra/login.html` (Google login comes back here)
-     - `https://shubhamdangii.github.io/meetra/profile.html` (email verification link)
-     - `http://localhost:5173/login.html` and `http://localhost:5173/profile.html` (for testing on your computer)
+     - `https://shubhamdangii.github.io/meetra/login/` (Google login comes back here)
+     - `https://shubhamdangii.github.io/meetra/profile/` (email verification link)
+     - `http://localhost:3000/meetra/login/` and `http://localhost:3000/meetra/profile/` (for testing on your computer)
 
 ## 3. Login with Google (Gmail)
 1. Go to **console.cloud.google.com** → create a project called `meetra`.
@@ -46,7 +46,7 @@ Supabase sends WhatsApp codes through **Twilio**.
 4. Supabase → **Authentication → Providers → Phone** → Enable → SMS provider **Twilio** (or **Twilio Verify**) → paste the Account SID, Auth Token and sender / Message Service SID → Save.
    The Auth Token is secret. It goes only in Supabase.
 
-Until WhatsApp is approved, you can launch with Google only. Set this in `config.js`:
+Until WhatsApp is approved, you can launch with Google only. Set this in `config.ts`:
 ```js
 loginWithWhatsApp: false
 ```
@@ -61,7 +61,7 @@ Admins can see every member's private details. Give this role only to people you
 Then open **Admin** from your photo menu (or `admin.html`) to see swipe interest per plan and to approve requests by priority.
 
 ## 6. Put it live
-Commit and push the changed `config.js`. GitHub Pages updates within a minute.
+Commit and push the changed `config.ts`. GitHub Pages updates within a minute.
 
 ---
 

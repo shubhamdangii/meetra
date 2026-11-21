@@ -1,0 +1,197 @@
+"use client";
+// Interactive parts of the home page.
+import { AnimatePresence, motion } from "framer-motion";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useApp } from "./AppProvider";
+import { Chips, Empty, EventCard, Poster, Reveal, ease } from "./ui";
+import { CONFIG } from "@/lib/config";
+import { HOSTS, REVIEWS } from "@/lib/data";
+import { MON, type MeetEvent, cityName, eventUrl, hostNames, relDay } from "@/lib/events";
+
+/* ---------- hero: a stack of upcoming plans that shuffles itself ---------- */
+const STACK_POS = [
+  { x: 110, y: 30, rotate: -3, scale: 1, z: 3, opacity: 1 },
+  { x: 220, y: 0, rotate: 8, scale: 0.92, z: 2, opacity: 1 },
+  { x: 0, y: 10, rotate: -11, scale: 0.88, z: 1, opacity: 1 },
+  { x: 110, y: 60, rotate: 0, scale: 0.8, z: 0, opacity: 0 },
+];
+export function HeroStack() {
+  const { ready, upcoming, inCity, today } = useApp();
+  const picks = useMemo(() => {
+    const out: MeetEvent[] = []; const seen = new Set<string>();
+    for (const e of upcoming.filter(inCity)) { if (!seen.has(e.cat)) { seen.add(e.cat); out.push(e); } if (out.length === 4) break; }
+    return out;
+  }, [upcoming, inCity]);
+  const [turn, setTurn] = useState(0);
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const m = () => setMobile(window.innerWidth <= 720); m(); window.addEventListener("resize", m);
+    const t = setInterval(() => { if (!document.hidden) setTurn((x) => x + 1); }, 3600);
+    return () => { clearInterval(t); window.removeEventListener("resize", m); };
+  }, []);
+  const k = mobile ? 0.55 : 1;
+  return (
+    <div className="hero-stage" aria-label="Featured upcoming plans">
+      <span className="doodle" style={{ left: -6, top: -6 }}>✨</span>
+      <span className="doodle" style={{ right: 20, top: -10, animationDelay: "-2s" }}>🎉</span>
+      {!ready && <div className="skeleton" style={{ position: "absolute", left: 110 * k, top: 30, width: mobile ? 230 : 300, height: 380 }} />}
+      {picks.map((e, i) => {
+        const p = STACK_POS[(i - turn % picks.length + picks.length) % picks.length];
+        return (
+          <motion.div key={e.id} className="stack-card" style={{ zIndex: p.z, width: mobile ? 230 : 300 }}
+            initial={{ opacity: 0, y: 80, rotate: 0 }}
+            animate={{ x: p.x * k, y: p.y, rotate: p.rotate, scale: p.scale, opacity: p.opacity }}
+            transition={{ type: "spring", stiffness: 120, damping: 18, mass: 0.9 }}
+            whileHover={p.z === 3 ? { rotate: 0, scale: 1.03 } : undefined}>
+            <Link href={eventUrl(e)} style={{ display: "block" }}>
+              <Poster e={e} />
+              <div className="sc-body"><div className="meta">{relDay(e.date, today)} · {e.time} · {e.area}</div><h3>{e.title}</h3></div>
+            </Link>
+          </motion.div>
+        );
+      })}
+      <svg className="stamp" viewBox="0 0 200 200" aria-hidden="true">
+        <defs><path id="circ" d="M100,100 m-74,0 a74,74 0 1,1 148,0 a74,74 0 1,1 -148,0" /></defs>
+        <circle cx="100" cy="100" r="98" fill="#FFC93C" stroke="#16122B" strokeWidth="3" />
+        <text fontWeight="800" fontSize="21" letterSpacing="3" fill="#16122B" style={{ fontFamily: "var(--display)" }}><textPath href="#circ">COME SOLO ✦ MAKE FRIENDS ✦ EVERY DAY ✦</textPath></text>
+      </svg>
+      <span className="stamp-core">👋</span>
+    </div>
+  );
+}
+
+export function HeroCount() {
+  const { ready, upcoming, inCity, city } = useApp();
+  const n = upcoming.filter(inCity).filter((e) => e.day < 30).length;
+  return <span className="tag" style={{ marginBottom: 18, background: "var(--mint)" }}>● {ready ? `${n}+` : "100+"} plans this month in {ready ? cityName(city).replace("All cities", "your city") : "Jaipur"}</span>;
+}
+
+export function Faces() {
+  const { city } = useApp();
+  return (
+    <div className="faces">
+      {Object.values(HOSTS as Record<string, any>).filter((h) => city === "all" || h.city === city).slice(0, 5).map((h: any, i) => (
+        <motion.span key={h.name} style={{ background: h.color }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 + i * 0.08, type: "spring", stiffness: 400, damping: 14 }}>{h.name[0]}</motion.span>
+      ))}
+    </div>
+  );
+}
+
+export function Marquee() {
+  const { upcoming, inCity } = useApp();
+  const items = [...new Set(upcoming.filter(inCity).slice(0, 24).map((e) => `${e.emoji} ${e.title.split(" · ")[0]}`))].slice(0, 12);
+  const list = items.length ? items : ["🍝 Introverts' Dinner", "🎲 Board Games & Chai", "🌄 Sunrise Trek", "🧠 Quiz Night", "🎤 Open Mic"];
+  return (
+    <div className="marquee" aria-hidden="true">
+      <div className="marquee-track">{[...list, ...list].map((t, i) => <span key={i}>{t}</span>)}</div>
+    </div>
+  );
+}
+
+/* ---------- explore preview: this weekend / week / next / later ---------- */
+export function ExplorePreview() {
+  const { ready, upcoming, inCity, today, city } = useApp();
+  const [cat, setCat] = useState("all");
+  const [q, setQ] = useState("");
+  const list = upcoming.filter(inCity).filter((e) => (cat === "all" || e.cat === cat) && (!q || `${e.title} ${e.area} ${hostNames(e)}`.toLowerCase().includes(q)));
+  const td = today.getDay(), satOff = (6 - td + 7) % 7, sunOff = td === 0 ? 0 : 7 - td;
+  const weekend = (e: MeetEvent) => (e.day === satOff || e.day === sunOff) && e.day <= 6;
+  const buckets = [
+    { t: "This weekend", w: "weekend", f: weekend },
+    { t: "This week", w: "week", f: (e: MeetEvent) => e.day <= 6 && !weekend(e) },
+    { t: "Next week", w: "next", f: (e: MeetEvent) => e.day > 6 && e.day <= 13 },
+    { t: "Looking ahead", w: "later", f: (e: MeetEvent) => e.day > 13 },
+  ];
+  const fmt = (d: Date) => `${d.getDate()} ${MON[d.getMonth()]}`;
+  return (
+    <section className="wrap sec" id="explore">
+      <div className="sec-head">
+        <div>
+          <span className="eyebrow">What&apos;s on</span>
+          <h2 className="h2">Find your <span className="serif" style={{ color: "var(--violet)" }}>next</span> meetup</h2>
+          <p>{ready ? `${upcoming.filter(inCity).length} hosted plans in and around ${cityName(city).replace("All cities", "our cities")}.` : "Hosted plans every day."}</p>
+        </div>
+        <div className="toolbar">
+          <label className="search"><span>🔍</span><input type="search" placeholder="Search dinners, treks, quiz…" aria-label="Search meetups" onChange={(e) => setQ(e.target.value.trim().toLowerCase())} /></label>
+        </div>
+      </div>
+      <Chips value={cat} onChange={setCat} />
+      {!ready ? (
+        <div className="grid">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" />)}</div>
+      ) : (
+        <AnimatePresence mode="popLayout">
+          {buckets.map((b) => {
+            const items = list.filter(b.f); if (!items.length) return null;
+            return (
+              <motion.div key={b.t + cat + q} className="group" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <div className="group-head"><h3>{b.t}</h3><span>{fmt(items[0].date)}{items.length > 1 ? " – " + fmt(items[items.length - 1].date) : ""} · {items.length} plans</span></div>
+                <div className="grid">{items.slice(0, 4).map((e, i) => <EventCard key={e.id} e={e} index={i} />)}</div>
+                {items.length > 4 && <div className="more-row"><Link className="btn btn-white btn-sm" href={`/events/?when=${b.w}${cat !== "all" ? `&cat=${cat}` : ""}`}>Show all {items.length} plans ↓</Link></div>}
+              </motion.div>
+            );
+          })}
+          {!list.length && <Empty key="empty" title="Nothing matches that.">Try another category or search.</Empty>}
+        </AnimatePresence>
+      )}
+    </section>
+  );
+}
+
+export function Hosts() {
+  const { city, upcoming } = useApp();
+  const firstPlan: Record<string, string> = {};
+  upcoming.forEach((e) => e.hosts.forEach((h) => { firstPlan[h] = firstPlan[h] || e.title.split(" · ")[0]; }));
+  const list = Object.entries(HOSTS as Record<string, any>).filter(([k, h]) => k !== "team" && (city === "all" || h.city === city)).slice(0, 6);
+  return (
+    <div className="hosts">
+      {list.map(([k, h], i) => (
+        <motion.div key={k} className="host" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          transition={{ delay: i * 0.07, duration: 0.5, ease }} whileHover={{ y: -6, rotate: -2 }}>
+          <div className="av" style={{ background: h.color }}>{h.name[0]}</div>
+          <b>{h.name}<span className="verified">✓</span></b><small>{firstPlan[k] || ""}</small>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+export function Wall() {
+  const rots = [-2, 1.5, -1, 2.2, -1.6, 0.8];
+  return (
+    <>
+      <div className="wall">
+        {(REVIEWS as any[]).map((r, i) => {
+          const parts = r.head.split(r.hl);
+          return (
+            <motion.figure key={r.name} className={`quote c${i % 6}`}
+              initial={{ opacity: 0, y: 30, rotate: 0 }} whileInView={{ opacity: 1, y: 0, rotate: rots[i % rots.length] }}
+              viewport={{ once: true, margin: "0px 0px -40px 0px" }} transition={{ duration: 0.6, ease, delay: (i % 3) * 0.08 }}
+              whileHover={{ rotate: 0, scale: 1.02 }}>
+              <div className="who"><span className="av">{r.name[0]}</span>{r.name}</div>
+              <span className="tag">{r.plan}</span>
+              <h4>“{parts[0]}<span className="hl">{r.hl}</span>{parts.slice(1).join(r.hl)}”</h4>
+              <p>“{r.text}”</p>
+            </motion.figure>
+          );
+        })}
+      </div>
+      {CONFIG.showSampleNotice && <span className="notice">✏️ Sample reviews: replace them in src/lib/data.ts with real ones after your first meetups.</span>}
+    </>
+  );
+}
+
+export function Stats() {
+  const { upcoming, inCity } = useApp();
+  const evs = upcoming.filter(inCity);
+  const month = evs.filter((e) => e.day < 30).length;
+  const hosts = new Set(evs.flatMap((e) => e.hosts)).size;
+  const cats = new Set(evs.map((e) => e.cat)).size;
+  return (
+    <div className="stats">
+      {[[month + "+", "plans in the next 4 weeks"], [hosts, "verified hosts"], [cats, "kinds of plans"]].map(([n, l]) => (
+        <Reveal key={String(l)} className="stat"><b>{n}</b><span>{l}</span></Reveal>
+      ))}
+    </div>
+  );
+}

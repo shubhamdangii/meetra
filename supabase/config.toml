@@ -102,16 +102,19 @@ file_size_limit = "50MiB"
 # objects_path = "./images"
 
 [auth]
+# CAREFUL: `supabase config push` copies THIS file over the dashboard settings.
+# Google sign-in is set up in the dashboard (Client ID + secret). Before any push,
+# add [auth.external.google] here with enabled = true, or don't push.
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "https://shubhamdangii.github.io/meetra/"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
-  "https://shubhamdangii.github.io/meetra/login.html",
-  "https://shubhamdangii.github.io/meetra/profile.html",
-  "http://localhost:5173/login.html",
-  "http://localhost:5173/profile.html"
+  "https://shubhamdangii.github.io/meetra/login/",
+  "https://shubhamdangii.github.io/meetra/profile/",
+  "http://localhost:3000/meetra/login/",
+  "http://localhost:3000/meetra/profile/"
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

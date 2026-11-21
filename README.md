@@ -1,44 +1,39 @@
-# meetra — hosted meetups website
+# meetra — hosted meetups for people coming solo
 
-A static website (plain HTML/CSS/JS, no build step). **All website files are in the `docs/` folder.** Free to host on GitHub Pages; later you can move it to any hosting by uploading this folder.
+Live site: **https://shubhamdangii.github.io/meetra/**
 
-## Pages
-| File | Page |
+| Folder | What's in it |
 |---|---|
-| `docs/index.html` | Home — hero, this weekend / this week / next week, hosts, reviews, FAQ |
-| `docs/events.html` | Explore — every plan, filter by day strip, category, date, price, search |
-| `docs/event.html#<plan-id>` | Event detail — running order, host, before you go, seat request (WhatsApp) |
-| `docs/past.html` | Past nights / photo stories |
-| `docs/saved.html` | Your plans — saved ♥ and requested seats (stored in the visitor's browser) |
-| `docs/host.html` | Host a meetup — pitch form (WhatsApp) |
-| `docs/partners.html` | For brands & venues |
-| `docs/about.html` | How it works, safety, terms & privacy |
-| `docs/404.html` | Not-found page |
+| `web/` | The website: **Next.js 16 + React 19 + Framer Motion**, exported as static files |
+| `supabase/` | Database migrations and server functions (WhatsApp login) for Supabase |
+| `db/` | Readable copy of the database schema + notes |
+| `.github/` | Auto-deploy to GitHub Pages, and Dependabot security updates |
+| `SETUP-LOGIN.md` | How Google and WhatsApp login are set up |
 
 ## Change things
-- **Brand name, WhatsApp number, email, cities** → `docs/assets/js/config.js`
-- **Meetups, hosts, reviews** → `docs/assets/js/data.js`
-  - Add a plan once as a *template* with weekdays (`days: [1, 4]` = Mon & Thu) and the site generates every date for the next 4 weeks automatically.
-  - Add a city: add it in `config.js` (`live: true`) and add an entry for it inside each template's `cities`.
-  - Real photos: put them in `docs/assets/img/` and add `image: "assets/img/dinner.jpg"` to a template or city entry.
-- **Colours & fonts** → top of `docs/assets/css/style.css`
+- **Brand, cities, WhatsApp number, login switches** → `web/src/lib/config.ts`
+- **Meetups, hosts, reviews** → `web/src/lib/data.ts`
+  Add a plan once as a *template* with weekdays (`days: [1, 4]` = Mon & Thu); the site creates every date for the next 4 weeks.
+- **Colours & fonts** → top of `web/src/app/globals.css`
+- **Pages** → `web/src/app/<page>/page.tsx` and `web/src/components/pages/`
 
-Before launch: set your real WhatsApp number, replace the sample reviews and hosts, then set `showSampleNotice: false`.
-
-## Deploy on GitHub Pages (free)
-This repo is set up for GitHub Pages: **Settings → Pages → Deploy from a branch → `main` / `/docs`**.
-
-To update the live site, edit files and push:
+## Run on your computer
 ```
-git add .
-git commit -m "Update meetups"
-git push
+cd web
+npm install
+npm run dev
 ```
-GitHub redeploys automatically in about a minute.
+Open http://localhost:3000/meetra/
 
-## Moving to your own domain later
-- Buy the domain, then in **Settings → Pages → Custom domain** enter it (e.g. `meetra.in`) and follow GitHub's DNS instructions. You can keep hosting free on GitHub.
-- Or upload this folder to any web host (Hostinger, Netlify, Vercel, cPanel) — no server code needed.
+## Deploy
+Just push to `main`. GitHub Actions (`.github/workflows/deploy.yml`) installs the exact locked packages, refuses to deploy if a dependency has a known high-severity security hole, type-checks, builds and publishes to GitHub Pages. About 2 minutes.
 
-## Run locally
-Run `node server.js` and open http://localhost:5173, or open `docs/index.html` in a browser.
+Moving to your own domain later: set `NEXT_PUBLIC_BASE_PATH=""` in the workflow, add the domain in **Settings → Pages → Custom domain**, and add the new address to Supabase's login redirect URLs.
+
+## Security
+- **The real protection is in the database:** every table has row level security, so even someone calling the database directly only gets what the rules allow (see `db/README.md`).
+- **No secrets in this repo.** The Supabase *anon* key in `config.ts` is public by design. Secret keys live only in Supabase. The local `.secrets/` folder is git-ignored.
+- **Content Security Policy** on every page: the browser blocks scripts, frames and connections to anything except this site and our Supabase project.
+- **No third-party scripts or fonts at runtime:** fonts and the QR-code generator are bundled into the site.
+- **Static site:** no server of our own to break into; logins run on Supabase.
+- **Dependencies:** exact versions locked; `npm audit` gate in CI; Dependabot opens update PRs weekly.

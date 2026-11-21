@@ -1,0 +1,114 @@
+"use client";
+import { motion, type HTMLMotionProps } from "framer-motion";
+import Link from "next/link";
+import { useApp } from "./AppProvider";
+import { CONFIG } from "@/lib/config";
+import { CATEGORIES } from "@/lib/data";
+import { DOW, MON, type MeetEvent, eventUrl, hostNames, palette, priceLabel, priceShort } from "@/lib/events";
+
+export const ease = [0.2, 0.8, 0.2, 1] as const;
+
+/** Fades + lifts in when scrolled into view (once). */
+export function Reveal({ delay = 0, y = 24, ...props }: HTMLMotionProps<"div"> & { delay?: number; y?: number }) {
+  return (
+    <motion.div initial={{ opacity: 0, y }} whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "0px 0px -40px 0px" }} transition={{ duration: 0.6, ease, delay }} {...props} />
+  );
+}
+
+export function DateBadge({ date }: { date: Date }) {
+  return (
+    <div className="dbadge"><b>{DOW[date.getDay()].toUpperCase()}</b><i>{date.getDate()}</i><small>{MON[date.getMonth()].toUpperCase()}</small></div>
+  );
+}
+
+export function Poster({ e, title = false, badge = true, className = "" }: { e: MeetEvent; title?: boolean; badge?: boolean; className?: string }) {
+  const [bg, ac] = palette(e.pal);
+  const dark = bg === "#16122B" || bg === "#6C4CF5";
+  return (
+    <div className={`poster p-${e.pattern}${dark ? " dark" : ""} ${className}`} style={{ ["--bg" as string]: bg, ["--ac" as string]: ac }}>
+      {e.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="photo" src={e.image} alt="" loading="lazy" />
+      ) : (
+        <>
+          <div className="blob" />
+          <span className="em" aria-hidden="true">{e.emoji}</span>
+        </>
+      )}
+      {title && !e.image && <span className="ptitle">{e.title.split(" · ")[0]}</span>}
+      {badge && <DateBadge date={e.date} />}
+    </div>
+  );
+}
+
+export function SaveButton({ id, label = false, className = "" }: { id: string; label?: boolean; className?: string }) {
+  const { isSaved, toggleSave } = useApp();
+  const on = isSaved(id);
+  return (
+    <motion.button whileTap={{ scale: 0.85 }} className={`${label ? "btn btn-white btn-sm" : "save-btn"} ${on ? "on" : ""} ${className}`}
+      aria-label={on ? "Remove from saved" : "Save"} aria-pressed={on}
+      onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); toggleSave(id); }}>
+      <motion.span key={String(on)} initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
+        {on ? "♥" : "♡"}
+      </motion.span>
+      {label && (on ? " Saved" : " Save")}
+    </motion.button>
+  );
+}
+
+export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: number; extra?: React.ReactNode }) {
+  const { city } = useApp();
+  const low = e.left <= 4;
+  return (
+    <motion.article className="card"
+      initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "0px 0px -30px 0px" }}
+      transition={{ duration: 0.5, ease, delay: (index % 4) * 0.06 }}
+      whileHover={{ x: -3, y: -3, boxShadow: "7px 7px 0 #16122B" }}>
+      <Poster e={e} />
+      <SaveButton id={e.id} />
+      {e.tags.length > 0 && <div className="tagrow">{e.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
+      <div className="card-body">
+        {extra}
+        <span className="when">{e.time} · {e.area}{city === "all" ? " · " + CONFIG.cities[e.city].name : ""}</span>
+        <h3>{e.title}</h3>
+        <span className="by">Hosted by {hostNames(e)}</span>
+        <div className="price">
+          <span><b>{priceShort(e)}</b> {priceLabel(e)}</span>
+          <span className={`seats-left ${low ? "" : "ok"}`}>{e.left === 0 ? "Waitlist" : low ? `${e.left} left` : `${e.seats} seats`}</span>
+        </div>
+      </div>
+      <Link className="card-link" href={eventUrl(e)} aria-label={e.title} />
+    </motion.article>
+  );
+}
+
+export function Empty({ title, children }: { title: string; children?: React.ReactNode }) {
+  return <div className="empty" style={{ gridColumn: "1/-1" }}><b>{title}</b>{children}</div>;
+}
+
+export function Chips({ value, onChange, counts }: { value: string; onChange: (id: string) => void; counts?: Record<string, number> }) {
+  return (
+    <div className="chips" role="tablist">
+      {(CATEGORIES as { id: string; label: string; icon: string }[]).map((c) => (
+        <motion.button key={c.id} whileTap={{ scale: 0.94 }} className={`pill ${value === c.id ? "on" : ""}`} role="tab" aria-selected={value === c.id} onClick={() => onChange(c.id)}>
+          {c.icon} {c.label}{counts && <span className="muted" style={{ marginLeft: 4, color: value === c.id ? "#BDB8D0" : undefined }}>{counts[c.id] ?? 0}</span>}
+        </motion.button>
+      ))}
+    </div>
+  );
+}
+
+/** Opens WhatsApp with a pre-written message (the request goes to the meetra team). */
+export function WhatsAppDone({ text, heading, link }: { text: string; heading: string; link: string }) {
+  return (
+    <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}
+      style={{ textAlign: "center", padding: "8px 0" }}>
+      <div style={{ fontSize: 44 }}>✅</div>
+      <h3 style={{ fontSize: 22, letterSpacing: "-.03em", margin: "6px 0" }}>{heading}</h3>
+      <p className="muted" style={{ marginBottom: 14 }}>Last step: send the message we&apos;ve written for you.</p>
+      <a className="btn btn-sun btn-block" href={link} target="_blank" rel="noopener noreferrer">Send on WhatsApp →</a>
+      <p className="fine" style={{ marginTop: 8 }}>{text.split("\n")[0]}</p>
+    </motion.div>
+  );
+}

@@ -5,3 +5,7 @@ Thumbs.db
 .env
 .env.*
 supabase/.temp/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
