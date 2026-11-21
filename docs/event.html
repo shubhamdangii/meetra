@@ -16,6 +16,7 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/data.js"></script>
 <script src="assets/js/app.js"></script>
+<script src="assets/js/auth.js"></script>
 <script>
 const A = APP; A.header("events"); A.footer();
 const id = A.hashVal() || new URLSearchParams(location.search).get("id") || "";
@@ -108,10 +109,21 @@ function render() {
 
   <div class="mobile-book"><div><b>${A.priceShort(e)}</b> <small class="muted">${A.priceLabel(e)}</small><br><small class="muted">${A.fmtDay(e.date)} · ${e.time}</small></div><a class="btn btn-sun btn-sm" href="#book">Request a seat</a></div>`;
 
-  A.$("#req").onsubmit = ev => {
+  // Logged-in members: pre-fill their name and tell them what's needed.
+  if (AUTH.enabled) AUTH.ready.then(s => {
+    if (s.me && s.me.display_name && s.me.display_name !== "New member") A.$("#nm").value = s.me.display_name;
+    const note = !s.session ? "You'll be asked to log in with Google or WhatsApp first."
+      : !(s.me && s.me.profile_complete) ? "You'll be asked to complete your profile first." : "";
+    if (note) A.$("#req .fine").textContent = note + " Hosts only approve guests with a complete profile.";
+  });
+
+  A.$("#req").onsubmit = async ev => {
     ev.preventDefault();
+    // Trust: only logged-in members with a complete profile can request a seat.
+    if (!(await AUTH.requireCompleteProfile(location.href))) return;
     const name = A.$("#nm").value.trim(), ice = A.$("#ice").value.trim(), friend = A.$("#friend").checked;
-    const msg = `Hi! I'd like ${friend ? "2 seats" : "a seat"} at *${e.title}* on ${A.fmtDay(e.date)}, ${e.time} (${e.area}, ${city}).\n\nName: ${name}${ice ? `\nAsk me about: ${ice}` : ""}\n\nRef: ${e.id}`;
+    const verified = AUTH.enabled && AUTH.me ? `\nmeetra profile: complete ✓${AUTH.me.phone_verified ? " · WhatsApp verified ✓" : ""}` : "";
+    const msg = `Hi! I'd like ${friend ? "2 seats" : "a seat"} at *${e.title}* on ${A.fmtDay(e.date)}, ${e.time} (${e.area}, ${city}).\n\nName: ${name}${ice ? `\nAsk me about: ${ice}` : ""}${verified}\n\nRef: ${e.id}`;
     A.addRequest({ id: e.id, name, friend, at: Date.now() });
     A.whatsappDone(A.$("#req"), msg, `Almost there, ${name}!`);
     A.toast("Saved to Your plans ✓");

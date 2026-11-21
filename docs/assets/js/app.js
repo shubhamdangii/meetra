@@ -153,6 +153,7 @@
           ${Object.entries(C.cities).map(([k, c]) => `<button data-city="${k}" ${c.live ? "" : "disabled"}><span>${c.name}</span><small>${c.live ? c.tag : "coming soon"}</small></button>`).join("")}
           <button data-city="all"><span>All cities</span><small>everything</small></button>
         </div>
+        <div class="auth-slot" id="authSlot"></div>
       </div></div>`;
     document.body.prepend(h);
     const tb = document.createElement("nav");

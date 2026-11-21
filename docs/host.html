@@ -47,12 +47,15 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/data.js"></script>
 <script src="assets/js/app.js"></script>
+<script src="assets/js/auth.js"></script>
 <script>
 const A = APP; A.header("host"); A.footer(); A.title("Host a meetup");
 A.$("#c").innerHTML = Object.values(CONFIG.cities).map(c => `<option>${c.name}</option>`).join("") + "<option>Somewhere else</option>";
 A.$("#c").value = A.cityName(A.getCity()) === "All cities" ? CONFIG.cities[CONFIG.defaultCity].name : A.cityName(A.getCity());
-A.$("#f").onsubmit = e => {
+A.$("#f").onsubmit = async e => {
   e.preventDefault();
+  // Hosts must be logged in with a complete profile too.
+  if (!(await AUTH.requireCompleteProfile(location.href))) return;
   const v = id => A.$(id).value.trim();
   const msg = `Hi! I'd like to host on ${CONFIG.brand}.\n\nName: ${v("#n")}\nCity: ${v("#c")}\nPlan: ${v("#p")}\nWhy: ${v("#w")}${v("#ig") ? "\nInstagram: " + v("#ig") : ""}`;
   A.whatsappDone(A.$("#f"), msg, "Love it — one last tap");

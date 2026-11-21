@@ -18,5 +18,18 @@ window.CONFIG = {
   },
 
   // Set to false once you replace the sample reviews/stories with real ones.
-  showSampleNotice: true
+  showSampleNotice: true,
+
+  /* ---------- LOGIN (Supabase) ----------
+     Paste these from Supabase → Project Settings → API.
+     ✅ SAFE to put here (the site is public): the Project URL and the
+        "anon" / "publishable" key. They can only do what the database's
+        security rules allow.
+     ❌ NEVER put the "service_role" / "secret" key, the database password
+        or any payment key in this file or anywhere in this repo.
+     Leave both empty and login stays switched off. */
+  supabaseUrl: "",          // e.g. "https://abcdefgh.supabase.co"
+  supabaseAnonKey: "",      // e.g. "eyJhbGciOi…" or "sb_publishable_…"
+  loginWithGoogle: true,
+  loginWithWhatsApp: true   // needs a WhatsApp sender set up in Supabase (see SETUP-LOGIN.md)
 };
