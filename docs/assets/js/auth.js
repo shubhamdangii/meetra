@@ -41,10 +41,11 @@
       const { data } = await client.auth.getSession();
       state.session = data.session;
       await refreshMe();
-      client.auth.onAuthStateChange(async (_evt, session) => {
+      client.auth.onAuthStateChange((_evt, session) => {
         state.session = session;
-        await refreshMe();
-        renderSlot(); listeners.forEach(f => f(state));
+        // Never call Supabase inside this callback directly: it runs while Supabase
+        // holds its login lock, so an awaited call here would wait forever.
+        setTimeout(async () => { await refreshMe(); renderSlot(); listeners.forEach(f => f(state)); }, 0);
       });
     } catch (e) {
       console.error(e);

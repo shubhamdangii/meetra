@@ -68,8 +68,9 @@
           <button class="btn btn-white btn-sm" type="button" id="verifyPhone" hidden>Verify</button>
         </div>
         <div class="full" id="phoneOtpRow" hidden>
-          <div class="verify-row"><div class="field"><label for="phoneOtp">Code sent on WhatsApp</label><input id="phoneOtp" inputmode="numeric" maxlength="6" placeholder="6-digit code"></div>
-          <button class="btn btn-sun btn-sm" type="button" id="confirmPhone">Confirm</button></div>
+          <div class="wa-code"><small>Send this on WhatsApp from your number</small><b id="linkCode">LOGIN ······</b><small id="linkTo"></small></div>
+          <a class="btn btn-sun btn-sm" id="linkOpen" href="#" target="_blank" rel="noopener">Open WhatsApp &amp; send</a>
+          <p class="wa-wait" style="margin-top:10px"><span class="spinner" aria-hidden="true"></span> Waiting for your message…</p>
         </div>
 
         <div class="full verify-row">
@@ -264,21 +265,30 @@ $("#photo").onchange = async e => {
 };
 
 /* ---------- verify a phone added after Google login ---------- */
+// The member sends a code FROM their WhatsApp to meetra's number; the server
+// then attaches that (proven) number to this account. Free: no message is sent to them first.
+let linkPoll = null;
 $("#verifyPhone").onclick = async () => {
-  const n = $("#phone").value;
-  if (!/^[6-9]\d{9}$/.test(n)) return msg($("#verifyMsg"), "Enter a valid 10-digit WhatsApp number first.");
-  pendingPhone = "+91" + n;
-  const { error } = await AUTH.client.auth.updateUser({ phone: pendingPhone, channel: "whatsapp" });
-  if (error) return msg($("#verifyMsg"), "Couldn't send the code: " + error.message);
-  $("#phoneOtpRow").hidden = false; $("#phoneOtp").focus();
-  msg($("#verifyMsg"), "Code sent on WhatsApp.", "ok");
-};
-$("#confirmPhone").onclick = async () => {
-  const token = $("#phoneOtp").value.replace(/\D/g, "");
-  const { error } = await AUTH.client.auth.verifyOtp({ phone: pendingPhone, token, type: "phone_change" });
-  if (error) return msg($("#verifyMsg"), "That code didn't work: " + error.message);
-  $("#phoneOtpRow").hidden = true; $("#phone").readOnly = true; $("#verifyPhone").hidden = true;
-  await AUTH.refreshMe(); renderProgress(); msg($("#verifyMsg"), "WhatsApp number verified ✓", "ok");
+  $("#verifyPhone").disabled = true;
+  const { data, error } = await AUTH.client.functions.invoke("wa-login", { body: { action: "start", purpose: "link" } });
+  $("#verifyPhone").disabled = false;
+  if (error || data?.error) return msg($("#verifyMsg"), data?.error || "WhatsApp verification isn't available right now.");
+  $("#linkCode").textContent = `LOGIN ${data.code}`;
+  $("#linkTo").textContent = `to ${data.waNumber}`;
+  $("#linkOpen").href = data.waLink;
+  $("#phoneOtpRow").hidden = false; msg($("#verifyMsg"), "");
+  clearInterval(linkPoll);
+  linkPoll = setInterval(async () => {
+    const r = await AUTH.client.functions.invoke("wa-login", { body: { action: "poll", id: data.id, secret: data.secret } });
+    const d = r.data; if (!d || d.status === "pending") return;
+    clearInterval(linkPoll); $("#phoneOtpRow").hidden = true;
+    if (d.linked) {
+      $("#phone").value = d.phone.replace(/^\+91/, ""); $("#phone").readOnly = true; $("#verifyPhone").hidden = true;
+      await AUTH.refreshMe(); renderProgress(); msg($("#verifyMsg"), "WhatsApp number verified ✓", "ok");
+    } else {
+      msg($("#verifyMsg"), d.error || (d.status === "expired" ? "That code expired. Tap Verify again." : "Couldn't verify. Tap Verify again."));
+    }
+  }, 2500);
 };
 
 /* ---------- verify an email added after WhatsApp login ---------- */

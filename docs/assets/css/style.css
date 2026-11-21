@@ -522,3 +522,14 @@ section{position:relative}
 .liked-list a{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:2px solid var(--ink);border-radius:12px;font-weight:600;font-size:14px}
 .liked-list a:hover{background:var(--sun)}
 @media (max-width:820px){.swipe-wrap{padding-top:8px}.deck{height:max(340px,calc(100svh - 340px))}.swipe-btns{margin-top:16px}.swipe-hint{display:none}}
+
+/* WhatsApp message login */
+.wa-code{margin:14px 0;border:2px dashed var(--ink);border-radius:16px;padding:12px 14px;text-align:center;background:#F3FFF7}
+.wa-code small{display:block;color:var(--muted);font-size:12px;font-weight:600}
+.wa-code b{display:block;font-size:28px;letter-spacing:.08em;margin:2px 0}
+.wa-qr{text-align:center;margin:10px 0}
+.wa-qr small{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}
+.wa-qr #waQrImg{display:inline-block;padding:8px;background:#fff;border:2px solid var(--ink);border-radius:12px}
+.wa-wait{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--ink-2)}
+.spinner{width:16px;height:16px;border:2.5px solid var(--soft);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite;flex:0 0 16px}
+a.provider{text-decoration:none}
