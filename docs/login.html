@@ -74,7 +74,14 @@ const $ = A.$;
 let phone = "", cooldown = 0, timer;
 
 if (!CONFIG.loginWithGoogle) { $("#googleBtn").hidden = true; $("#orRow").hidden = true; }
-if (!CONFIG.loginWithWhatsApp) { $("#waForm").hidden = true; $("#orRow").hidden = true; }
+// login.html#whatsapp-test shows WhatsApp login even while it's switched off for the public
+// (for testing with the Twilio sandbox, which only delivers to the team's tester number).
+const waTest = location.hash === "#whatsapp-test";
+if (!CONFIG.loginWithWhatsApp && !waTest) { $("#waForm").hidden = true; $("#orRow").hidden = true; }
+if (waTest && CONFIG.whatsappSandbox) {
+  const s = CONFIG.whatsappSandbox;
+  $("#setupNote").innerHTML = `<div class="setup-note"><b>WhatsApp test mode.</b> Codes only reach the tester number. First time (or after 72 hours), send <b>${s.join}</b> on WhatsApp to <a href="https://wa.me/${s.number.replace(/\D/g, "")}?text=${encodeURIComponent(s.join)}" target="_blank" rel="noopener" style="text-decoration:underline">${s.number}</a>.</div>`;
+}
 
 const msg = (el, text, kind = "err") => { el.textContent = text; el.className = "form-msg " + (text ? kind : ""); };
 

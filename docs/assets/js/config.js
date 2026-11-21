@@ -31,5 +31,7 @@ window.CONFIG = {
   supabaseUrl: "https://eqzwolwhecotwiphmjrd.supabase.co",          // e.g. "https://abcdefgh.supabase.co"
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxendvbHdoZWNvdHdpcGhtanJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMzcwMDQsImV4cCI6MjExMDgxMzAwNH0.vLSh3R25fNUzIN9UJ_VMlrd1KU_PWATJyQzy03HO-5w",      // e.g. "eyJhbGciOi…" or "sb_publishable_…"
   loginWithGoogle: true,
-  loginWithWhatsApp: false  // switch to true once Twilio WhatsApp is connected in Supabase (see SETUP-LOGIN.md)
+  loginWithWhatsApp: false, // true = show WhatsApp login to everyone (needs a paid, Meta-approved WhatsApp sender)
+  // Twilio sandbox (free testing): only the tester number gets codes. Test at login.html#whatsapp-test
+  whatsappSandbox: { number: "+1 737 250 8034", join: "join twilio-trial" }
 };
