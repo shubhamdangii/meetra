@@ -83,7 +83,7 @@ export function XpCard({ score, hasPhoto, bio, phoneVerified }: Input) {
         </div>
       </div>
       <div className="xp-bar"><motion.i initial={{ width: 0 }} animate={{ width: `${Math.max(4, pct)}%` }} transition={{ type: "spring", stiffness: 60, damping: 16, delay: 0.2 }} /></div>
-      <p className="xp-perk">⚡ Higher levels get first dibs on plans you swiped right on.</p>
+      <p className="xp-perk">⚡ Earn XP by filling your profile, coming to plans, playing games and bringing friends.</p>
 
       {quests.length > 0 && <>
         <h3 className="xp-h">Next quests</h3>
