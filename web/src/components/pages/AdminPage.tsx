@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { AdminHosts } from "./AdminHosts";
+import { AdminCheckIn, AdminPlans, AdminTeam } from "./AdminTeam";
 import { CONFIG } from "@/lib/config";
 import { type MeetEvent, eventUrl, relDay } from "@/lib/events";
 
@@ -22,7 +23,7 @@ export default function AdminPage() {
   const auth = useAuth();
   const { all, inCity, byId, today, toast, ready } = useApp();
   const router = useRouter();
-  const [tab, setTab] = useState<"interest" | "requests" | "hosts">("interest");
+  const [tab, setTab] = useState<"interest" | "requests" | "door" | "plans" | "hosts" | "team">("interest");
   const [sum, setSum] = useState<Sum[] | null>(null);
   const [upcomingOnly, setUpcomingOnly] = useState(true);
   const [sortKey, setSortKey] = useState<keyof Row>("interested");
@@ -30,7 +31,9 @@ export default function AdminPage() {
   const [plan, setPlan] = useState("");
   const [queue, setQueue] = useState<Q[] | null>(null);
   const [filling, setFilling] = useState(false);
-  const isAdmin = auth.me?.role === "admin";
+  const team = auth.team;
+  const isAdmin = !!team;
+  const mine = useCallback((e: MeetEvent) => !!team && team.cities.includes(e.city), [team]);
 
   useEffect(() => { if (auth.enabled && auth.ready && !auth.session) { auth.rememberNext("/admin/"); router.replace("/login/"); } }, [auth, router]);
 
@@ -44,12 +47,12 @@ export default function AdminPage() {
 
   const rows: Row[] = useMemo(() => {
     const by = new Map((sum ?? []).map((s) => [s.plan_ref, s]));
-    return all.filter((e) => inCity(e) && (!upcomingOnly || e.day >= 0)).map((e) => {
+    return all.filter((e) => inCity(e) && mine(e) && (!upcomingOnly || e.day >= 0)).map((e) => {
       const s = by.get(e.id) ?? { plan_ref: e.id, ...ZERO };
       const swipes = s.interested + s.skipped;
       return { ...s, e, title: e.title, day: e.day, swipes, rate: swipes ? s.interested / swipes : 0 };
     }).sort((a, b) => dir * ((a[sortKey] as number) > (b[sortKey] as number) ? 1 : (a[sortKey] as number) < (b[sortKey] as number) ? -1 : 0) || a.day - b.day);
-  }, [all, inCity, sum, upcomingOnly, sortKey, dir]);
+  }, [all, inCity, mine, sum, upcomingOnly, sortKey, dir]);
 
   const withReq = rows.filter((r) => r.day >= 0 && (r.requests || r.waitlisted)).sort((a, b) => a.day - b.day);
   useEffect(() => { if (!plan && withReq[0]) setPlan(withReq[0].e.id); }, [withReq, plan]);
@@ -81,7 +84,8 @@ export default function AdminPage() {
   const head = (
     <section className="page-hero" style={{ paddingBottom: 0 }}>
       <span className="eyebrow">Team only</span>
-      <h1 style={{ fontSize: "clamp(40px,6vw,64px)" }}>Admin <span className="serif">desk.</span></h1>
+      <h1 style={{ fontSize: "clamp(40px,6vw,64px)" }}>{team && !team.is_super ? "City" : "Admin"} <span className="serif">desk.</span></h1>
+      {team && <p className="muted" style={{ marginTop: 6 }}>{team.is_super ? "Main admin · every city, plus the team" : `City admin · ${team.cities.map((c) => CONFIG.cities[c]?.name ?? c).join(", ")}`}</p>}
     </section>
   );
   if (!auth.enabled) return <div className="wrap">{head}<div className="setup-note">Login isn&apos;t switched on, so there&apos;s nothing to show.</div></div>;
@@ -98,10 +102,14 @@ export default function AdminPage() {
       <div className="tabs" style={{ display: "flex", gap: 8, margin: "18px 0 20px", flexWrap: "wrap" }}>
         <button className={`pill ${tab === "interest" ? "on" : ""}`} onClick={() => setTab("interest")}>♥ Interest</button>
         <button className={`pill ${tab === "requests" ? "on" : ""}`} onClick={() => setTab("requests")}>🎟 Requests &amp; waiting list</button>
+        <button className={`pill ${tab === "door" ? "on" : ""}`} onClick={() => setTab("door")}>📷 Door check-in</button>
+        <button className={`pill ${tab === "plans" ? "on" : ""}`} onClick={() => setTab("plans")}>🚀 Launch plans</button>
         <button className={`pill ${tab === "hosts" ? "on" : ""}`} onClick={() => setTab("hosts")}>🎙️ Host applications</button>
+        {team?.is_super && <button className={`pill ${tab === "team" ? "on" : ""}`} onClick={() => setTab("team")}>👥 Team</button>}
       </div>
 
-      {tab === "hosts" ? <AdminHosts /> : tab === "interest" ? (
+      {tab === "hosts" ? <AdminHosts /> : tab === "team" && team?.is_super ? <AdminTeam /> : tab === "plans" ? <AdminPlans cities={team!.cities} />
+        : tab === "door" ? <AdminCheckIn plans={all.filter((e) => mine(e) && e.day >= -1 && e.day <= 1)} /> : tab === "interest" ? (
         <motion.section key="i" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="kpis">
             {([["interested", "♥ interested"], ["skipped", "✕ skipped"], ["requests", "seat requests"], ["waitlisted", "on waiting lists"]] as [keyof Sum, string][]).map(([k, l], i) => (
@@ -152,8 +160,8 @@ export default function AdminPage() {
                     {r.instagram_url && <a href={r.instagram_url} target="_blank" rel="noopener noreferrer">Instagram </a>}{r.linkedin_url && <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer">LinkedIn</a>}</td>
                   <td className="num">{r.party_size}</td>
                   <td style={{ maxWidth: 220 }}>{r.icebreaker}</td>
-                  <td><span className={`st ${r.status}`}>{r.status === "waitlisted" ? "waiting list" : r.status}</span></td>
-                  <td><div className="acts">{(["approved", "waitlisted", "declined"] as const).filter((s) => s !== r.status).map((s) => (
+                  <td><span className={`st ${r.status}`}>{r.status === "waitlisted" ? "waiting list" : r.status === "attended" ? "checked in ✓" : r.status}</span></td>
+                  <td><div className="acts">{(["approved", "waitlisted", "declined"] as const).filter((s) => s !== r.status && r.status !== "attended").map((s) => (
                     <button key={s} onClick={() => setStatus(r.request_id, s)}>{{ approved: "Approve", waitlisted: "Waitlist", declined: "Decline" }[s]}</button>
                   ))}</div></td>
                 </motion.tr>

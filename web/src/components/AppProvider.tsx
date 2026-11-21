@@ -3,7 +3,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CONFIG } from "@/lib/config";
-import { buildEvents, type MeetEvent, startOfToday } from "@/lib/events";
+import { buildEvents, type CustomPlan, type MeetEvent, startOfToday } from "@/lib/events";
+import { getSupabase } from "@/lib/supabase";
 import { store } from "@/lib/store";
 
 type Req = { id: string; name: string; friend: boolean; at: number };
@@ -16,6 +17,7 @@ type Ctx = {
   isSaved: (id: string) => boolean; toggleSave: (id: string) => void; savedIds: string[];
   requests: Req[]; addRequest: (r: Req) => void;
   toast: (msg: string) => void;
+  reloadCustom: () => void;
 };
 const AppCtx = createContext<Ctx | null>(null);
 export const useApp = () => { const c = useContext(AppCtx); if (!c) throw new Error("useApp outside AppProvider"); return c; };
@@ -26,6 +28,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [city, setCityState] = useState(CONFIG.defaultCity);
   const [saved, setSaved] = useState<string[]>([]);
   const [requests, setRequests] = useState<Req[]>([]);
+  const [custom, setCustom] = useState<CustomPlan[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -37,9 +40,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSaved(store.get<string[]>("mt-saved", []));
     setRequests(store.get<Req[]>("mt-requests", []));
     setReady(true);
+    // Plans the team added from the admin page (launches, specials).
+    const sb = getSupabase();
+    const from = new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10);
+    sb?.from("custom_plans").select("*").gte("starts_on", from).then(({ data }) => { if (data?.length) setCustom(data as CustomPlan[]); });
   }, []);
 
-  const data = useMemo(() => (ready ? buildEvents(today) : { all: [], upcoming: [], past: [] }), [ready, today]);
+  const data = useMemo(() => (ready ? buildEvents(today, custom) : { all: [], upcoming: [], past: [] }), [ready, today, custom]);
   const index = useMemo(() => new Map(data.all.map((e) => [e.id, e])), [data]);
 
   const toast = useCallback((msg: string) => {
@@ -68,6 +75,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     requests,
     addRequest: (r) => setRequests((l) => { const next = [r, ...l.filter((x) => x.id !== r.id)]; store.set("mt-requests", next); return next; }),
     toast,
+    reloadCustom: () => { const from = new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10); getSupabase()?.from("custom_plans").select("*").gte("starts_on", from).then(({ data }) => setCustom((data as CustomPlan[]) ?? [])); },
   };
 
   return (

@@ -30,7 +30,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",            // Next.js inlines its startup data
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://tile.openstreetmap.org",
   "font-src 'self'",
   `connect-src 'self' ${supabase} ${supabase.replace("https://", "wss://")}`,
   "frame-src 'none'",

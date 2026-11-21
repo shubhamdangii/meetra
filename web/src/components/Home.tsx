@@ -9,6 +9,8 @@ import { buzz, CountUp, Gallery, Wavy } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
 import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostNames, relDay } from "@/lib/events";
+import { CITY_CENTER, areaPoint, kmBetween } from "@/lib/geo";
+import { AreaMap } from "./AreaMap";
 
 /* ---------- hero: a stack of upcoming plans that shuffles itself ---------- */
 const STACK_POS = [
@@ -71,7 +73,8 @@ export function HeroStack() {
 export function HeroCount() {
   const { ready, upcoming, inCity, city } = useApp();
   const n = upcoming.filter(inCity).filter((e) => e.day < 30).length;
-  return <span className="tag" style={{ marginBottom: 18, background: "var(--mint)" }}>● {ready ? `${n}+` : "100+"} plans this month in {ready ? cityName(city).replace("All cities", "your city") : "Jaipur"}</span>;
+  const where = ready ? cityName(city).replace("All cities", "your city") : "Jaipur";
+  return <span className="tag" style={{ marginBottom: 18, background: "var(--mint)" }}>● {ready && n === 0 ? `New plans every week in ${where}` : `${ready ? n : 100}${n === 1 ? "" : "+"} plan${n === 1 ? "" : "s"} this month in ${where}`}</span>;
 }
 
 export function Faces() {
@@ -96,12 +99,73 @@ export function Marquee() {
   );
 }
 
+/* ---------- price dropdown ---------- */
+function PriceDrop({ value, onChange, counts, ready }: { value: string; onChange: (v: string) => void; counts: Record<string, number>; ready: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const cur = PRICE_BANDS.find(([v]) => v === value)!;
+  return (
+    <div className="pdrop" ref={ref}>
+      <button type="button" className={`pdrop-btn ${value !== "all" ? "set" : ""}`} aria-haspopup="listbox" aria-expanded={open} onClick={() => { setOpen((o) => !o); buzz(); }}>
+        💸 <span>{value === "all" ? "Price" : cur[1]}</span><motion.i animate={{ rotate: open ? 180 : 0 }}>▾</motion.i>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.ul className="pdrop-menu" role="listbox" initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.16 }}>
+            {PRICE_BANDS.map(([v, l], i) => (
+              <motion.li key={v} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}>
+                <button type="button" role="option" aria-selected={value === v} className={value === v ? "on" : ""} onClick={() => { onChange(v); setOpen(false); buzz(); }}>
+                  <span>{v === "all" ? "Any price" : l}</span>{ready && <i>{counts[v]}</i>}{value === v && <b>✓</b>}
+                </button>
+              </motion.li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ---------- map view: plans grouped by area ---------- */
+function PlansMap({ list }: { list: MeetEvent[] }) {
+  const [sel, setSel] = useState<string | null>(null);
+  const soon = list.filter((e) => e.day <= 13);
+  const groups = new Map<string, MeetEvent[]>();
+  soon.forEach((e) => { const k = `${e.city}|${e.area}`; groups.set(k, [...(groups.get(k) ?? []), e]); });
+  const all = [...groups.entries()].map(([k, es]) => { const p = areaPoint(es[0].area, es[0].city); return { id: k, lat: p.lat, lon: p.lon, label: `${es[0].area}: ${es.length} plans`, emoji: es[0].emoji, count: es.length, es }; });
+  const cityCenter = CITY_CENTER[list[0]?.city] ?? CITY_CENTER.jaipur;
+  const near = all.filter((p) => kmBetween([p.lat, p.lon], cityCenter) < 30);
+  const far = all.length - near.length;
+  const picked = all.find((p) => p.id === sel);
+  return (
+    <motion.div className="pmap" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+      {near.length ? <AreaMap center={cityCenter} pins={near} fit height={380} onPin={(p) => { setSel(p.id); buzz(); }} selected={sel} /> : <div className="empty">No plans on the map for these filters.</div>}
+      <p className="fine" style={{ marginTop: 8 }}>Approximate areas only. Exact spots go to confirmed guests.{far ? ` Plus ${far} trip${far > 1 ? "s" : ""} outside the city.` : ""}</p>
+      <AnimatePresence mode="wait">
+        {picked && (
+          <motion.div key={picked.id} className="pmap-list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="group-head"><h3 style={{ fontSize: 20 }}>📍 {picked.es[0].area}</h3><span>{picked.es.length} plan{picked.es.length > 1 ? "s" : ""} · next 2 weeks</span></div>
+            <div className="grid">{picked.es.slice(0, 4).map((e, i) => <EventCard key={e.id} e={e} index={i} />)}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {!picked && near.length > 0 && <p className="muted" style={{ marginTop: 6, fontSize: 14 }}>Tap a pin to see what&apos;s on there.</p>}
+    </motion.div>
+  );
+}
+
 /* ---------- explore: one swipeable row per time bucket ---------- */
 export function ExplorePreview() {
   const { ready, upcoming, inCity, today, city } = useApp();
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
   const [price, setPrice] = useState("all");
+  const [view, setView] = useState<"list" | "map">("list");
   const base = upcoming.filter(inCity).filter((e) => (cat === "all" || e.cat === cat) && (!q || `${e.title} ${e.area} ${hostNames(e)}`.toLowerCase().includes(q)));
   const list = base.filter((e) => priceOk(e, price));
   const td = today.getDay(), satOff = (6 - td + 7) % 7, sunOff = td === 0 ? 0 : 7 - td;
@@ -125,19 +189,19 @@ export function ExplorePreview() {
         </div>
       </div>
       <Chips value={cat} onChange={setCat} />
-      <div className="price-seg" role="radiogroup" aria-label="Price">
-        <span className="price-seg-label">💸 Price</span>
-        {PRICE_BANDS.map(([v, l]) => {
-          const n = base.filter((e) => priceOk(e, v)).length;
-          return (
-            <motion.button key={v} type="button" role="radio" aria-checked={price === v} whileTap={{ scale: 0.9 }} className={`pseg ${price === v ? "on" : ""}`} onClick={() => { setPrice(v); buzz(); }}>
-              {price === v && <motion.span layoutId="price-on" className="pseg-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
-              <span className="pseg-txt">{v === "all" ? "All" : l}{ready && <i>{n}</i>}</span>
-            </motion.button>
-          );
-        })}
+      <div className="ex-bar">
+        <PriceDrop value={price} onChange={setPrice} counts={Object.fromEntries(PRICE_BANDS.map(([v]) => [v, base.filter((e) => priceOk(e, v)).length]))} ready={ready} />
+        <div className="seg" role="tablist" aria-label="View">
+          {(["list", "map"] as const).map((v) => (
+            <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => { setView(v); buzz(); }}>
+              {view === v && <motion.span layoutId="view-on" className="seg-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
+              <span>{v === "list" ? "☰ List" : "🗺️ Map"}</span>
+            </button>
+          ))}
+        </div>
       </div>
-      {!ready ? (
+      {view === "map" && ready ? <PlansMap list={list} /> : null}
+      {view === "map" ? null : !ready ? (
         <div className="grid">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" />)}</div>
       ) : (
         <AnimatePresence mode="popLayout">

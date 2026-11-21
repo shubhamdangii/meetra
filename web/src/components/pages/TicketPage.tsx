@@ -17,7 +17,7 @@ export default function TicketPage() {
   const { rows } = useMyRequests();
   const e = byId(id);
   const r = rows?.find((x) => x.plan_ref === id);
-  const ok = !!e && r?.status === "approved";
+  const ok = !!e && (r?.status === "approved" || r?.status === "attended");
   useEffect(() => { if (ok) { const t = setTimeout(() => burst(innerWidth / 2, innerHeight * 0.35, ["🎫", "🎉", "✨", "💜"], 16), 500); return () => clearTimeout(t); } }, [ok]);
 
   if (!ready || (auth.enabled && auth.session && !rows)) return <div className="wrap" style={{ padding: "60px 20px" }}><div className="skeleton" style={{ minHeight: 480, maxWidth: 420, margin: "0 auto" }} /></div>;
@@ -39,7 +39,7 @@ export default function TicketPage() {
   return (
     <div className="wrap ticket-wrap">
       <Link className="btn btn-white btn-sm back-btn" href="/saved/">‹ Your plans</Link>
-      <DoorPass e={e} name={name} reqId={r!.id} partySize={r!.party_size} />
+      <DoorPass e={e} name={name} reqId={r!.id} partySize={r!.party_size} used={r!.status === "attended"} />
       <div className="ticket-facts">
         <p>{Date.now() >= drop.getTime() ? "📍 The exact spot is on your WhatsApp." : <>📍 Exact spot arrives <b>{fmtWhen(drop)}</b> on WhatsApp.</>}</p>
         <p>👋 Look for {CONFIG.brand}&apos;s host sign. Your host starts with a game, so nobody has to break the ice alone.</p>

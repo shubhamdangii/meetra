@@ -138,6 +138,48 @@ export const DECKS: Deck[] = [
   },
 ];
 
+DECKS.push(
+  {
+    id: "never-have-i-ever", name: "Never Have I Ever", for: "Any table, any vibe, zero setup", color: "#FFE9A8", emoji: "🙊",
+    blurb: "Read it out. Everyone who HAS done it puts a finger down (or sips their chai). Stories are encouraged.",
+    kinds: { warm: { label: "Mild", dot: "#3DDCA7" }, play: { label: "Spicy (still clean)", dot: "#FF7A3D" }, wild: K.wild },
+    cards: [
+      ...c("warm", [
+        "Never have I ever missed a train or flight.", "Never have I ever laughed so hard I cried in public.", "Never have I ever sung karaoke.",
+        "Never have I ever eaten pani puri every day for a week.", "Never have I ever fallen asleep in a cinema.", "Never have I ever cooked a full meal for someone.",
+        "Never have I ever gone on a solo trip.", "Never have I ever been on TV or in a newspaper.", "Never have I ever lost my phone in an auto.",
+        "Never have I ever danced at a stranger's wedding.", "Never have I ever finished a series in one day.", "Never have I ever climbed a fort at sunrise.",
+      ]),
+      ...c("play", [
+        "Never have I ever pretended to know a song.", "Never have I ever sent a text to the wrong person.", "Never have I ever lied about my age.",
+        "Never have I ever stalked an ex's playlist.", "Never have I ever ghosted a group chat.", "Never have I ever rehearsed a conversation in the shower.",
+        "Never have I ever cancelled plans to stay in bed.", "Never have I ever had a crush on a teacher.", "Never have I ever faked being sick.",
+        "Never have I ever cried at an ad.",
+      ]),
+      ...c("wild", ["Everyone with all fingers up picks the next card's reader.", "Last person to put a finger down tells a story."], "Play it whenever."),
+    ],
+  },
+  {
+    id: "truth-or-dare", name: "Truth or Dare", for: "Friendly tables, birthdays, after-dinner", color: "#FFD6E3", emoji: "🎯",
+    blurb: "The friendly kind: nothing embarrassing that someone didn't sign up for. Skipping is always allowed.",
+    kinds: { truth: { label: "Truth", dot: "#6C4CF5" }, dare: { label: "Dare", dot: "#FF4F87" } },
+    cards: [
+      ...c("truth", [
+        "What's the most useless thing you're proud of?", "What's your most irrational fear?", "Which app would you delete last?",
+        "What's a hobby you secretly want to try?", "What was your first impression of someone at this table?", "What's your guilty-pleasure song?",
+        "What's the longest you've gone without your phone?", "What's the best compliment you've ever got?", "Who here would you call in an emergency, and why?",
+        "What's something you're bad at but love doing?", "What's the weirdest thing in your search history this week?", "What made you say yes to tonight?",
+      ]),
+      ...c("dare", [
+        "Do your best dance move for 10 seconds.", "Speak in a news-anchor voice for the next 2 minutes.", "Let the table pick your phone wallpaper for a day.",
+        "Give everyone a nickname. They're official now.", "Do an impression of someone famous until someone guesses.", "Sing the first line of the last song you played.",
+        "Compliment every person at the table in one sentence each.", "Order or make the next round of chai for everyone.", "Tell a joke. If nobody laughs, tell another.",
+        "Talk without using the letter 'S' until your next turn.",
+      ]),
+    ],
+  },
+);
+
 export const PARTY: Party[] = [
   { id: "speed-friending", name: "Speed Friending", line: "Everyone meets everyone.", players: "4+ players", icon: "🔄", min: 4, color: "#FFE9A8",
     how: ["Pair up. You get 2 minutes and a prompt.", "When the timer rings, the app shows who moves next.", "Keep going until everyone has met everyone."] },
@@ -161,6 +203,10 @@ export const PARTY: Party[] = [
     how: ["Tap spin. The bottle picks someone.", "They do the friendly dare or answer the question.", "Skipping is always allowed."] },
   { id: "antakshari", name: "Antakshari", line: "Sing from the last letter.", players: "Teams", icon: "🎤", min: 2, color: "#FFD6E3",
     how: ["Split into two teams.", "The app gives a starting letter and a 30-second timer.", "Sing a song starting with that letter. Next team starts from your last letter."] },
+  { id: "taboo", name: "Taboo", line: "Describe it without the obvious words.", players: "Teams", icon: "🤐", min: 2, color: "#FFD7B0",
+    how: ["One person describes the word on screen to their team.", "They can't say any of the forbidden words below it.", "Got it = point. Said a forbidden word = buzz! 60 seconds a turn."] },
+  { id: "dumb-charades", name: "Dumb Charades", line: "Bollywood, no words, full drama.", players: "Teams", icon: "🎭", min: 2, color: "#C9F5E4",
+    how: ["One person sees a film and acts it out. No talking, no lip-syncing.", "Show the number of words with your fingers first.", "Your team has 90 seconds to guess."] },
   { id: "story-chain", name: "Story Chain", line: "One line each. Nobody sees the whole thing.", players: "3+ players", icon: "📜", min: 3, color: "#DDEBB8",
     how: ["The app starts a story.", "Each person only sees the last line, then adds one of their own.", "At the end, read the whole thing out loud."] },
 ];
@@ -234,3 +280,21 @@ export const STORY_STARTS = [
 ];
 
 export const ANTAKSHARI_LETTERS = "AABBCDDEGHJKKLMMNPPRSSTTYZ".split("");
+
+export const TABOO: [string, string[]][] = [
+  ["Chai", ["tea", "milk", "cup", "morning"]], ["Cricket", ["bat", "ball", "Kohli", "wicket"]], ["Wedding", ["bride", "groom", "shaadi", "marriage"]],
+  ["Auto", ["rickshaw", "three", "driver", "meter"]], ["Diwali", ["lights", "festival", "crackers", "diya"]], ["Selfie", ["photo", "phone", "camera", "pose"]],
+  ["Monsoon", ["rain", "umbrella", "season", "wet"]], ["Netflix", ["series", "watch", "binge", "movie"]], ["Mehendi", ["henna", "hands", "design", "wedding"]],
+  ["Jalebi", ["sweet", "orange", "sugar", "fried"]], ["Gym", ["workout", "weights", "exercise", "muscles"]], ["Traffic", ["cars", "jam", "signal", "road"]],
+  ["Garba", ["dance", "Navratri", "dandiya", "Gujarat"]], ["Instagram", ["photo", "app", "reels", "followers"]], ["Haldi", ["yellow", "turmeric", "wedding", "ceremony"]],
+  ["Pizza", ["cheese", "Italian", "slice", "Domino's"]], ["Exam", ["test", "study", "marks", "school"]], ["Kite", ["fly", "string", "Uttarayan", "sky"]],
+  ["Fort", ["Amer", "king", "palace", "walls"]], ["Biryani", ["rice", "Hyderabad", "chicken", "spices"]], ["WhatsApp", ["message", "chat", "group", "app"]],
+  ["Camel", ["desert", "hump", "Rajasthan", "ride"]], ["Holi", ["colours", "festival", "gulal", "water"]], ["Metro", ["train", "station", "card", "underground"]],
+];
+
+export const CHARADES = [
+  "Sholay", "Dilwale Dulhania Le Jayenge", "Kuch Kuch Hota Hai", "3 Idiots", "Lagaan", "Kabhi Khushi Kabhie Gham", "Jab We Met", "Dangal",
+  "Queen", "Barfi", "PK", "Baahubali", "Chennai Express", "Om Shanti Om", "Taare Zameen Par", "Rang De Basanti", "Andaz Apna Apna",
+  "Hum Aapke Hain Koun", "Golmaal", "Dil Chahta Hai", "Bajrangi Bhaijaan", "Zindagi Na Milegi Dobara", "Kal Ho Naa Ho", "Munna Bhai MBBS",
+  "Yeh Jawaani Hai Deewani", "Stree", "Tumbbad", "Swades", "Rockstar", "Kahaani", "Gully Boy", "Hera Pheri", "Main Hoon Na", "Devdas",
+];

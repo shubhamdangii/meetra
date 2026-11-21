@@ -6,10 +6,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { burst, burstFrom, buzz } from "../fx";
+import { noteGamePlayed } from "../xp";
 import { CONFIG } from "@/lib/config";
 import { store } from "@/lib/store";
 import {
-  ANTAKSHARI_LETTERS, DECKS, EMOJI_CLUES, HEADS_UP, HOT_SEAT, PARTY, SPEED_PROMPTS, SPIN_TASKS, STORY_STARTS,
+  ANTAKSHARI_LETTERS, CHARADES, DECKS, TABOO, EMOJI_CLUES, HEADS_UP, HOT_SEAT, PARTY, SPEED_PROMPTS, SPIN_TASKS, STORY_STARTS,
   UNDERCOVER_PAIRS, VOTE_Q, WYR, type Deck, type Party,
 } from "@/lib/games";
 
@@ -123,7 +124,7 @@ function DeckGame({ d }: { d: Deck }) {
     if (!pool.length) return;
     // Warm-ups first, the rest shuffled.
     const warm = shuffle(pool.filter((n) => d.cards[n].k === "warm")), rest = shuffle(pool.filter((n) => d.cards[n].k !== "warm"));
-    setOrder([...warm.slice(0, 3), ...shuffle([...warm.slice(3), ...rest])]); setI(0); setKept(0); setPlaying(true); buzz();
+    setOrder([...warm.slice(0, 3), ...shuffle([...warm.slice(3), ...rest])]); setI(0); setKept(0); setPlaying(true); buzz(); noteGamePlayed(d.id);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
   const go = (n: number, keep = false) => { setDir(n); if (keep) setKept((k) => k + 1); setI((x) => Math.max(0, Math.min(order.length, x + n))); buzz(); };
@@ -191,7 +192,7 @@ function DeckGame({ d }: { d: Deck }) {
 function PartyGame({ p }: { p: Party }) {
   const pl = usePlayers();
   const [go, setGo] = useState(false);
-  const needs = !["heads-up", "emoji-charades", "would-you-rather", "antakshari", "hot-seat"].includes(p.id);
+  const needs = !["heads-up", "emoji-charades", "would-you-rather", "antakshari", "hot-seat", "taboo", "dumb-charades"].includes(p.id);
   const ok = !needs || pl.names.length >= p.min;
   const Engine = ENGINES[p.id];
   if (go && ok) return (
@@ -206,7 +207,7 @@ function PartyGame({ p }: { p: Party }) {
       <Head eyebrow={`Party mode · ${p.players}`} title={p.name} line={p.line} />
       <div className="panel gm-setup">
         {needs ? <><h3>Who&apos;s playing?</h3><Players pl={pl} min={p.min} /></> : <p className="muted" style={{ marginBottom: 4 }}>No setup needed. Gather round.</p>}
-        <button className="btn btn-sun btn-block" style={{ marginTop: 18 }} disabled={!ok} onClick={() => { setGo(true); buzz(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>▶ Start</button>
+        <button className="btn btn-sun btn-block" style={{ marginTop: 18 }} disabled={!ok} onClick={() => { setGo(true); buzz(); noteGamePlayed(p.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>▶ Start</button>
       </div>
       <How steps={p.how} />
     </>
@@ -502,7 +503,43 @@ function StoryChain({ names }: EP) {
   );
 }
 
+/** Shared by Taboo and Dumb Charades: two teams, a word, a timer, points. */
+function TeamRound({ secs, deck, render }: { secs: number; deck: () => number; render: (i: number) => React.ReactNode }) {
+  const [team, setTeam] = useState(0); const [score, setScore] = useState([0, 0]); const [i, setI] = useState(() => deck()); const [live, setLive] = useState(false);
+  const [played, setPlayed] = useState(false);
+  const t = useTimer(() => { setLive(false); setPlayed(true); });
+  const point = (ok: boolean, el?: Element) => { if (ok) { setScore((s) => s.map((v, k) => (k === team ? v + 1 : v))); if (el) burstFrom(el, ["✅", "✨"], 6); } else buzz(120); setI(deck()); };
+  return (
+    <>
+      <div className="gm-score">{["Team A", "Team B"].map((n, k) => <div key={n} className={k === team ? "on" : ""}><small>{n}</small><b>{score[k]}</b></div>)}</div>
+      {live ? <Ring left={t.left} total={secs} /> : played ? (
+        <button className="btn btn-sun btn-block" onClick={() => { setTeam(1 - team); setPlayed(false); buzz(); }}>Time! Switch to {team ? "Team A" : "Team B"} →</button>
+      ) : (
+        <button className="btn btn-pink btn-block" onClick={() => { setLive(true); t.start(secs); buzz(); }}>▶ {team ? "Team B" : "Team A"}: start {secs}s</button>
+      )}
+      <FlipCard k={live ? i : `wait-${team}-${played}`} color="#FFD7B0">{live ? render(i) : <div className="gm-card-in center dark"><span className="gm-big">🤫</span><h2>Only the actor looks!</h2><p>Hand the phone to someone from {team ? "Team B" : "Team A"}.</p></div>}</FlipCard>
+      {live && <div className="gm-row"><button className="btn btn-white" onClick={() => point(false)}>⏭ Skip / buzz</button><button className="btn btn-sun" onClick={(e) => point(true, e.currentTarget)}>✅ Got it</button></div>}
+    </>
+  );
+}
+
+function Taboo() {
+  const order = useRef(shuffle(TABOO.map((_, k) => k))); const n = useRef(0);
+  return <TeamRound secs={60} deck={() => order.current[n.current++ % order.current.length]} render={(i) => (
+    <div className="gm-card-in center"><span className="eyebrow">Describe</span><h2 className="gm-word">{TABOO[i][0]}</h2>
+      <div className="taboo-no"><small>Don&apos;t say</small>{TABOO[i][1].map((w) => <s key={w}>{w}</s>)}</div></div>)} />;
+}
+
+function DumbCharades() {
+  const order = useRef(shuffle(CHARADES.map((_, k) => k))); const n = useRef(0);
+  return <TeamRound secs={90} deck={() => order.current[n.current++ % order.current.length]} render={(i) => {
+    const words = CHARADES[i].split(" ").length;
+    return <div className="gm-card-in center"><span className="eyebrow">Act out this film · {words} word{words > 1 ? "s" : ""}</span><h2 className="gm-word">{CHARADES[i]}</h2><p className="muted">No talking. Fingers for words. Tug your ear for &ldquo;sounds like&rdquo;.</p></div>;
+  }} />;
+}
+
 const ENGINES: Record<string, (p: EP) => React.ReactNode> = {
+  taboo: Taboo, "dumb-charades": DumbCharades,
   "speed-friending": SpeedFriending, undercover: Undercover, mafia: Mafia, "heads-up": HeadsUp, "hot-seat": HotSeat,
   "would-you-rather": WouldYouRather, "emoji-charades": EmojiCharades, "two-truths": TwoTruths, "secret-vote": SecretVote,
   spin: Spin, antakshari: Antakshari, "story-chain": StoryChain,

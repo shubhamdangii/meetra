@@ -5,7 +5,7 @@
 export const CONFIG: {
   brand: string; tagline: string; whatsapp: string; email: string; instagram: string; whatsappCommunity: string;
   defaultCity: string; cities: Record<string, { name: string; tag: string; live: boolean }>;
-  showSampleNotice: boolean; supabaseUrl: string; supabaseAnonKey: string; loginWithGoogle: boolean; loginWithWhatsApp: boolean;
+  showSampleNotice: boolean; samplePlans: boolean; siteUrl: string; supabaseUrl: string; supabaseAnonKey: string; loginWithGoogle: boolean; loginWithWhatsApp: boolean;
 } = {
   brand: "meetra",                 // shown as "meetra." everywhere
   tagline: "Hosted meetups for people coming solo.",
@@ -23,6 +23,13 @@ export const CONFIG: {
 
   // Set to false once you replace the sample reviews/stories with real ones.
   showSampleNotice: true,
+
+  // LAUNCH SWITCH. true = the website also shows the example plans written in data.ts
+  // (a plan almost every day). Set to false at launch so ONLY the plans your team adds
+  // in Admin → Launch plans are shown, i.e. only plans that will really happen.
+  samplePlans: true,
+
+  siteUrl: "https://shubhamdangii.github.io/meetra",   // used for the sitemap and search engines
 
   /* ---------- LOGIN (Supabase) ----------
      From Supabase → Project Settings → API.

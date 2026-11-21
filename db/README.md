@@ -34,6 +34,8 @@ One file: **`schema.sql`**. Run it once in Supabase → SQL Editor. There is no 
 | `plan_requests` | **Seat requests and waiting list** for website plans: status pending / approved / waitlisted / declined / cancelled | The member (own), admins |
 | `plan_interest` | **Swipes**: interested or skip, per device per plan | Admins only (anyone sees totals) |
 | `host_applications` | **Host waiting list**: plan pitch, city, status applied → shortlisted → call booked → trial → live (or waiting list / rejected / withdrawn), a note from the team | The applicant (own), admins |
+| `city_admins` | **City admins**: which member runs which city. Only the main admin (`users.role = admin`) adds or removes them, from Admin → Team | The member (own), main admin |
+| `custom_plans` | **Plans launched from the admin page** (shown next to the plans in data.ts). Plan id on the site: `x<id>-<city>-<yyyymmdd>` | Everyone (published); team of that city writes |
 | `hosts`, `events`, `seat_requests`, `saved_events`, `reviews` | For when plans move into the database | See `schema.sql` |
 
 Profile photos go in the Storage bucket **`avatars`**; each member can only upload into their own folder.
@@ -93,3 +95,11 @@ It has not yet been run on a real Supabase project.
 3. **Payments:** Razorpay/UPI with a server-side webhook.
 4. **Show-up history** in the score (attended vs no-show), once attendance is recorded.
 5. **ID checks** (Aadhaar or DigiLocker), reports and blocking, account deletion from the website.
+
+## Team roles (migration 20261122000000)
+- **Main admin** (`users.role = admin`): everything, every city, plus Admin → Team to add/remove city admins.
+- **City admin** (row in `city_admins`): only their city. Approve / decline / waitlist, door check-in, launch / edit / hide plans, host applications, interest numbers. Cannot manage the team or delete anything.
+- Every check is in the database (`private.is_city_admin`, `private.can_manage_plan`), not just the page.
+
+## Door check-in
+The door pass QR holds `MEETRA-PASS:<request id>:<plan ref>`. Admin → Door check-in scans it (or the 5-digit pass number) and calls `admin_check_in`, which turns an approved request into `attended` (`checked_in_at`, `checked_in_by`). Scanning twice says "already in"; a pass for another plan or an unconfirmed request is refused.

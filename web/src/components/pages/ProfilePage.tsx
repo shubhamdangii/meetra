@@ -7,6 +7,7 @@ import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { Reveal } from "../ui";
 import { burst } from "../fx";
+import { XpCard } from "../xp";
 import { CONFIG } from "@/lib/config";
 
 type Form = {
@@ -181,6 +182,8 @@ export default function ProfilePage() {
         </div>
       </section>
 
+      {auth.session && loaded && <Reveal><XpCard score={me?.profile_score ?? score} hasPhoto={!!avatar} bio={f.bio.trim().length} phoneVerified={!!me?.phone_verified} /></Reveal>}
+
       <form onSubmit={save} noValidate>
         <Reveal className="pcard">
           <h2>Your photo</h2><p className="muted">A clear photo of your face. Shown to other guests and hosts.</p>
@@ -190,7 +193,7 @@ export default function ProfilePage() {
               {avatar ? <img src={avatar} alt="Your photo" /> : "🙂"}
             </motion.div>
             <div>
-              <label className="btn btn-white btn-sm" htmlFor="photo" style={{ cursor: "pointer" }}>Upload photo</label>
+              <label id="photo-btn" className="btn btn-white btn-sm" htmlFor="photo" style={{ cursor: "pointer" }}>Upload photo</label>
               <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
               <p className="hint" style={{ marginTop: 8 }}>JPG, PNG or WebP. We resize it for you.</p>
               <p className="form-msg ok">{photoMsg}</p>

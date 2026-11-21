@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { CONFIG } from "@/lib/config";
@@ -20,11 +21,22 @@ const LINKS = [
   { key: "host", href: "/host/", label: "Host", icon: "✨" },
 ];
 
+/* Line icons for the phone tab bar. */
+const I = {
+  home: <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" />,
+  explore: <><circle cx="12" cy="12" r="8.5" /><path d="m15.5 8.5-2.2 5-4.8 2 2.2-5z" /></>,
+  plans: <><path d="M4 8.5V7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v1.5a2 2 0 0 0 0 4V17a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4.5a2 2 0 0 0 0-4z" /><path d="M14 6v12" strokeDasharray="2 2" /></>,
+  me: <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 19.5c1.2-3.3 3.8-5 7-5s5.8 1.7 7 5" /></>,
+  menu: <path d="M4 7h16M4 12h16M4 17h10" />,
+};
+const Icon = ({ d }: { d: React.ReactNode }) => <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+
 function activeKey(path: string) {
   const p = path.replace(/\/+$/, "/");
   if (p === "/" ) return "home";
   if (p.startsWith("/event")) return "events";
-  if (p.startsWith("/profile") || p.startsWith("/ticket")) return "saved";
+  if (p.startsWith("/ticket")) return "saved";
+  if (p.startsWith("/profile") || p.startsWith("/login") || p.startsWith("/admin")) return "me";
   if (p.startsWith("/game")) return "games";
   return LINKS.find((l) => p.startsWith(l.href))?.key ?? "";
 }
@@ -75,7 +87,7 @@ function CityPicker() {
 }
 
 function AccountSlot() {
-  const { enabled, session, me, logout } = useAuth();
+  const { enabled, session, me, logout, team } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useOutsideClose(open, () => setOpen(false));
   if (!enabled) return null;
@@ -95,7 +107,7 @@ function AccountSlot() {
             <Link href="/saved/" role="menuitem" onClick={() => setOpen(false)}><span>Your plans &amp; passes</span></Link>
             <Link href="/games/" role="menuitem" onClick={() => setOpen(false)}><span>Party games</span></Link>
             <Link href="/swipe/" role="menuitem" onClick={() => setOpen(false)}><span>Discover plans</span></Link>
-            {me?.role === "admin" && <Link href="/admin/" role="menuitem" onClick={() => setOpen(false)}><span>Admin</span></Link>}
+            {team && <Link href="/admin/" role="menuitem" onClick={() => setOpen(false)}><span>{team.is_super ? "Admin desk" : "City desk"}</span><small>{team.is_super ? "main admin" : team.cities.map((c) => CONFIG.cities[c]?.name ?? c).join(", ")}</small></Link>}
             <button role="menuitem" onClick={() => { setOpen(false); logout(); }}><span>Log out</span></button>
           </motion.div>
         )}
@@ -122,6 +134,66 @@ function ProfileNudge() {
   );
 }
 
+function TabBar({ active }: { active: string }) {
+  const { session } = useAuth();
+  const tabs = [
+    { key: "home", href: "/", label: "Home", d: I.home },
+    { key: "events", href: "/events/", label: "Explore", d: I.explore },
+    { key: "saved", href: "/saved/", label: "My plans", d: I.plans },
+    { key: "me", href: session ? "/profile/" : "/login/", label: session ? "Account" : "Log in", d: I.me },
+  ];
+  return (
+    <nav className="tabbar" aria-label="Main (mobile)">
+      {tabs.map((t) => {
+        const on = active === t.key;
+        return (
+          <Link key={t.key} href={t.href} className={on ? "active" : ""} aria-current={on ? "page" : undefined} onClick={() => buzz()}>
+            {on && <motion.i layoutId="tab-on" className="tab-bg" transition={{ type: "spring", stiffness: 480, damping: 34 }} />}
+            <motion.span key={String(on)} initial={on ? { scale: 0.5, y: 6 } : false} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 520, damping: 14 }}><Icon d={t.d} /></motion.span>
+            <b>{t.label}</b>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Phone menu (☰): everything that isn't in the tab bar. */
+function MobileMenu() {
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const path = usePathname();
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setOpen(false); }, [path]);
+  useEffect(() => { document.documentElement.style.overflow = open ? "hidden" : ""; return () => { document.documentElement.style.overflow = ""; }; }, [open]);
+  const items = [
+    ["🔥", "Discover", "Swipe through plans", "/swipe/"], ["🎲", "Party games", "Decks, Mafia, Undercover…", "/games/"],
+    ["📸", "Past nights", "Photos and stories", "/past/"], ["✨", "Host a meetup", "Join the host waiting list", "/host/"],
+    ["💬", "How it works", "Safety, payments, rules", "/about/"], ["🤝", "Brands & venues", "Partner with us", "/partners/"],
+  ];
+  return (
+    <>
+      <button className="menu-btn" aria-label="Menu" aria-expanded={open} onClick={() => { setOpen((o) => !o); buzz(); }}><Icon d={I.menu} /></button>
+      {mounted && createPortal(<AnimatePresence>
+        {open && (
+          <motion.div className="sheet-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)}>
+            <motion.nav className="sheet" aria-label="More" onClick={(e) => e.stopPropagation()}
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}
+              drag="y" dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.6 }} onDragEnd={(_, i) => { if (i.offset.y > 90) setOpen(false); }}>
+              <span className="sheet-grab" aria-hidden="true" />
+              {items.map(([em, t, sub, href], i) => (
+                <motion.div key={href} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i + 0.08 }}>
+                  <Link href={href} className="sheet-item"><span>{em}</span><b>{t}<small>{sub}</small></b><i>→</i></Link>
+                </motion.div>
+              ))}
+            </motion.nav>
+          </motion.div>
+        )}
+      </AnimatePresence>, document.body)}
+    </>
+  );
+}
+
 export function Header() {
   const path = usePathname();
   const active = activeKey(path);
@@ -144,19 +216,11 @@ export function Header() {
               </Link>
             ))}
           </nav>
-          <div className="nav-right"><CityPicker /><AccountSlot /></div>
+          <div className="nav-right"><CityPicker /><AccountSlot /><MobileMenu /></div>
         </div>
       </header>
       <ProfileNudge />
-      <nav className="tabbar" aria-label="Main (mobile)">
-        {[{ key: "home", href: "/", label: "Home", icon: "⌂" }, ...LINKS.filter((l) => l.key !== "past" && l.key !== "games")].map((l) => (
-          <Link key={l.key} href={l.href} className={active === l.key ? "active" : ""} onClick={() => buzz()}>
-            {active === l.key && <motion.i layoutId="tab-on" className="tab-bg" transition={{ type: "spring", stiffness: 420, damping: 30 }} />}
-            <motion.span key={String(active === l.key)} initial={active === l.key ? { scale: 0.4, rotate: -20, y: 6 } : false} animate={{ scale: 1, rotate: 0, y: 0 }} transition={{ type: "spring", stiffness: 500, damping: 12 }}>{l.icon}</motion.span>
-            <b>{l.label}</b>
-          </Link>
-        ))}
-      </nav>
+      <TabBar active={active} />
     </>
   );
 }
@@ -175,7 +239,7 @@ export function Footer() {
         <motion.div className="wordmark" aria-hidden="true" initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.9 }}>
           {CONFIG.brand}<i>.</i>
         </motion.div>
-        <div className="foot-bottom"><span>© {new Date().getFullYear()} {CONFIG.brand}. Made with chai in {live}.</span><span><Link href="/about/#terms">Terms</Link> · <Link href="/about/#privacy">Privacy</Link></span></div>
+        <div className="foot-bottom"><span>© February 2026 {CONFIG.brand}. Made with chai in {live}.</span><span><Link href="/about/#terms">Terms</Link> · <Link href="/about/#privacy">Privacy</Link></span></div>
       </div>
     </footer>
   );

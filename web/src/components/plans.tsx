@@ -8,11 +8,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { burstFrom, buzz } from "./fx";
+import { noteInvite } from "./xp";
 import { CONFIG } from "@/lib/config";
 import { type MeetEvent, downloadCalendar, eventUrl, fmtDay } from "@/lib/events";
 import { absUrl } from "@/lib/store";
 
-export type ReqStatus = "pending" | "approved" | "waitlisted" | "declined" | "cancelled";
+export type ReqStatus = "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended";
 export type MyRequest = { id: number; plan_ref: string; status: ReqStatus; party_size: number; created_at: string; decided_at: string | null };
 
 /** All my seat requests (newest first). null while loading or when logged out. */
@@ -34,12 +35,13 @@ export const STATUS_UI: Record<string, { label: string; tone: string; past?: str
   waitlisted: { label: "On the waitlist 🕒", tone: "#FFE9A8", past: "Not picked this time" },
   approved: { label: "You're in ✅", tone: "#C9F5E4", past: "You went 🎉" },
   declined: { label: "Not this time", tone: "#FFE3EC", past: "Not picked this time" },
+  attended: { label: "Checked in 🎉", tone: "#C9F5E4", past: "You went 🎉" },
 };
 
 /** Short value printed in the QR code. A host scanning it sees who this is and for which plan. */
 export const passCode = (reqId: number, planRef: string) => `${CONFIG.brand.toUpperCase()}-PASS:${reqId}:${planRef}`;
 
-export function DoorPass({ e, name, reqId, partySize = 1 }: { e: MeetEvent; name: string; reqId: number; partySize?: number }) {
+export function DoorPass({ e, name, reqId, partySize = 1, used = false }: { e: MeetEvent; name: string; reqId: number; partySize?: number; used?: boolean }) {
   const [svg, setSvg] = useState<string | null>(null);
   useEffect(() => {
     QRCode.toString(passCode(reqId, e.id), { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#16122B", light: "#FFFFFF" } })
@@ -58,6 +60,7 @@ export function DoorPass({ e, name, reqId, partySize = 1 }: { e: MeetEvent; name
       <div className="pass-qr">
         {svg ? <div className="qr" role="img" aria-label={`Door pass for ${name}`} dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="qr skeleton" />}
         <span className="pass-shine" aria-hidden="true" />
+        {used && <motion.span className="pass-stamp" initial={{ scale: 2.4, opacity: 0, rotate: -30 }} animate={{ scale: 1, opacity: 1, rotate: -14 }} transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.5 }}>Checked in ✓</motion.span>}
         <small>Turn your brightness up. Only your host scans this.</small>
         <code>#{String(reqId).padStart(5, "0")}</code>
       </div>
@@ -75,9 +78,11 @@ export function InviteBox({ e }: { e?: MeetEvent }) {
   const url = absUrl(e ? eventUrl(e) : "/");
   const text = e ? `I'm going to ${e.title} on ${fmtDay(e.date)}. Come with me? ${url}` : `Come to a ${CONFIG.brand} plan with me: ${url}`;
   const copy = async (el: Element) => {
+    noteInvite();
     try { await navigator.clipboard.writeText(url); toast("Link copied"); burstFrom(el, ["🔗", "✨"], 6); } catch { toast("Copy the link from your address bar"); }
   };
   const share = async (el: Element) => {
+    noteInvite();
     try { if (navigator.share) { await navigator.share({ title: e?.title ?? CONFIG.brand, text, url }); return; } } catch (err) { if ((err as Error)?.name === "AbortError") return; }
     copy(el);
   };
@@ -88,7 +93,7 @@ export function InviteBox({ e }: { e?: MeetEvent }) {
       <p>Friends who join with your link sit at the same table when there&apos;s space.</p>
       <div className="invite-btns">
         <button className="btn btn-sun" onClick={(ev) => share(ev.currentTarget)}>Invite friends ↗</button>
-        <a className="btn btn-white" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        <a className="btn btn-white" onClick={noteInvite} href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
         <button className="btn btn-white" onClick={(ev) => copy(ev.currentTarget)}>Copy link</button>
       </div>
     </div>

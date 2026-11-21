@@ -22,7 +22,7 @@ export default function SavedPage() {
     : requests.map((q) => ({ e: byId(q.id)!, r: null })).filter((x) => x.e);
   const live = mine.filter((x) => endTime(x.e) > now).sort((a, b) => a.e.date.getTime() - b.e.date.getTime());
   const past = mine.filter((x) => endTime(x.e) <= now).sort((a, b) => b.e.date.getTime() - a.e.date.getTime());
-  const nextPass = live.find((x) => x.r?.status === "approved");
+  const nextPass = live.find((x) => x.r?.status === "approved" || x.r?.status === "attended");
   const saved = upcoming.filter((e) => savedIds.includes(e.id));
   const find = <Link className="btn btn-sun btn-sm" href="/events/" style={{ marginTop: 16 }}>Find a plan →</Link>;
 
@@ -82,7 +82,7 @@ const endTime = (e: MeetEvent) => startsAt(e).getTime() + 3 * 36e5;
 function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyRequest | null; i: number; past?: boolean; onCancel?: (r: MyRequest) => void }) {
   const st = r ? STATUS_UI[r.status] : null;
   const label = !r ? "Sent on WhatsApp 💬" : past ? st?.past : st?.label;
-  const tone = !r ? "#E7F9EF" : past ? (r.status === "approved" ? "#C9F5E4" : "#F1EEF6") : st?.tone;
+  const tone = !r ? "#E7F9EF" : past ? (r.status === "approved" || r.status === "attended" ? "#C9F5E4" : "#F1EEF6") : st?.tone;
   const drop = addressDropAt(e);
   const dropped = Date.now() >= drop.getTime();
   return (
@@ -108,7 +108,8 @@ function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyReque
       )}
       {!past && r?.status === "waitlisted" && <p className="plan-note">We&apos;ll WhatsApp you the moment a seat opens up.</p>}
       {!past && r?.status === "pending" && <p className="plan-note">The team is building the table. You&apos;ll hear back on WhatsApp.</p>}
-      {!past && r && r.status !== "declined" && onCancel && <button className="linkish plan-cancel" onClick={() => onCancel(r)}>{r.status === "approved" ? "I can't make it" : "Cancel my spot"}</button>}
+      {!past && r?.status === "attended" && <p className="plan-note">You&apos;re checked in. Have the best time 💜</p>}
+      {!past && r && r.status !== "declined" && r.status !== "attended" && onCancel && <button className="linkish plan-cancel" onClick={() => onCancel(r)}>{r.status === "approved" ? "I can't make it" : "Cancel my spot"}</button>}
     </motion.article>
   );
 }

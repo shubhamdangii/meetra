@@ -22,11 +22,20 @@ export const hash = (s: string) => { let h = 2166136261; for (const c of s) { h 
 
 const PAST_DAYS = 35, AHEAD_DAYS = 28;
 
-export function buildEvents(today: Date) {
+/** A plan added from the admin page (table custom_plans). */
+export type CustomPlan = {
+  id: number; city_slug: string; title: string; category: string; starts_on: string; time_label: string; end_label: string | null;
+  area: string; price: number; price_type: MeetEvent["priceType"]; seats: number; emoji: string; blurb: string;
+  steps: string[]; tags: string[]; host_name: string | null; status: string;
+};
+const PATTERNS = ["dots", "grid", "rings", "stripes", "sun", "waves"];
+export const customPlanId = (c: Pick<CustomPlan, "id" | "city_slug" | "starts_on">) => `x${c.id}-${c.city_slug}-${c.starts_on.replace(/-/g, "")}`;
+
+export function buildEvents(today: Date, custom: CustomPlan[] = []) {
   const diff = (d: Date) => Math.round((d.getTime() - today.getTime()) / 864e5);
   const all: MeetEvent[] = [];
   Object.entries(CONFIG.cities).filter(([, c]) => c.live).forEach(([city]) => {
-    TEMPLATES.forEach((t: any) => {
+    (CONFIG.samplePlans ? TEMPLATES : []).forEach((t: any) => {
       const ov = t.cities && t.cities[city]; if (!ov) return;
       const dates: Date[] = [];
       if (t.once != null) dates.push(addDays(today, t.once));
@@ -53,6 +62,20 @@ export function buildEvents(today: Date) {
           steps: t.steps, tags: t.tags || [], image: ov.image || t.image || null,
         });
       });
+    });
+  });
+  custom.forEach((c) => {
+    if (c.status !== "published" || !CONFIG.cities[c.city_slug]) return;
+    const [y, m, dd] = c.starts_on.split("-").map(Number);
+    const d = new Date(y, m - 1, dd);
+    const id = customPlanId(c);
+    all.push({
+      id, key: `x${c.id}`, city: c.city_slug, date: d, day: diff(d), title: c.title, cat: c.category,
+      time: c.time_label, end: c.end_label || "", area: c.area, hosts: [c.host_name || "team"],
+      price: c.price, priceType: c.price_type, seats: c.seats, left: c.seats, emoji: c.emoji || "✨",
+      pal: hash(id) % 8, pattern: PATTERNS[hash(id) % PATTERNS.length], blurb: c.blurb,
+      steps: c.steps?.length ? c.steps : ["Your host starts with an easy game", "Settle in with the group", "Swap numbers only if you want to"],
+      tags: ["New", ...(c.tags || [])].slice(0, 3), image: null,
     });
   });
   all.sort((a, b) => a.date.getTime() - b.date.getTime() || mins(a.time) - mins(b.time));

@@ -11,6 +11,8 @@ import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
 import { addressDropAt, catOf, fmtDay, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
 import { CalendarButton } from "../plans";
+import { AreaMap } from "../AreaMap";
+import { areaPoint } from "@/lib/geo";
 
 type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled"; party_size: number } | null;
 
@@ -76,8 +78,9 @@ export default function EventPage() {
   );
 
   const city = CONFIG.cities[e.city].name;
+  const pt = areaPoint(e.area, e.city);
   const cat = catOf(e.cat);
-  const hosts = e.hosts.map((h) => HOSTS[h]).filter(Boolean);
+  const hosts = e.hosts.map((h) => (HOSTS as any)[h] ?? { name: h, color: "#FFC93C", bio: `Verified ${CONFIG.brand} host.` });
   const left = counts ? Math.max(0, e.seats - counts.approved_seats) : e.left;
   const full = left === 0;
   const pct = Math.round((1 - left / e.seats) * 100);
@@ -149,7 +152,7 @@ export default function EventPage() {
         <div>
           <motion.div className="ev-hero" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}><Poster e={e} title /></motion.div>
           <p className="lede">{e.blurb}</p>
-          <div className="anchor-links"><a href="#unfolds">How it unfolds</a><a href="#host">Your host</a><a href="#before">Before you go</a></div>
+          <div className="anchor-links"><a href="#unfolds">How it unfolds</a><a href="#host">Your host</a><a href="#where">Location</a><a href="#before">Before you go</a></div>
 
           <section className="ev-sec" id="unfolds">
             <h2>How it <span className="serif" style={{ color: "var(--violet)" }}>unfolds</span></h2>
@@ -170,6 +173,13 @@ export default function EventPage() {
                 <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3>{h.name} <span className="verified">✓</span></h3><p className="muted">{h.bio}</p></div>
               </Reveal>
             ))}
+          </section>
+
+          <section className="ev-sec" id="where">
+            <h2>Where we&apos;ll <span className="serif" style={{ color: "var(--violet)" }}>meet</span></h2>
+            <p className="muted" style={{ marginBottom: 12 }}>{e.area}, {city}. The circle shows the area, not the venue. Exact directions go to confirmed guests on WhatsApp.</p>
+            <AreaMap center={[pt.lat, pt.lon]} zoom={pt.exact ? 14 : 12} radius={pt.exact ? 650 : 2500} height={240} />
+            <a className="linkish" style={{ display: "inline-block", marginTop: 10 }} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.area}, ${city}`)}`} target="_blank" rel="noopener noreferrer">Explore the area ↗</a>
           </section>
 
           <section className="ev-sec" id="before" style={{ border: 0 }}>
