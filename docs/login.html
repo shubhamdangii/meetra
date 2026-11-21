@@ -89,8 +89,18 @@ if (!AUTH.enabled) {
   $("#setupNote").innerHTML = `<div class="setup-note"><b>Login isn't switched on yet.</b> This is a preview. Add your Supabase URL and anon key in <code>assets/js/config.js</code> (see SETUP-LOGIN.md).</div>`;
   $("#googleBtn").disabled = true; $("#waBtn").disabled = true;
 } else {
+  // Coming back from Google: show the reason if the login didn't finish.
+  const q = new URLSearchParams(location.search), h = new URLSearchParams(location.hash.slice(1));
+  const errText = q.get("error_description") || h.get("error_description") || q.get("error") || h.get("error");
+  const cameBack = q.has("code");
   // Already logged in? Go on.
-  AUTH.ready.then(s => { if (s.session) location.replace(AUTH.takeNext(s.me && s.me.profile_score >= 70 ? "events.html" : "profile.html")); });
+  AUTH.ready.then(s => {
+    if (s.session) return location.replace(AUTH.takeNext(s.me && s.me.profile_score >= 70 ? "events.html" : "profile.html"));
+    if (errText || cameBack) {
+      $("#setupNote").innerHTML = `<div class="setup-note"><b>Login didn't finish.</b> ${errText ? A.esc(errText.replace(/\+/g, " ")) : "Google sent you back, but this browser blocked the last step."}<br>
+        Try again. If it keeps happening: turn off ad/tracker blocking for this site (in Brave: the lion icon → Shields off), or use Chrome or an incognito window.</div>`;
+    }
+  });
 }
 
 $("#googleBtn").onclick = async () => {
