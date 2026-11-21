@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discover plans · meetra</title>
+<meta name="description" content="Swipe through upcoming meetups. Right for interested, left to skip.">
+<meta name="theme-color" content="#FFF7EC">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316122B'/><text x='50' y='72' font-size='64' text-anchor='middle' fill='%23FFC93C' font-family='Arial' font-weight='900'>m</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="swipe-wrap">
+    <div class="swipe-top">
+      <div><span class="eyebrow">Discover</span><h1>Swipe your <span class="serif">week.</span></h1></div>
+      <span class="muted" id="count" style="font-weight:700;font-size:14px"></span>
+    </div>
+    <div class="deck" id="deck" aria-live="polite"></div>
+    <div class="swipe-btns" id="btns">
+      <button class="sbtn small" id="undo" title="Undo (Backspace)" aria-label="Undo last swipe">↩</button>
+      <button class="sbtn no" id="no" title="Skip (←)" aria-label="Skip this plan">✕</button>
+      <button class="sbtn yes" id="yes" title="Interested (→)" aria-label="I'm interested">♥</button>
+      <button class="sbtn small" id="info" title="Details (↑)" aria-label="Open plan details">ⓘ</button>
+    </div>
+    <p class="swipe-hint">Swipe right if you're interested, left to skip. Your ♥ plans are saved to <a href="saved.html" style="text-decoration:underline">Your plans</a>.</p>
+  </div>
+</main>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/auth.js"></script>
+<script>
+const A = APP; A.header("swipe"); A.footer(); A.title("Discover plans");
+const $ = A.$;
+const KEY = "mt-swipes";
+let swipes = A.store.get(KEY, {});          // { planRef: "interested" | "skip" }
+let deck = [], undoStack = [];
+
+// One card per plan (its next date) in the chosen city, not swiped yet.
+function buildDeck() {
+  const seen = new Set();
+  deck = A.EVENTS.filter(e => A.inCity(e)).filter(e => {
+    const k = e.key + e.city;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+  render();
+}
+const remaining = () => deck.filter(e => !swipes[e.id]);
+
+function cardHTML(e) {
+  return `<article class="scard" data-id="${e.id}">
+    <span class="stamp-lbl yes">INTERESTED</span><span class="stamp-lbl no">SKIP</span>
+    ${A.poster(e, { title: true })}
+    <div class="sbody">
+      <span class="when">${A.relDay(e.date)} · ${e.time} · ${A.esc(e.area)}</span>
+      <h2>${A.esc(e.title)}</h2>
+      <p>${A.esc(e.blurb)}</p>
+      <div class="row"><span><b>${A.priceShort(e)}</b> ${A.priceLabel(e)}</span><span class="muted">Hosted by ${A.esc(A.hostNames(e))}</span></div>
+    </div>
+  </article>`;
+}
+
+function render() {
+  const left = remaining();
+  const total = deck.length, doneN = total - left.length;
+  $("#count").textContent = left.length ? `${doneN + 1} of ${total}` : `${total} of ${total}`;
+  $("#undo").disabled = !undoStack.length;
+  ["no", "yes", "info"].forEach(id => $("#" + id).disabled = !left.length);
+  if (!left.length) return renderDone();
+  // top card last so it sits on top
+  $("#deck").innerHTML = left.slice(0, 3).reverse().map(cardHTML).join("");
+  const cards = A.$$(".scard", $("#deck"));
+  cards.forEach((c, i) => { const depth = cards.length - 1 - i; if (depth === 1) c.classList.add("behind"); if (depth === 2) c.classList.add("behind2"); });
+  attachDrag(cards[cards.length - 1]);
+}
+
+function renderDone() {
+  const liked = deck.filter(e => swipes[e.id] === "interested");
+  $("#deck").style.height = "auto";
+  $("#deck").innerHTML = `<div class="done-card">
+    <div style="font-size:44px">🎉</div><h2>That's every plan for now</h2>
+    <p class="muted">${liked.length ? `You're interested in ${liked.length} plan${liked.length > 1 ? "s" : ""}. Request a seat before they fill up.` : "Nothing caught your eye? New plans are added every week."}</p>
+    ${liked.length ? `<ul class="liked-list">${liked.map(e => `<li><a href="${A.url(e)}"><span>${e.emoji} ${A.esc(e.title)}</span><span class="muted">${A.relDay(e.date)} →</span></a></li>`).join("")}</ul>` : ""}
+    <button class="btn btn-white btn-sm" id="restart" type="button">Start over</button>
+  </div>`;
+  $("#restart").onclick = () => { swipes = {}; undoStack = []; A.store.set(KEY, swipes); $("#deck").style.height = ""; render(); };
+}
+
+/* ---------- record a swipe ---------- */
+function decide(reaction) {
+  const top = A.$$(".scard", $("#deck")).pop();
+  if (!top) return;
+  const id = top.dataset.id;
+  const dir = reaction === "interested" ? 1 : -1;
+  top.style.transform = `translate(${dir * 140}%, -20px) rotate(${dir * 22}deg)`;
+  top.style.opacity = "0";
+  swipes[id] = reaction; undoStack.push(id); A.store.set(KEY, swipes);
+  if (reaction === "interested" && !A.isSaved(id)) A.toggleSave(id);
+  if (AUTH.enabled) AUTH.ready.then(() =>
+    AUTH.client.rpc("record_interest", { p_device: AUTH.deviceId(), p_plan_ref: id, p_reaction: reaction }).then(() => {}, () => {}));
+  setTimeout(render, 260);
+}
+
+$("#yes").onclick = () => decide("interested");
+$("#no").onclick = () => decide("skip");
+$("#info").onclick = () => { const top = A.$$(".scard", $("#deck")).pop(); if (top) location.href = A.url(A.byId(top.dataset.id)); };
+$("#undo").onclick = () => {
+  const id = undoStack.pop(); if (!id) return;
+  delete swipes[id]; A.store.set(KEY, swipes);
+  // (the server keeps the last answer; swiping the card again replaces it)
+  $("#deck").style.height = ""; render();
+};
+document.addEventListener("keydown", ev => {
+  if (ev.target.closest("input,textarea,select")) return;
+  if (ev.key === "ArrowRight") decide("interested");
+  else if (ev.key === "ArrowLeft") decide("skip");
+  else if (ev.key === "ArrowUp") $("#info").click();
+  else if (ev.key === "Backspace") { ev.preventDefault(); $("#undo").click(); }
+});
+
+/* ---------- drag / swipe with finger or mouse ---------- */
+function attachDrag(card) {
+  if (!card) return;
+  let x0 = 0, y0 = 0, dx = 0, dy = 0, down = false;
+  const yes = card.querySelector(".stamp-lbl.yes"), no = card.querySelector(".stamp-lbl.no");
+  card.addEventListener("pointerdown", ev => {
+    down = true; x0 = ev.clientX; y0 = ev.clientY; dx = dy = 0;
+    card.setPointerCapture(ev.pointerId); card.classList.add("dragging");
+  });
+  card.addEventListener("pointermove", ev => {
+    if (!down) return;
+    dx = ev.clientX - x0; dy = ev.clientY - y0;
+    card.style.transform = `translate(${dx}px, ${dy * .3}px) rotate(${dx / 18}deg)`;
+    yes.style.opacity = Math.max(0, Math.min(1, dx / 100));
+    no.style.opacity = Math.max(0, Math.min(1, -dx / 100));
+  });
+  const end = () => {
+    if (!down) return; down = false; card.classList.remove("dragging");
+    if (dx > 100) decide("interested");
+    else if (dx < -100) decide("skip");
+    else if (dy < -120) $("#info").click();
+    else if (Math.abs(dx) < 6 && Math.abs(dy) < 6) $("#info").click();     // a tap opens details
+    else { card.style.transform = ""; yes.style.opacity = no.style.opacity = 0; }
+  };
+  card.addEventListener("pointerup", end);
+  card.addEventListener("pointercancel", () => { down = false; card.classList.remove("dragging"); card.style.transform = ""; });
+}
+
+document.addEventListener("citychange", () => { undoStack = []; $("#deck").style.height = ""; buildDeck(); });
+buildDeck();
+</script>
+</body>
+</html>

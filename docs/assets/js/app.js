@@ -141,7 +141,7 @@
   /* ---------- header & footer ---------- */
   const brand = `${esc(C.brand)}<i>.</i>`;
   function header(active) {
-    const links = [["events", "events.html", "Explore", "🔍"], ["past", "past.html", "Past nights", "📸"], ["saved", "saved.html", "Your plans", "♥"], ["host", "host.html", "Host", "✨"]];
+    const links = [["events", "events.html", "Explore", "🔍"], ["swipe", "swipe.html", "Discover", "🔥"], ["past", "past.html", "Past nights", "📸"], ["saved", "saved.html", "Your plans", "♥"], ["host", "host.html", "Host", "✨"]];
     const h = document.createElement("header");
     h.className = "site-header";
     h.innerHTML = `<div class="wrap nav">

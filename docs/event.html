@@ -91,14 +91,17 @@ function render() {
           <li><span class="ic">⏰</span><div><small>Time</small><b>${e.time} – ${e.end}</b></div></li>
           <li><span class="ic">📍</span><div><small>Area</small><b>${A.esc(e.area)}, ${city}</b></div></li>
           <li><span class="ic">👥</span><div><small>Group</small><b>Up to ${e.seats} · ${e.tags.includes("Women only") ? "women only" : "open to all"}</b>
-            <div class="meter"><i style="width:${pct}%"></i></div><small style="color:${e.left <= 4 ? "#B3134B" : "var(--muted)"}">${e.left === 0 ? "Full — join the waitlist" : `${e.left} of ${e.seats} seats left`}</small></div></li>
+            <div class="meter"><i id="seatMeter" style="width:${pct}%"></i></div><small id="seatText" style="color:${e.left <= 4 ? "#B3134B" : "var(--muted)"}">${e.left === 0 ? "Full — join the waiting list" : `${e.left} of ${e.seats} seats left`}</small>
+            <small id="interestText" class="muted" style="display:block"></small></div></li>
         </ul>
+        <div id="myStatus" hidden></div>
         <form id="req">
           <div class="field"><label for="nm">Your name</label><input id="nm" required autocomplete="given-name" placeholder="First name is fine"></div>
-          <div class="field"><label for="ice">What could someone ask you about that makes you forget the small talk?</label><textarea id="ice" placeholder="Football, old Hindi songs, startups, cats…"></textarea></div>
+          <div class="field"><label for="ice">What could someone ask you about that makes you forget the small talk?</label><textarea id="ice" maxlength="300" placeholder="Football, old Hindi songs, startups, cats…"></textarea></div>
           <label class="check"><input type="checkbox" id="friend"> I'm bringing a friend</label>
-          <button class="btn btn-sun btn-block" type="submit">${e.left === 0 ? "Join the waitlist" : "Request a seat"} →</button>
-          <p class="fine">Opens WhatsApp with your request. Your host confirms there, then you pay. Only your host sees your number.</p>
+          <button class="btn btn-sun btn-block" type="submit" id="reqBtn">${e.left === 0 ? "Join the waiting list" : "Request a seat"} →</button>
+          <div id="priorityHint"></div>
+          <p class="fine" id="reqFine">Opens WhatsApp with your request. Your host confirms there, then you pay. Only your host sees your number.</p>
         </form>
       </div>
     </aside>
@@ -109,21 +112,97 @@ function render() {
 
   <div class="mobile-book"><div><b>${A.priceShort(e)}</b> <small class="muted">${A.priceLabel(e)}</small><br><small class="muted">${A.fmtDay(e.date)} · ${e.time}</small></div><a class="btn btn-sun btn-sm" href="#book">Request a seat</a></div>`;
 
-  // Logged-in members: pre-fill their name and tell them what's needed.
-  if (AUTH.enabled) AUTH.ready.then(s => {
+  /* ---------- seats, waiting list & priority ----------
+     Login OFF: request goes by WhatsApp (as before).
+     Login ON:  request is saved; seats go to the most complete profiles
+                first, everyone else joins the waiting list in that order. */
+  let full = e.left === 0;
+  const setFull = f => { full = f; A.$("#reqBtn").textContent = (full ? "Join the waiting list" : "Request a seat") + " →"; };
+
+  if (AUTH.enabled) AUTH.ready.then(async s => {
+    // Real seat numbers and interest from the database.
+    const { data } = await AUTH.client.rpc("plan_counts", { p_refs: [e.id] });
+    const c = data && data[0];
+    if (c) {
+      const left = Math.max(0, e.seats - c.approved_seats);
+      A.$("#seatMeter").style.width = Math.round((1 - left / e.seats) * 100) + "%";
+      A.$("#seatText").textContent = left === 0 ? `Full · ${c.waitlisted} on the waiting list` : `${left} of ${e.seats} seats left`;
+      A.$("#seatText").style.color = left <= 4 ? "#B3134B" : "var(--muted)";
+      if (c.interested) A.$("#interestText").textContent = `♥ ${c.interested} ${c.interested === 1 ? "person" : "people"} interested`;
+      setFull(left === 0);
+    }
     if (s.me && s.me.display_name && s.me.display_name !== "New member") A.$("#nm").value = s.me.display_name;
-    const note = !s.session ? "You'll be asked to log in with Google or WhatsApp first."
-      : !(s.me && s.me.profile_complete) ? "You'll be asked to complete your profile first." : "";
-    if (note) A.$("#req .fine").textContent = note + " Hosts only approve guests with a complete profile.";
+    A.$("#reqFine").textContent = s.session
+      ? "Your request is saved. The team confirms on WhatsApp, then you pay. Only your host sees your number."
+      : "You'll log in with Google or WhatsApp first (takes 10 seconds).";
+    renderPriority();
+    if (s.session) loadMyRequest();
   });
+
+  function renderPriority() {
+    const me = AUTH.me;
+    const score = me ? me.profile_score : null;
+    A.$("#priorityHint").innerHTML = `<div class="priority">
+      <b>Seats go to the most complete profiles first.</b>
+      ${score == null ? "Fill in your profile after logging in to move up the list."
+        : `Your profile score: <span class="score-pill">${score}/100</span> ${score < 100 ? `<a href="profile.html">Add details to move up →</a>` : "Top priority ✓"}`}
+    </div>`;
+  }
+
+  async function loadMyRequest() {
+    // filter by own id too: admins can read everyone's requests
+    const { data } = await AUTH.client.from("plan_requests").select("id,status,party_size").eq("plan_ref", e.id).eq("user_id", AUTH.me.id).maybeSingle();
+    showStatus(data);
+  }
+
+  async function showStatus(r) {
+    const box = A.$("#myStatus"), form = A.$("#req");
+    if (!r || r.status === "cancelled") { box.hidden = true; form.hidden = false; return r; }
+    let pos = null;
+    if (r.status === "waitlisted") { const p = await AUTH.client.rpc("my_waitlist_position", { p_plan_ref: e.id }); pos = p.data; }
+    const view = {
+      pending:    ["⏳", "Request sent", "The team is reviewing requests. Seats go to the most complete profiles first."],
+      approved:   ["🎉", "You're in!", "We'll share the exact spot on WhatsApp. See you there."],
+      waitlisted: ["🕒", pos ? `You're #${pos} on the waiting list` : "You're on the waiting list", "If a seat opens up, the highest-priority person on the list gets it. Complete your profile to move up."],
+      declined:   ["🙏", "Not this time", "This plan is full. Try another date — there's something on every day."]
+    }[r.status];
+    box.hidden = false; form.hidden = true;
+    box.innerHTML = `<div class="status-card s-${r.status}"><div class="st-ic">${view[0]}</div><b>${view[1]}</b><p>${view[2]}</p>
+      ${r.status !== "declined" ? `<button class="linkish" id="cancelReq" type="button">Cancel my request</button>` : ""}</div>`;
+    const cb = A.$("#cancelReq");
+    if (cb) cb.onclick = async () => {
+      const { error } = await AUTH.client.from("plan_requests").update({ status: "cancelled" }).eq("id", r.id);
+      if (error) return A.toast("Couldn't cancel: " + error.message);
+      A.toast("Request cancelled"); showStatus({ ...r, status: "cancelled" });
+    };
+    return r;
+  }
 
   A.$("#req").onsubmit = async ev => {
     ev.preventDefault();
-    // Trust: only logged-in members with a complete profile can request a seat.
-    if (!(await AUTH.requireCompleteProfile(location.href))) return;
     const name = A.$("#nm").value.trim(), ice = A.$("#ice").value.trim(), friend = A.$("#friend").checked;
-    const verified = AUTH.enabled && AUTH.me ? `\nmeetra profile: complete ✓${AUTH.me.phone_verified ? " · WhatsApp verified ✓" : ""}` : "";
-    const msg = `Hi! I'd like ${friend ? "2 seats" : "a seat"} at *${e.title}* on ${A.fmtDay(e.date)}, ${e.time} (${e.area}, ${city}).\n\nName: ${name}${ice ? `\nAsk me about: ${ice}` : ""}${verified}\n\nRef: ${e.id}`;
+
+    if (AUTH.enabled) {
+      if (!(await AUTH.requireLogin(location.href))) return;
+      A.$("#reqBtn").disabled = true;
+      const row = { plan_ref: e.id, party_size: friend ? 2 : 1, icebreaker: ice || null, status: full ? "waitlisted" : "pending" };
+      let res = await AUTH.client.from("plan_requests").insert(row).select("id,status,party_size").single();
+      if (res.error && /duplicate|unique/i.test(res.error.message)) {
+        // asked before and cancelled → ask again
+        res = await AUTH.client.from("plan_requests").update({ status: row.status, party_size: row.party_size, icebreaker: row.icebreaker })
+          .eq("plan_ref", e.id).eq("user_id", AUTH.me.id).select("id,status,party_size").single();
+      }
+      A.$("#reqBtn").disabled = false;
+      if (res.error) return A.toast("Couldn't send your request: " + res.error.message);
+      A.addRequest({ id: e.id, name, friend, at: Date.now() });
+      showStatus(res.data);
+      A.toast(full ? "Added to the waiting list ✓" : "Request sent ✓");
+      return;
+    }
+
+    // Login switched off: send the request by WhatsApp.
+    const what = full ? `a place on the waiting list${friend ? " (2 people)" : ""}` : (friend ? "2 seats" : "a seat");
+    const msg = `Hi! I'd like ${what} at *${e.title}* on ${A.fmtDay(e.date)}, ${e.time} (${e.area}, ${city}).\n\nName: ${name}${ice ? `\nAsk me about: ${ice}` : ""}\n\nRef: ${e.id}`;
     A.addRequest({ id: e.id, name, friend, at: Date.now() });
     A.whatsappDone(A.$("#req"), msg, `Almost there, ${name}!`);
     A.toast("Saved to Your plans ✓");

@@ -54,8 +54,8 @@ A.$("#c").innerHTML = Object.values(CONFIG.cities).map(c => `<option>${c.name}</
 A.$("#c").value = A.cityName(A.getCity()) === "All cities" ? CONFIG.cities[CONFIG.defaultCity].name : A.cityName(A.getCity());
 A.$("#f").onsubmit = async e => {
   e.preventDefault();
-  // Hosts must be logged in with a complete profile too.
-  if (!(await AUTH.requireCompleteProfile(location.href))) return;
+  // Hosts must be logged in (more profile details = more trust).
+  if (!(await AUTH.requireLogin(location.href))) return;
   const v = id => A.$(id).value.trim();
   const msg = `Hi! I'd like to host on ${CONFIG.brand}.\n\nName: ${v("#n")}\nCity: ${v("#c")}\nPlan: ${v("#p")}\nWhy: ${v("#w")}${v("#ig") ? "\nInstagram: " + v("#ig") : ""}`;
   A.whatsappDone(A.$("#f"), msg, "Love it — one last tap");

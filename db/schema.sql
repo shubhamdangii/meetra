@@ -61,8 +61,11 @@ create table public.users (
   occupation   text check (char_length(occupation) <= 80),                  -- "Designer at …", "Student"
   role         text not null default 'member' check (role in ('member', 'admin')),
   is_banned    boolean not null default false,
-  -- Set automatically when every required profile field is filled (see
-  -- private.refresh_profile_status). NULL = profile incomplete.
+  -- Both set automatically by private.refresh_profile_status:
+  -- profile_score 0–100 = how much of the profile is filled and verified.
+  -- Seats and the waiting list go to higher scores first.
+  profile_score        smallint not null default 0 check (profile_score between 0 and 100),
+  -- set when every profile field is filled; NULL = not complete yet (no one is blocked by it)
   profile_completed_at timestamptz,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
@@ -291,10 +294,11 @@ alter table public.reviews       alter column user_id set default private.curren
 -- "Who am I?" for the logged-in browser (includes role, which is otherwise hidden).
 create or replace function public.me()
 returns table (id uuid, display_name text, avatar_url text, city_slug text, role text, is_host boolean,
-               profile_complete boolean, phone_verified boolean, email_verified boolean)
+               profile_score smallint, profile_complete boolean, phone_verified boolean, email_verified boolean)
 language sql stable security definer set search_path = '' as $$
   select u.id, u.display_name, u.avatar_url, u.city_slug, u.role,
          exists (select 1 from public.hosts h where h.user_id = u.id and h.status = 'active'),
+         u.profile_score,
          u.profile_completed_at is not null,
          p.phone_verified_at is not null,
          p.email_verified_at is not null
@@ -505,9 +509,6 @@ create policy seat_requests_read on public.seat_requests for select to authentic
          or (select private.is_admin()));
 create policy seat_requests_insert_self on public.seat_requests for insert to authenticated
   with check (user_id = (select private.current_user_id())
-              -- trust: only members with a complete profile can request seats
-              and exists (select 1 from public.users u
-                          where u.id = user_id and u.profile_completed_at is not null)
               and exists (select 1 from public.events e
                           where e.id = event_id and e.status = 'published' and e.starts_at > now()));
 create policy seat_requests_update on public.seat_requests for update to authenticated
@@ -674,37 +675,59 @@ create trigger user_private_rules
   before insert or update on public.user_private
   for each row execute function private.user_private_rules();
 
--- Profile is COMPLETE (and the member may request seats) when ALL of these are set:
---   public:  first name (not the default), photo, city, occupation, bio of 20+ characters
---   private: full name, date of birth (18+), gender, WhatsApp number, email,
---            Instagram or LinkedIn, house rules accepted,
---            and at least one of phone/email verified through login.
+-- PROFILE SCORE (0–100): nobody is blocked; more details = higher priority.
+-- Keep these weights in sync with docs/profile.html (scoreParts).
+--   photo 15 · first name 5 · city 5 · occupation 5 · bio 20+ chars 10 · bio 80+ chars 5
+--   full name 5 · date of birth 5 · gender 5
+--   WhatsApp number 5 · WhatsApp verified 10 · email 5 · email verified 5
+--   Instagram 5 · LinkedIn 5 · house rules accepted 5
+-- PROFILE COMPLETE = every item except the second social link and long bio,
+-- with at least one of phone/email verified.
 create or replace function private.refresh_profile_status(p_user_id uuid)
 returns void language plpgsql security definer set search_path = '' as $$
 declare
-  done boolean;
+  u     public.users%rowtype;
+  p     public.user_private%rowtype;
+  bio   int;
+  score int;
+  done  boolean;
 begin
-  select (u.display_name <> 'New member'
-          and u.avatar_url is not null
-          and u.city_slug  is not null
-          and nullif(trim(u.occupation), '') is not null
-          and char_length(trim(coalesce(u.bio, ''))) >= 20
-          and p.full_name is not null
-          and p.date_of_birth is not null
-          and p.gender is not null
-          and p.phone is not null
-          and p.email is not null
+  select * into u from public.users where id = p_user_id;
+  select * into p from public.user_private where user_id = p_user_id;
+  if u.id is null then return; end if;
+  bio := char_length(trim(coalesce(u.bio, '')));
+
+  score := (case when u.avatar_url is not null then 15 else 0 end)
+         + (case when u.display_name <> 'New member' then 5 else 0 end)
+         + (case when u.city_slug is not null then 5 else 0 end)
+         + (case when nullif(trim(u.occupation), '') is not null then 5 else 0 end)
+         + (case when bio >= 20 then 10 else 0 end)
+         + (case when bio >= 80 then 5 else 0 end)
+         + (case when p.full_name is not null then 5 else 0 end)
+         + (case when p.date_of_birth is not null then 5 else 0 end)
+         + (case when p.gender is not null then 5 else 0 end)
+         + (case when p.phone is not null then 5 else 0 end)
+         + (case when p.phone_verified_at is not null then 10 else 0 end)
+         + (case when p.email is not null then 5 else 0 end)
+         + (case when p.email_verified_at is not null then 5 else 0 end)
+         + (case when p.instagram_url is not null then 5 else 0 end)
+         + (case when p.linkedin_url is not null then 5 else 0 end)
+         + (case when p.accepted_rules_at is not null then 5 else 0 end);
+
+  done := u.display_name <> 'New member' and u.avatar_url is not null and u.city_slug is not null
+          and nullif(trim(u.occupation), '') is not null and bio >= 20
+          and p.full_name is not null and p.date_of_birth is not null and p.gender is not null
+          and p.phone is not null and p.email is not null
           and (p.instagram_url is not null or p.linkedin_url is not null)
           and p.accepted_rules_at is not null
-          and (p.phone_verified_at is not null or p.email_verified_at is not null))
-    into done
-    from public.users u join public.user_private p on p.user_id = u.id
-   where u.id = p_user_id;
+          and (p.phone_verified_at is not null or p.email_verified_at is not null);
+  done := coalesce(done, false);
 
   update public.users
-     set profile_completed_at = case when coalesce(done, false) then coalesce(profile_completed_at, now()) end
+     set profile_score = score,
+         profile_completed_at = case when done then coalesce(profile_completed_at, now()) end
    where id = p_user_id
-     and (profile_completed_at is null) = coalesce(done, false);   -- only when the status flips
+     and (profile_score <> score or (profile_completed_at is null) = done);   -- only when something changed
 end $$;
 
 create or replace function private.refresh_profile_status_trg()
@@ -749,3 +772,232 @@ insert into public.cities (slug, name, is_live) values
   ('jaipur', 'Jaipur', true),
   ('ahmedabad', 'Ahmedabad', true),
   ('udaipur', 'Udaipur', false);
+
+-- =====================================================================
+-- 10. PLANS ON THE WEBSITE: seat requests, waiting list, swipe interest
+--     The meetups on the site still come from docs/assets/js/data.js, so
+--     these tables point at a plan by its website id (plan_ref), e.g.
+--     'introverts-dinner-jaipur-20261123' (the part after event.html#).
+--
+--     PRIORITY: anyone logged in can request. Seats and waiting-list places
+--     go to the highest profile_score first, then whoever asked earlier.
+-- =====================================================================
+
+create table public.plan_requests (
+  id          bigint generated always as identity primary key,
+  plan_ref    text not null check (plan_ref ~ '^[a-z0-9][a-z0-9-]{2,120}$'),
+  user_id     uuid not null default private.current_user_id() references public.users (id) on delete cascade,
+  party_size  smallint not null default 1 check (party_size between 1 and 2),
+  icebreaker  text check (char_length(icebreaker) <= 300),
+  status      text not null default 'pending'
+              check (status in ('pending', 'approved', 'waitlisted', 'declined', 'cancelled')),
+  decided_at  timestamptz,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  constraint plan_requests_one_per_user unique (plan_ref, user_id)
+);
+create index plan_requests_plan_status_idx on public.plan_requests (plan_ref, status);
+create index plan_requests_user_idx        on public.plan_requests (user_id, created_at desc);
+create trigger plan_requests_set_updated_at before update on public.plan_requests
+  for each row execute function private.set_updated_at();
+
+-- Swipe interest. One row per device per plan (works logged out too);
+-- user_id is filled in when the swiper is logged in.
+create table public.plan_interest (
+  device_id   uuid not null,
+  plan_ref    text not null check (plan_ref ~ '^[a-z0-9][a-z0-9-]{2,120}$'),
+  user_id     uuid references public.users (id) on delete set null,
+  reaction    text not null check (reaction in ('interested', 'skip')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  primary key (device_id, plan_ref)
+);
+create index plan_interest_plan_idx on public.plan_interest (plan_ref, reaction);
+create trigger plan_interest_set_updated_at before update on public.plan_interest
+  for each row execute function private.set_updated_at();
+
+-- Members can only ask, cancel, or ask again after cancelling.
+-- Approving, declining and waitlisting is done by admins (or admin_fill_plan).
+create or replace function private.plan_request_rules()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is not null and not private.is_admin() then
+    if tg_op = 'INSERT' then
+      if new.status not in ('pending', 'waitlisted') or new.decided_at is not null then
+        raise exception 'New requests must be pending or on the waiting list' using errcode = 'check_violation';
+      end if;
+    else
+      if new.plan_ref <> old.plan_ref or new.user_id <> old.user_id or new.decided_at is distinct from old.decided_at then
+        raise exception 'You can only cancel or re-send your own request' using errcode = 'insufficient_privilege';
+      end if;
+      if new.status <> old.status
+         and not (new.status = 'cancelled'
+                  or (old.status = 'cancelled' and new.status in ('pending', 'waitlisted'))) then
+        raise exception 'Only the meetra team can approve or decline' using errcode = 'insufficient_privilege';
+      end if;
+    end if;
+  end if;
+  if tg_op = 'UPDATE' and new.status <> old.status and new.status in ('approved', 'declined', 'waitlisted')
+     and (auth.uid() is null or private.is_admin()) then
+    new.decided_at := now();
+  end if;
+  return new;
+end $$;
+
+create trigger plan_requests_rules
+  before insert or update on public.plan_requests
+  for each row execute function private.plan_request_rules();
+
+alter table public.plan_requests enable row level security;
+alter table public.plan_interest enable row level security;
+
+create policy plan_requests_read on public.plan_requests for select to authenticated
+  using (user_id = (select private.current_user_id()) or (select private.is_admin()));
+create policy plan_requests_insert_self on public.plan_requests for insert to authenticated
+  with check (user_id = (select private.current_user_id()));
+create policy plan_requests_update on public.plan_requests for update to authenticated
+  using (user_id = (select private.current_user_id()) or (select private.is_admin()))
+  with check (user_id = (select private.current_user_id()) or (select private.is_admin()));
+create policy plan_requests_admin_delete on public.plan_requests for delete to authenticated
+  using ((select private.is_admin()));
+create policy plan_interest_admin_read on public.plan_interest for select to authenticated
+  using ((select private.is_admin()));
+-- (nobody writes plan_interest directly; the browser uses record_interest())
+
+-- Supabase gives new tables full access by default; take it back, then grant only what's needed.
+revoke all on public.plan_requests, public.plan_interest from anon, authenticated;
+grant select on public.plan_requests to authenticated;
+grant insert (plan_ref, party_size, icebreaker, status) on public.plan_requests to authenticated;
+grant update (status, party_size, icebreaker)           on public.plan_requests to authenticated;
+grant delete on public.plan_requests to authenticated;            -- RLS: admins only
+grant select on public.plan_interest to authenticated;            -- RLS: admins only
+
+-- Swipe right / left. Anyone may call it (logged in or not).
+create or replace function public.record_interest(p_device uuid, p_plan_ref text, p_reaction text)
+returns void language sql security definer set search_path = '' as $$
+  insert into public.plan_interest (device_id, plan_ref, user_id, reaction)
+  values (p_device, p_plan_ref, private.current_user_id(), p_reaction)
+  on conflict (device_id, plan_ref) do update
+    set reaction = excluded.reaction,
+        user_id  = coalesce(excluded.user_id, public.plan_interest.user_id)
+$$;
+revoke all on function public.record_interest(uuid, text, text) from public;
+grant execute on function public.record_interest(uuid, text, text) to anon, authenticated;
+
+-- Public numbers for plan pages: confirmed seats, waiting list, interested.
+-- Counts only, no names or personal data.
+create or replace function public.plan_counts(p_refs text[])
+returns table (plan_ref text, approved_seats int, waitlisted int, interested int)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if cardinality(p_refs) > 300 then
+    raise exception 'Ask for at most 300 plans at a time' using errcode = 'program_limit_exceeded';
+  end if;
+  return query
+  select r.ref,
+         coalesce((select sum(pr.party_size)::int from public.plan_requests pr where pr.plan_ref = r.ref and pr.status = 'approved'), 0),
+         coalesce((select count(*)::int from public.plan_requests pr where pr.plan_ref = r.ref and pr.status = 'waitlisted'), 0),
+         coalesce((select count(*)::int from public.plan_interest pi where pi.plan_ref = r.ref and pi.reaction = 'interested'), 0)
+  from unnest(p_refs) as r(ref);
+end $$;
+revoke all on function public.plan_counts(text[]) from public;
+grant execute on function public.plan_counts(text[]) to anon, authenticated;
+
+-- "You're #3 on the waiting list" (by priority: profile score, then time).
+create or replace function public.my_waitlist_position(p_plan_ref text)
+returns int language sql stable security definer set search_path = '' as $$
+  select x.pos::int from (
+    select r.user_id, row_number() over (order by u.profile_score desc, r.created_at) as pos
+    from public.plan_requests r join public.users u on u.id = r.user_id
+    where r.plan_ref = p_plan_ref and r.status = 'waitlisted'
+  ) x
+  where x.user_id = private.current_user_id()
+$$;
+revoke all on function public.my_waitlist_position(text) from public, anon;
+grant execute on function public.my_waitlist_position(text) to authenticated;
+
+-- ---------- Admin tools (each checks the caller is an admin) ----------
+
+-- Everyone who asked for one plan, best profiles first, with contact details.
+create or replace function public.admin_plan_queue(p_plan_ref text)
+returns table (request_id bigint, display_name text, full_name text, avatar_url text, phone text, email text,
+               instagram_url text, linkedin_url text, occupation text, profile_score smallint,
+               phone_verified boolean, email_verified boolean, status text, party_size smallint,
+               icebreaker text, requested_at timestamptz, priority int)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not private.is_admin() then raise exception 'Admins only' using errcode = 'insufficient_privilege'; end if;
+  return query
+  select q.* from (
+    select r.id, u.display_name, p.full_name, u.avatar_url, p.phone, p.email, p.instagram_url, p.linkedin_url,
+           u.occupation, u.profile_score, p.phone_verified_at is not null, p.email_verified_at is not null,
+           r.status, r.party_size, r.icebreaker, r.created_at,
+           (row_number() over (order by (r.status in ('cancelled', 'declined')), u.profile_score desc, r.created_at))::int as prio
+    from public.plan_requests r
+    join public.users u on u.id = r.user_id
+    left join public.user_private p on p.user_id = u.id
+    where r.plan_ref = p_plan_ref
+  ) q
+  order by q.prio;
+end $$;
+
+-- Fill a plan automatically: keep everyone already approved, then approve the
+-- highest-priority pending / waiting people until the seats run out; everyone
+-- else goes on the waiting list in priority order. Run again after a cancellation.
+create or replace function public.admin_fill_plan(p_plan_ref text, p_capacity int)
+returns table (approved int, waitlisted int, seats_left int)
+language plpgsql security definer set search_path = '' as $$
+declare
+  left_seats int;
+  a int := 0;
+  w int := 0;
+  r record;
+begin
+  if not private.is_admin() then raise exception 'Admins only' using errcode = 'insufficient_privilege'; end if;
+  if p_capacity is null or p_capacity < 1 or p_capacity > 500 then raise exception 'Capacity must be 1 to 500'; end if;
+  perform pg_advisory_xact_lock(hashtext('plan:' || p_plan_ref));   -- one fill at a time per plan
+
+  select p_capacity - coalesce(sum(pr.party_size), 0) into left_seats
+  from public.plan_requests pr where pr.plan_ref = p_plan_ref and pr.status = 'approved';
+
+  for r in
+    select pr.id, pr.party_size, pr.status from public.plan_requests pr join public.users u on u.id = pr.user_id
+    where pr.plan_ref = p_plan_ref and pr.status in ('pending', 'waitlisted')
+    order by u.profile_score desc, pr.created_at
+  loop
+    if r.party_size <= left_seats then
+      update public.plan_requests set status = 'approved' where id = r.id;
+      left_seats := left_seats - r.party_size; a := a + 1;
+    else
+      if r.status <> 'waitlisted' then
+        update public.plan_requests set status = 'waitlisted' where id = r.id;
+      end if;
+      w := w + 1;
+    end if;
+  end loop;
+  return query select a, w, greatest(left_seats, 0);
+end $$;
+
+-- Interest and demand for every plan that has any activity.
+create or replace function public.admin_interest_summary()
+returns table (plan_ref text, interested int, skipped int, requests int, approved_seats int, waitlisted int)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not private.is_admin() then raise exception 'Admins only' using errcode = 'insufficient_privilege'; end if;
+  return query
+  with refs as (select pi.plan_ref as ref from public.plan_interest pi union select pr.plan_ref from public.plan_requests pr)
+  select refs.ref,
+         (select count(*)::int from public.plan_interest x where x.plan_ref = refs.ref and x.reaction = 'interested'),
+         (select count(*)::int from public.plan_interest x where x.plan_ref = refs.ref and x.reaction = 'skip'),
+         (select count(*)::int from public.plan_requests x where x.plan_ref = refs.ref and x.status <> 'cancelled'),
+         (select coalesce(sum(x.party_size), 0)::int from public.plan_requests x where x.plan_ref = refs.ref and x.status = 'approved'),
+         (select count(*)::int from public.plan_requests x where x.plan_ref = refs.ref and x.status = 'waitlisted')
+  from refs;
+end $$;
+
+revoke all on function public.admin_plan_queue(text)      from public, anon;
+revoke all on function public.admin_fill_plan(text, int)  from public, anon;
+revoke all on function public.admin_interest_summary()    from public, anon;
+grant execute on function public.admin_plan_queue(text)     to authenticated;
+grant execute on function public.admin_fill_plan(text, int) to authenticated;
+grant execute on function public.admin_interest_summary()   to authenticated;

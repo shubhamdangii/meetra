@@ -21,9 +21,10 @@ The website already has the login, profile and logout pages. They stay switched 
    ❌ **Never** paste the `service_role` / `secret` key, the database password, the Google client secret or any Twilio token into any file in this repo.
 4. Supabase → **Authentication → URL Configuration**:
    - **Site URL:** `https://shubhamdangii.github.io/meetra/`
-   - **Redirect URLs:** add both:
-     - `https://shubhamdangii.github.io/meetra/profile.html`
-     - `http://localhost:5173/profile.html` (for testing on your computer)
+   - **Redirect URLs:** add all four:
+     - `https://shubhamdangii.github.io/meetra/login.html` (Google login comes back here)
+     - `https://shubhamdangii.github.io/meetra/profile.html` (email verification link)
+     - `http://localhost:5173/login.html` and `http://localhost:5173/profile.html` (for testing on your computer)
 
 ## 3. Login with Google (Gmail)
 1. Go to **console.cloud.google.com** → create a project called `meetra`.
@@ -35,7 +36,7 @@ The website already has the login, profile and logout pages. They stay switched 
 5. Supabase → **Authentication → Providers → Google** → Enable → paste both → Save.
    The client secret lives only inside Supabase, never in the repo.
 
-Test it: open the site → **Log in** → **Continue with Google**. You'll land on the profile page.
+Test it: open the site → **Log in** → **Continue with Google**. New members land on the profile page; if they were requesting a seat, they go straight back to that plan.
 
 ## 4. Login with WhatsApp (OTP code)
 Supabase sends WhatsApp codes through **Twilio**.
@@ -57,6 +58,7 @@ update public.users set role = 'admin'
 where auth_id = (select id from auth.users where email = 'YOUR-EMAIL@gmail.com');
 ```
 Admins can see every member's private details. Give this role only to people you fully trust.
+Then open **Admin** from your photo menu (or `admin.html`) to see swipe interest per plan and to approve requests by priority.
 
 ## 6. Put it live
 Commit and push the changed `config.js`. GitHub Pages updates within a minute.
@@ -65,12 +67,19 @@ Commit and push the changed `config.js`. GitHub Pages updates within a minute.
 
 ## What members see
 1. **Log in** button at the top right → Google or WhatsApp.
-2. First time → **profile page** with a progress bar. Required:
-   - **Shown to everyone:** photo, first name, city, what they do, a short bio (20+ characters)
-   - **Private:** full name, date of birth (18+ only), gender, WhatsApp number, email, Instagram *or* LinkedIn, and agreeing to the house rules
-3. Badges show **WhatsApp verified** and **Email verified**. A Google user can verify their WhatsApp number on the profile page, and a WhatsApp user can verify their email.
-4. **Request a seat** and **Host a meetup** only work once the profile is complete. Otherwise the member is sent to log in or finish the profile first, then brought back.
-5. **Log out:** avatar menu at the top right, or the bottom of the profile page.
+2. First time → **profile page** with a **priority score (0–100)**. Nothing is required; every detail adds points:
+   - **Shown to everyone:** photo (+15), first name, city, what they do, bio (+10, longer bio +5 more)
+   - **Private:** full name, date of birth (18+ only), gender, WhatsApp number, email, Instagram, LinkedIn, house rules
+   - **Verified by login:** WhatsApp verified +10, email verified +5
+3. **Request a seat** only needs login. Everyone can request; **seats go to the highest scores first**, then whoever asked earlier.
+4. **Waiting list:** when a plan is full, the button says **Join the waiting list**. Members see their place ("You're #3") in the same priority order, and can cancel any time.
+5. **Discover** (`swipe.html`): swipe right ♥ for interested, left ✕ to skip. Works without login too. ♥ plans are also saved to *Your plans*. The team sees the counts on the admin page.
+6. **Your plans** shows each request's status: pending, you're in, waiting list.
+7. **Log out:** photo menu at the top right, or the bottom of the profile page.
+
+## For the team (admin page)
+- **♥ Interest tab:** every plan with interested / skipped counts, interest %, requests, seats filled and waiting list. Sort by any column.
+- **Requests tab:** pick a plan → everyone who asked, best profiles first, with WhatsApp link, Instagram/LinkedIn and score. Approve, waitlist or decline one by one, or press **Auto-fill seats by priority**: it approves the best profiles until the plan is full and puts the rest on the waiting list in order. After a cancellation, press it again to promote the next person.
 
 ## Who can see what
 | Data | Who sees it |
@@ -84,6 +93,8 @@ The database enforces all of this, not only the website, so it holds even if som
 ## Check after setup
 - [ ] Google login lands on the profile page, with name and photo filled in from Google
 - [ ] WhatsApp code arrives and logs you in
-- [ ] Saving the full profile shows "Profile complete"
+- [ ] Saving the profile shows your new priority score
+- [ ] Swiping on Discover shows up on the admin page under ♥ Interest
+- [ ] Auto-fill on the admin page approves the highest scores and waitlists the rest
 - [ ] Logged out → "Request a seat" sends you to the login page
 - [ ] **Verify** on the phone field (after Google login) sends a WhatsApp code. This uses Supabase's phone-change check; test it once your Twilio sender is live.

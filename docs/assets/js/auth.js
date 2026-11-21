@@ -67,9 +67,11 @@
       <button class="avatar-btn ${me.profile_complete ? "" : "todo"}" id="avatarBtn" aria-haspopup="true" aria-label="Your account">${pic}</button>
       <div class="city-menu account-menu" id="accountMenu" role="menu">
         <div class="acct-head"><b>${esc(me.display_name || "Your account")}</b>
-          <small>${me.profile_complete ? "✓ Profile complete" : "Profile not complete yet"}</small></div>
-        <a href="profile.html" role="menuitem"><span>${me.profile_complete ? "My profile" : "Complete my profile"}</span>${me.profile_complete ? "" : "<small class='dot'>●</small>"}</a>
+          <small>Profile score ${me.profile_score ?? 0}/100${me.profile_complete ? " · complete ✓" : ""}</small></div>
+        <a href="profile.html" role="menuitem"><span>My profile</span>${me.profile_complete ? "" : "<small class='dot'>●</small>"}</a>
         <a href="saved.html" role="menuitem"><span>Your plans</span></a>
+        <a href="swipe.html" role="menuitem"><span>Discover plans</span></a>
+        ${me.role === "admin" ? `<a href="admin.html" role="menuitem"><span>Admin</span></a>` : ""}
         <button id="logoutBtn" role="menuitem"><span>Log out</span></button>
       </div>`;
     const menu = document.getElementById("accountMenu");
@@ -82,10 +84,10 @@
   function renderReminder() {
     const old = document.getElementById("profileNudge");
     if (old) old.remove();
-    if (!state.session || !state.me || state.me.profile_complete || /profile\.html$/.test(location.pathname)) return;
+    if (!state.session || !state.me || state.me.profile_score >= 70 || /(profile|admin)\.html$/.test(location.pathname)) return;
     const bar = document.createElement("div");
     bar.id = "profileNudge"; bar.className = "nudge";
-    bar.innerHTML = `<div class="wrap"><span>👋 Finish your profile so hosts can confirm your seat.</span><a class="btn btn-sun btn-sm" href="profile.html">Complete profile →</a></div>`;
+    bar.innerHTML = `<div class="wrap"><span>👋 Your profile score is ${state.me.profile_score}/100. Seats go to the most complete profiles first.</span><a class="btn btn-sun btn-sm" href="profile.html">Add details →</a></div>`;
     const header = document.querySelector(".site-header");
     header ? header.after(bar) : document.body.prepend(bar);
   }
@@ -96,16 +98,28 @@
     location.href = "index.html";
   }
 
-  /* Call before anything that needs a trusted member (e.g. requesting a seat).
-     Returns true when the visitor is logged in with a complete profile.
-     Otherwise sends them to log in / finish their profile and returns false.
+  /* Call before anything that needs a known member (e.g. requesting a seat).
+     Returns true when the visitor is logged in; otherwise sends them to the
+     login page (and back here afterwards) and returns false.
+     A short profile does NOT block anyone; it only lowers their priority.
      When login is switched off it returns true so the site keeps working. */
-  async function requireCompleteProfile(nextUrl = location.href) {
+  async function requireLogin(nextUrl = location.href) {
     if (!enabled) return true;
     await ready;
     if (!state.session) { rememberNext(nextUrl); location.href = "login.html"; return false; }
-    if (!state.me || !state.me.profile_complete) { rememberNext(nextUrl); location.href = "profile.html"; return false; }
     return true;
+  }
+
+  // A random id for this browser, used to count swipe interest without login.
+  function deviceId() {
+    let id = null;
+    try { id = localStorage.getItem("mt-device"); } catch {}
+    if (!id || !/^[0-9a-f-]{36}$/.test(id)) {
+      id = crypto.randomUUID ? crypto.randomUUID()
+        : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+      try { localStorage.setItem("mt-device", id); } catch {}
+    }
+    return id;
   }
   function rememberNext(url) { try { sessionStorage.setItem(NEXT_KEY, url); } catch {} }
   function takeNext(fallback = "events.html") {
@@ -116,7 +130,7 @@
   }
 
   window.AUTH = {
-    enabled, ready, logout, requireCompleteProfile, rememberNext, takeNext, refreshMe,
+    enabled, ready, logout, requireLogin, deviceId, rememberNext, takeNext, refreshMe,
     get client() { return client; },
     get session() { return state.session; },
     get me() { return state.me; },

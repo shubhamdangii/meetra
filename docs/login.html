@@ -83,7 +83,7 @@ if (!AUTH.enabled) {
   $("#googleBtn").disabled = true; $("#waBtn").disabled = true;
 } else {
   // Already logged in? Go on.
-  AUTH.ready.then(s => { if (s.session) location.replace(s.me && s.me.profile_complete ? AUTH.takeNext() : "profile.html"); });
+  AUTH.ready.then(s => { if (s.session) location.replace(AUTH.takeNext(s.me && s.me.profile_score >= 70 ? "events.html" : "profile.html")); });
 }
 
 $("#googleBtn").onclick = async () => {
@@ -92,7 +92,7 @@ $("#googleBtn").onclick = async () => {
   await AUTH.ready;
   const { error } = await AUTH.client.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: AUTH.redirectTo("profile.html"), queryParams: { prompt: "select_account" } }
+    options: { redirectTo: AUTH.redirectTo("login.html"), queryParams: { prompt: "select_account" } }
   });
   if (error) { $("#googleBtn").disabled = false; msg($("#waMsg"), "Google login didn't start: " + error.message); }
 };
@@ -143,7 +143,7 @@ $("#otpForm").onsubmit = async e => {
   if (error) return msg($("#otpMsg"), /expired|invalid/i.test(error.message) ? "That code is wrong or expired. Try again or resend." : error.message);
   msg($("#otpMsg"), "Logged in ✓", "ok");
   await AUTH.refreshMe();
-  location.replace(AUTH.me && AUTH.me.profile_complete ? AUTH.takeNext() : "profile.html");
+  location.replace(AUTH.takeNext(AUTH.me && AUTH.me.profile_score >= 70 ? "events.html" : "profile.html"));
 };
 
 $("#resend").onclick = async () => {

@@ -16,7 +16,7 @@
   <section class="page-hero" style="padding-bottom:0">
     <span class="eyebrow">Your profile</span>
     <h1 style="font-size:clamp(40px,6vw,68px)">Let hosts <span class="serif">know you.</span></h1>
-    <p>Every guest has a real, complete profile. That's how hosts approve seats and everyone feels safe at the table.</p>
+    <p>The more you share, the higher your <b>priority score</b>. When a plan is popular, seats and waiting-list places go to the most complete profiles first.</p>
     <div id="setupNote" style="margin-top:16px"></div>
     <div class="progress" aria-hidden="true"><i id="bar" style="width:0%"></i></div>
     <small class="muted" id="progressText"></small>
@@ -26,7 +26,7 @@
   <form id="pf" novalidate>
     <!-- PHOTO -->
     <div class="pcard">
-      <h2>Your photo <span class="req">*</span></h2>
+      <h2>Your photo</h2>
       <p class="muted">A clear photo of your face. Shown to other guests and hosts.</p>
       <div class="photo-row">
         <div class="photo-prev" id="photoPrev">🙂</div>
@@ -44,10 +44,10 @@
       <h2>About you</h2>
       <p class="muted">👀 Public: other guests see this.</p>
       <div class="pgrid">
-        <div class="field"><label for="displayName">First name <span class="req">*</span></label><input id="displayName" maxlength="60" autocomplete="given-name" required></div>
-        <div class="field"><label for="city">City <span class="req">*</span></label><select id="city" required></select></div>
-        <div class="field full"><label for="occupation">What do you do? <span class="req">*</span></label><input id="occupation" maxlength="80" placeholder="e.g. Product designer, CA student, Café owner" required></div>
-        <div class="field full"><label for="bio">A few lines about you <span class="req">*</span> <span class="hint" id="bioCount"></span></label>
+        <div class="field"><label for="displayName">First name</label><input id="displayName" maxlength="60" autocomplete="given-name" required></div>
+        <div class="field"><label for="city">City</label><select id="city" required></select></div>
+        <div class="field full"><label for="occupation">What do you do?</label><input id="occupation" maxlength="80" placeholder="e.g. Product designer, CA student, Café owner" required></div>
+        <div class="field full"><label for="bio">A few lines about you <span class="hint" id="bioCount"></span></label>
           <textarea id="bio" maxlength="500" placeholder="What you're into, what you'd love to talk about, why you're joining…" required></textarea></div>
       </div>
     </div>
@@ -57,13 +57,13 @@
       <h2>Private details</h2>
       <p class="muted">🔒 Only you, the hosts of plans you request, and the meetra team can see these.</p>
       <div class="pgrid">
-        <div class="field full"><label for="fullName">Full name (as on your ID) <span class="req">*</span></label><input id="fullName" maxlength="100" autocomplete="name" required></div>
-        <div class="field"><label for="dob">Date of birth <span class="req">*</span> <span class="hint">18+ only</span></label><input id="dob" type="date" required></div>
-        <div class="field"><label for="gender">Gender <span class="req">*</span></label>
+        <div class="field full"><label for="fullName">Full name (as on your ID)</label><input id="fullName" maxlength="100" autocomplete="name" required></div>
+        <div class="field"><label for="dob">Date of birth <span class="hint">18+ only</span></label><input id="dob" type="date" required></div>
+        <div class="field"><label for="gender">Gender</label>
           <select id="gender" required><option value="">Choose…</option><option value="woman">Woman</option><option value="man">Man</option><option value="non_binary">Non-binary</option><option value="prefer_not_to_say">Prefer not to say</option></select></div>
 
         <div class="full verify-row">
-          <div class="field"><label for="phone">WhatsApp number <span class="req">*</span> <span class="vtag" id="phoneTag"></span></label>
+          <div class="field"><label for="phone">WhatsApp number <span class="vtag" id="phoneTag"></span></label>
             <div class="phone-row"><span>+91</span><input id="phone" inputmode="numeric" maxlength="10" autocomplete="tel-national" required></div></div>
           <button class="btn btn-white btn-sm" type="button" id="verifyPhone" hidden>Verify</button>
         </div>
@@ -73,7 +73,7 @@
         </div>
 
         <div class="full verify-row">
-          <div class="field"><label for="email">Email <span class="req">*</span> <span class="vtag" id="emailTag"></span></label><input id="email" type="email" maxlength="200" autocomplete="email" required></div>
+          <div class="field"><label for="email">Email <span class="vtag" id="emailTag"></span></label><input id="email" type="email" maxlength="200" autocomplete="email" required></div>
           <button class="btn btn-white btn-sm" type="button" id="verifyEmail" hidden>Verify</button>
         </div>
         <p class="form-msg full" id="verifyMsg"></p>
@@ -82,7 +82,7 @@
 
     <!-- SOCIAL -->
     <div class="pcard">
-      <h2>Social profile <span class="req">*</span></h2>
+      <h2>Social profile</h2>
       <p class="muted">At least one, so hosts can see you're a real person. 🔒 Private.</p>
       <div class="pgrid">
         <div class="field"><label for="instagram">Instagram</label><input id="instagram" placeholder="@yourhandle"></div>
@@ -94,7 +94,7 @@
 
     <!-- RULES -->
     <div class="pcard">
-      <h2>House rules <span class="req">*</span></h2>
+      <h2>House rules</h2>
       <p class="muted">Be kind, be on time, no pushy dating or selling, respect everyone's privacy. <a href="about.html#safety" style="text-decoration:underline">Read all rules</a>.</p>
       <label class="check" style="margin:0"><input type="checkbox" id="rules"> I agree to the house rules and confirm the details above are true.</label>
     </div>
@@ -138,40 +138,49 @@ function linkedinUrl(v) {
   return m ? `https://www.linkedin.com/in/${m[1]}` : undefined;
 }
 
-/* ---------- what's still missing ---------- */
-function missing() {
-  const m = [];
-  if (!avatarUrl) m.push("photo");
-  if (!$("#displayName").value.trim()) m.push("first name");
-  if (!$("#city").value) m.push("city");
-  if (!$("#occupation").value.trim()) m.push("what you do");
-  if ($("#bio").value.trim().length < 20) m.push("bio (20+ characters)");
-  if ($("#fullName").value.trim().length < 2) m.push("full name");
-  if (!$("#dob").value) m.push("date of birth");
-  if (!$("#gender").value) m.push("gender");
-  if (!/^[6-9]\d{9}$/.test($("#phone").value)) m.push("WhatsApp number");
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test($("#email").value.trim())) m.push("email");
-  if (!instaUrl($("#instagram").value) && !linkedinUrl($("#linkedin").value)) m.push("Instagram or LinkedIn");
-  if (!$("#rules").checked) m.push("house rules");
-  return m;
+/* ---------- priority score (same weights as db/schema.sql) ---------- */
+function scoreParts() {
+  const me = AUTH.me || {}, bio = $("#bio").value.trim().length;
+  return [
+    ["photo", 15, !!avatarUrl],
+    ["first name", 5, !!$("#displayName").value.trim()],
+    ["city", 5, !!$("#city").value],
+    ["what you do", 5, !!$("#occupation").value.trim()],
+    ["bio of 20+ characters", 10, bio >= 20],
+    ["longer bio (80+ characters)", 5, bio >= 80],
+    ["full name", 5, $("#fullName").value.trim().length >= 2],
+    ["date of birth", 5, !!$("#dob").value],
+    ["gender", 5, !!$("#gender").value],
+    ["WhatsApp number", 5, /^[6-9]\d{9}$/.test($("#phone").value)],
+    ["verified WhatsApp", 10, !!me.phone_verified],
+    ["email", 5, /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test($("#email").value.trim())],
+    ["verified email", 5, !!me.email_verified],
+    ["Instagram", 5, !!instaUrl($("#instagram").value)],
+    ["LinkedIn", 5, !!linkedinUrl($("#linkedin").value)],
+    ["house rules", 5, $("#rules").checked]
+  ];
 }
-const TOTAL = 12;
+function missing() { return scoreParts().filter(p => !p[2]).map(p => p[0]); }
 function renderProgress() {
-  const m = missing(), done = TOTAL - m.length;
-  $("#bar").style.width = Math.round(done / TOTAL * 100) + "%";
-  $("#progressText").textContent = m.length ? `${done} of ${TOTAL} done · still needed: ${m.join(", ")}` : "All done ✓";
+  const parts = scoreParts(), score = parts.reduce((s, p) => s + (p[2] ? p[1] : 0), 0);
+  const todo = parts.filter(p => !p[2]).sort((a, b) => b[1] - a[1]);
+  $("#bar").style.width = score + "%";
+  $("#progressText").textContent = todo.length
+    ? `Priority score ${score}/100 · biggest boosts: ${todo.slice(0, 4).map(p => `${p[0]} +${p[1]}`).join(", ")}`
+    : "Priority score 100/100 · top priority ✓";
   $("#bioCount").textContent = `${$("#bio").value.trim().length}/500`;
   const me = AUTH.me || {};
   $("#badges").innerHTML = [
     [me.phone_verified, "WhatsApp verified", "WhatsApp not verified"],
     [me.email_verified, "Email verified", "Email not verified"],
-    [me.profile_complete, "Profile complete", "Profile incomplete"]
+    [score >= 70, `Score ${score}/100`, `Score ${score}/100`]
   ].map(([on, yes, no]) => `<span class="badge ${on ? "on" : "off"}">${on ? "✓ " + yes : no}</span>`).join("");
   $("#phoneTag").innerHTML = me.phone_verified ? `<span class="yes">✓ verified</span>` : `<span class="no">not verified</span>`;
   $("#phoneTag").className = "vtag";
   $("#emailTag").innerHTML = me.email_verified ? `<span class="yes">✓ verified</span>` : `<span class="no">not verified</span>`;
   $("#emailTag").className = "vtag";
-  $("#saveTitle").textContent = me.profile_complete ? "Your profile is complete ✓" : (m.length ? `${m.length} thing${m.length > 1 ? "s" : ""} left` : "Ready to save");
+  $("#saveTitle").textContent = `Priority score: ${score}/100`;
+  $("#saveSub").textContent = score === 100 ? "Top priority. Save any changes." : "Save to update your priority. Nothing here is required.";
 }
 $("#pf").addEventListener("input", renderProgress);
 $("#pf").addEventListener("change", renderProgress);
@@ -319,14 +328,11 @@ $("#pf").onsubmit = async e => {
 
   priv = { ...priv, ...pri };
   await AUTH.refreshMe(); renderProgress();
-  if (AUTH.me && AUTH.me.profile_complete) {
-    msg($("#saveMsg"), "Saved ✓ Your profile is complete.", "ok");
-    A.toast("Profile complete ✓");
-    const next = AUTH.takeNext("");
-    if (next) setTimeout(() => location.href = next, 900);
-  } else {
-    msg($("#saveMsg"), "Saved. Still needed: " + missing().join(", "), "ok");
-  }
+  const score = AUTH.me ? AUTH.me.profile_score : 0;
+  msg($("#saveMsg"), `Saved ✓ Your priority score is ${score}/100.`, "ok");
+  A.toast(`Saved · score ${score}/100`);
+  const next = AUTH.takeNext("");
+  if (next) setTimeout(() => location.href = next, 900);   // back to the plan they were requesting
 };
 
 $("#logout").onclick = () => AUTH.enabled ? AUTH.logout() : (location.href = "index.html");

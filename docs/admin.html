@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · meetra</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#FFF7EC">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316122B'/><text x='50' y='72' font-size='64' text-anchor='middle' fill='%23FFC93C' font-family='Arial' font-weight='900'>m</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .tabs{display:flex;gap:8px;margin:18px 0 20px;flex-wrap:wrap}
+  .tbl-wrap{overflow-x:auto;border:2px solid var(--ink);border-radius:18px;background:#fff;box-shadow:var(--sh)}
+  table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1.5px solid var(--soft);vertical-align:top}
+  th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);background:var(--soft);white-space:nowrap;cursor:pointer}
+  tr:last-child td{border-bottom:0}
+  td.num{text-align:right;font-weight:700}
+  .hot{color:#B3134B}
+  .bar-mini{height:8px;background:var(--soft);border-radius:999px;overflow:hidden;min-width:70px;margin-top:4px}
+  .bar-mini i{display:block;height:100%;background:var(--pink)}
+  .who{display:flex;gap:10px;align-items:center;min-width:180px}
+  .who img,.who .ph{width:40px;height:40px;border-radius:12px;border:2px solid var(--ink);object-fit:cover;display:grid;place-items:center;background:var(--sun);font-weight:800;flex:0 0 40px}
+  .st{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;border:1.5px solid var(--ink);white-space:nowrap}
+  .st.approved{background:#C9F5E4}.st.waitlisted{background:#FFE9A8}.st.pending{background:#fff}.st.declined,.st.cancelled{background:#FFE3EC;color:#8A1240}
+  .acts{display:flex;gap:6px;flex-wrap:wrap}
+  .acts button{padding:5px 10px;border:1.5px solid var(--ink);border-radius:999px;font-size:12px;font-weight:700;background:#fff}
+  .acts button:hover{background:var(--sun)}
+  .toolbar2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .kpis{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .kpi{background:#fff;border:2px solid var(--ink);border-radius:16px;padding:12px 16px;min-width:140px}
+  .kpi b{display:block;font-size:28px;letter-spacing:-.04em;line-height:1}
+  .kpi span{font-size:12px;color:var(--ink-2);font-weight:600}
+</style>
+</head>
+<body>
+<main class="wrap" style="padding-bottom:60px">
+  <section class="page-hero" style="padding-bottom:0">
+    <span class="eyebrow">Team only</span>
+    <h1 style="font-size:clamp(40px,6vw,64px)">Admin <span class="serif">desk.</span></h1>
+  </section>
+  <div id="gate"></div>
+  <div id="app" hidden>
+    <div class="tabs"><button class="pill on" data-tab="interest">♥ Interest</button><button class="pill" data-tab="requests">🎟 Requests & waiting list</button></div>
+
+    <section id="tab-interest">
+      <div class="kpis" id="kpis"></div>
+      <div class="toolbar2">
+        <label class="check" style="margin:0"><input type="checkbox" id="upcomingOnly" checked> Upcoming only</label>
+        <span class="muted" style="font-size:13px">City follows the picker at the top. Click a column to sort.</span>
+      </div>
+      <div class="tbl-wrap"><table id="interestTbl"></table></div>
+    </section>
+
+    <section id="tab-requests" hidden>
+      <div class="toolbar2">
+        <select class="select" id="planSel" aria-label="Choose a plan" style="max-width:100%"></select>
+        <button class="btn btn-sun btn-sm" id="fillBtn">Auto-fill seats by priority</button>
+        <button class="btn btn-white btn-sm" id="reloadBtn">Refresh</button>
+      </div>
+      <p class="muted" style="font-size:13px;margin-bottom:12px">Highest profile score first, then who asked earlier. Auto-fill keeps everyone already approved, approves the next best people until seats run out, and puts the rest on the waiting list in order. Run it again after a cancellation to promote the next person.</p>
+      <div class="tbl-wrap"><table id="queueTbl"></table></div>
+    </section>
+  </div>
+</main>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/auth.js"></script>
+<script>
+const A = APP; A.header(""); A.footer(); A.title("Admin");
+const $ = A.$, esc = A.esc;
+let summary = [], sortKey = "interested", sortDir = -1;
+
+(async () => {
+  if (!AUTH.enabled) { $("#gate").innerHTML = `<div class="setup-note">Login isn't switched on yet, so there's nothing to show. See SETUP-LOGIN.md.</div>`; return; }
+  const s = await AUTH.ready;
+  if (!s.session) { AUTH.rememberNext(location.href); location.replace("login.html"); return; }
+  if (!s.me || s.me.role !== "admin") { $("#gate").innerHTML = `<div class="setup-note">This page is for the meetra team only.</div>`; return; }
+  $("#app").hidden = false;
+  await loadSummary();
+})();
+
+/* ---------- tabs ---------- */
+A.$$(".tabs .pill").forEach(b => b.onclick = () => {
+  A.$$(".tabs .pill").forEach(x => x.classList.toggle("on", x === b));
+  $("#tab-interest").hidden = b.dataset.tab !== "interest";
+  $("#tab-requests").hidden = b.dataset.tab !== "requests";
+  if (b.dataset.tab === "requests") fillPlanSelect();
+});
+
+/* ---------- interest ---------- */
+async function loadSummary() {
+  const { data, error } = await AUTH.client.rpc("admin_interest_summary");
+  if (error) return A.toast("Couldn't load: " + error.message);
+  const byRef = new Map(data.map(r => [r.plan_ref, r]));
+  // include every upcoming plan, even with no activity yet
+  summary = A.ALL.map(e => ({ e, ...(byRef.get(e.id) || { interested: 0, skipped: 0, requests: 0, approved_seats: 0, waitlisted: 0 }) }));
+  renderInterest();
+}
+function renderInterest() {
+  const up = $("#upcomingOnly").checked;
+  const rows = summary.filter(r => A.inCity(r.e) && (!up || r.e.day >= 0)).map(r => ({
+    ...r, title: r.e.title, day: r.e.day,
+    swipes: r.interested + r.skipped, rate: r.interested + r.skipped ? r.interested / (r.interested + r.skipped) : 0
+  }));
+  rows.sort((a, b) => sortDir * (((a[sortKey] ?? 0) > (b[sortKey] ?? 0)) - ((a[sortKey] ?? 0) < (b[sortKey] ?? 0))) || a.e.date - b.e.date);
+  const tot = k => rows.reduce((s, r) => s + r[k], 0);
+  $("#kpis").innerHTML = [["interested", "♥ interested"], ["skipped", "✕ skipped"], ["requests", "seat requests"], ["waitlisted", "on waiting lists"]]
+    .map(([k, l]) => `<div class="kpi"><b>${tot(k)}</b><span>${l}</span></div>`).join("");
+  const cols = [["title", "Plan"], ["date", "Date"], ["interested", "♥"], ["skipped", "✕"], ["rate", "Interest %"], ["requests", "Requests"], ["approved_seats", "Seats filled"], ["waitlisted", "Waiting"]];
+  $("#interestTbl").innerHTML = `<thead><tr>${cols.map(([k, l]) => `<th data-k="${k}">${l}${sortKey === k ? (sortDir < 0 ? " ↓" : " ↑") : ""}</th>`).join("")}</tr></thead><tbody>${
+    rows.map(r => `<tr>
+      <td><a href="${A.url(r.e)}" style="font-weight:700">${r.e.emoji} ${esc(r.e.title)}</a><br><small class="muted">${esc(r.e.area)}, ${CONFIG.cities[r.e.city].name}</small></td>
+      <td style="white-space:nowrap">${A.relDay(r.e.date)}<br><small class="muted">${r.e.time}</small></td>
+      <td class="num ${r.interested >= 10 ? "hot" : ""}">${r.interested}</td>
+      <td class="num">${r.skipped}</td>
+      <td>${r.swipes ? Math.round(r.rate * 100) + "%" : "–"}<div class="bar-mini"><i style="width:${Math.round(r.rate * 100)}%"></i></div></td>
+      <td class="num">${r.requests}</td>
+      <td class="num">${r.approved_seats}/${r.e.seats}</td>
+      <td class="num">${r.waitlisted}</td></tr>`).join("") || `<tr><td colspan="8" class="muted">No plans.</td></tr>`}</tbody>`;
+  A.$$("#interestTbl th").forEach(th => th.onclick = () => {
+    const k = th.dataset.k === "date" ? "day" : th.dataset.k;
+    sortDir = sortKey === k ? -sortDir : -1; sortKey = k; renderInterest();
+  });
+}
+$("#upcomingOnly").onchange = renderInterest;
+document.addEventListener("citychange", () => { renderInterest(); fillPlanSelect(); });
+
+/* ---------- requests & waiting list ---------- */
+function fillPlanSelect() {
+  const withReq = summary.filter(r => A.inCity(r.e) && r.e.day >= 0 && (r.requests || r.waitlisted)).sort((a, b) => a.e.date - b.e.date);
+  const keep = $("#planSel").value;
+  $("#planSel").innerHTML = withReq.length
+    ? withReq.map(r => `<option value="${r.e.id}">${A.relDay(r.e.date)} · ${esc(r.e.title)} (${r.requests} requests)</option>`).join("")
+    : `<option value="">No requests yet</option>`;
+  if (keep && withReq.some(r => r.e.id === keep)) $("#planSel").value = keep;
+  loadQueue();
+}
+async function loadQueue() {
+  const ref = $("#planSel").value;
+  $("#fillBtn").disabled = !ref;
+  if (!ref) { $("#queueTbl").innerHTML = `<tbody><tr><td class="muted">When members request seats, they show up here.</td></tr></tbody>`; return; }
+  const e = A.byId(ref);
+  $("#fillBtn").textContent = `Auto-fill ${e.seats} seats by priority`;
+  const { data, error } = await AUTH.client.rpc("admin_plan_queue", { p_plan_ref: ref });
+  if (error) return A.toast("Couldn't load: " + error.message);
+  $("#queueTbl").innerHTML = `<thead><tr><th>#</th><th>Member</th><th>Score</th><th>Contact</th><th>Seats</th><th>Ask me about</th><th>Status</th><th></th></tr></thead><tbody>${
+    data.map(r => `<tr>
+      <td class="num">${r.priority}</td>
+      <td><div class="who">${r.avatar_url ? `<img src="${esc(r.avatar_url)}" alt="">` : `<span class="ph">${esc((r.display_name || "?")[0])}</span>`}
+        <div><b>${esc(r.full_name || r.display_name)}</b><br><small class="muted">${esc(r.occupation || "")}</small></div></div></td>
+      <td><span class="score-pill">${r.profile_score}</span><br><small class="muted">${r.phone_verified ? "WA ✓" : ""} ${r.email_verified ? "Email ✓" : ""}</small></td>
+      <td style="white-space:nowrap">${r.phone ? `<a href="https://wa.me/${esc(r.phone.replace("+", ""))}" target="_blank" rel="noopener" style="text-decoration:underline">${esc(r.phone)}</a>` : "<span class='muted'>no phone</span>"}
+        <br>${r.instagram_url ? `<a href="${esc(r.instagram_url)}" target="_blank" rel="noopener">Instagram</a> ` : ""}${r.linkedin_url ? `<a href="${esc(r.linkedin_url)}" target="_blank" rel="noopener">LinkedIn</a>` : ""}</td>
+      <td class="num">${r.party_size}</td>
+      <td style="max-width:220px">${esc(r.icebreaker || "")}</td>
+      <td><span class="st ${r.status}">${r.status === "waitlisted" ? "waiting list" : r.status}</span></td>
+      <td><div class="acts">${["approved", "waitlisted", "declined"].filter(s => s !== r.status).map(s =>
+        `<button data-id="${r.request_id}" data-s="${s}">${{ approved: "Approve", waitlisted: "Waitlist", declined: "Decline" }[s]}</button>`).join("")}</div></td>
+    </tr>`).join("") || `<tr><td colspan="8" class="muted">No requests.</td></tr>`}</tbody>`;
+}
+$("#planSel").onchange = loadQueue;
+$("#reloadBtn").onclick = async () => { await loadSummary(); fillPlanSelect(); };
+$("#queueTbl").onclick = async ev => {
+  const b = ev.target.closest("button[data-id]"); if (!b) return;
+  const { error } = await AUTH.client.from("plan_requests").update({ status: b.dataset.s }).eq("id", b.dataset.id);
+  if (error) return A.toast("Couldn't update: " + error.message);
+  A.toast("Updated ✓"); loadQueue();
+};
+$("#fillBtn").onclick = async () => {
+  const ref = $("#planSel").value, e = A.byId(ref); if (!e) return;
+  $("#fillBtn").disabled = true;
+  const { data, error } = await AUTH.client.rpc("admin_fill_plan", { p_plan_ref: ref, p_capacity: e.seats });
+  $("#fillBtn").disabled = false;
+  if (error) return A.toast("Couldn't fill: " + error.message);
+  const r = data[0];
+  A.toast(`Approved ${r.approved} · waiting list ${r.waitlisted} · ${r.seats_left} seats left`);
+  await loadSummary(); loadQueue();
+};
+</script>
+</body>
+</html>
