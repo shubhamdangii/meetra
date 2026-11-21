@@ -2,6 +2,7 @@
 // Motion toolkit: swipeable galleries, emoji bursts, 3D tilt, magnetic buttons, scroll progress.
 // Everything respects "reduce motion" in the visitor's phone/computer settings.
 import { animate, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -147,4 +148,22 @@ export function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
     return () => c.stop();
   }, [inView, to]);
   return <span ref={ref}>{n}{suffix}</span>;
+}
+
+/* ---------- tiny vibration on Android phones (ignored elsewhere) ---------- */
+export function buzz(ms = 10) {
+  try { if (!reducedMotion() && "vibrate" in navigator) navigator.vibrate(ms); } catch {}
+}
+
+/* ---------- headings & highlights animate in as you scroll (works great on phones) ---------- */
+export function ScrollFX() {
+  const path = usePathname();
+  useEffect(() => {
+    if (reducedMotion() || !("IntersectionObserver" in window)) return;
+    document.documentElement.classList.add("fx-ready");
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("fx-in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -12% 0px" });
+    const t = setTimeout(() => document.querySelectorAll(".h2, .group-head, .eyebrow, .faq-big h2, .cta-band h2, .page-hero h1").forEach((el) => io.observe(el)), 50);
+    return () => { clearTimeout(t); io.disconnect(); };
+  }, [path]);
+  return null;
 }

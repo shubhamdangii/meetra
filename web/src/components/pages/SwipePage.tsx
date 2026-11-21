@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { deviceId, useAuth } from "../AuthProvider";
 import { Poster } from "../ui";
-import { burst } from "../fx";
+import { burst, buzz } from "../fx";
 import { type MeetEvent, eventUrl, hostNames, priceLabel, priceShort, relDay } from "@/lib/events";
 import { store } from "@/lib/store";
 
@@ -67,7 +67,7 @@ export default function SwipePage() {
 
   const decide = useCallback((r: Reaction) => {
     if (!top) return;
-    setLastDir(r);
+    setLastDir(r); buzz(r === "interested" ? 18 : 8);
     setSwipes((s) => { const n = { ...s, [top.id]: r }; store.set(KEY, n); return n; });
     setUndo((u) => [...u, top.id]);
     if (r === "interested" && !isSaved(top.id)) toggleSave(top.id);

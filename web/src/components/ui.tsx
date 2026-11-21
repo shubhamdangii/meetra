@@ -2,7 +2,7 @@
 import { motion, type HTMLMotionProps } from "framer-motion";
 import Link from "next/link";
 import { useApp } from "./AppProvider";
-import { useTilt } from "./fx";
+import { burstFrom, buzz, useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
 import { DOW, MON, type MeetEvent, eventUrl, hostNames, palette, priceLabel, priceShort } from "@/lib/events";
@@ -49,7 +49,7 @@ export function SaveButton({ id, label = false, className = "" }: { id: string; 
   return (
     <motion.button whileTap={{ scale: 0.85 }} className={`${label ? "btn btn-white btn-sm" : "save-btn"} ${on ? "on" : ""} ${className}`}
       aria-label={on ? "Remove from saved" : "Save"} aria-pressed={on}
-      onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); toggleSave(id); }}>
+      onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); if (!on) { burstFrom(ev.currentTarget, ["💖", "💕", "✨"], 9); buzz(); } toggleSave(id); }}>
       <motion.span key={String(on)} initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
         {on ? "♥" : "♡"}
       </motion.span>
@@ -64,9 +64,9 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
   const tilt = useTilt(6);
   return (
     <motion.article className="card" style={{ ...tilt.style, ["--gx" as string]: tilt.glareX }} {...tilt.handlers}
-      initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "0px 0px -30px 0px" }}
-      transition={{ duration: 0.5, ease, delay: (index % 4) * 0.06 }}
-      whileHover={{ y: -4, boxShadow: "7px 7px 0 #16122B" }}>
+      initial={{ opacity: 0, y: 48, scale: 0.92, rotate: index % 2 ? 3 : -3 }} whileInView={{ opacity: 1, y: 0, scale: 1, rotate: 0 }} viewport={{ once: true, margin: "0px 0px -40px 0px" }}
+      transition={{ type: "spring", stiffness: 170, damping: 19, delay: (index % 2) * 0.08 }}
+      whileHover={{ y: -4, boxShadow: "7px 7px 0 #16122B" }} whileTap={{ scale: 0.97 }}>
       <span className="glare" aria-hidden="true" />
       <Poster e={e} />
       <SaveButton id={e.id} />
@@ -94,8 +94,9 @@ export function Chips({ value, onChange, counts }: { value: string; onChange: (i
   return (
     <div className="chips" role="tablist">
       {(CATEGORIES as { id: string; label: string; icon: string }[]).map((c) => (
-        <motion.button key={c.id} whileTap={{ scale: 0.94 }} className={`pill ${value === c.id ? "on" : ""}`} role="tab" aria-selected={value === c.id} onClick={() => onChange(c.id)}>
-          {c.icon} {c.label}{counts && <span className="muted" style={{ marginLeft: 4, color: value === c.id ? "#BDB8D0" : undefined }}>{counts[c.id] ?? 0}</span>}
+        <motion.button key={c.id} whileTap={{ scale: 0.9 }} className={`pill chip ${value === c.id ? "on" : ""}`} role="tab" aria-selected={value === c.id} onClick={() => { onChange(c.id); buzz(); }}>
+          {value === c.id && <motion.span layoutId="chip-on" className="chip-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
+          <span className="chip-txt">{c.icon} {c.label}{counts && <span className="muted" style={{ marginLeft: 4, color: value === c.id ? "#BDB8D0" : undefined }}>{counts[c.id] ?? 0}</span>}</span>
         </motion.button>
       ))}
     </div>

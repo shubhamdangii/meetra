@@ -9,6 +9,7 @@ import { useAuth } from "./AuthProvider";
 import { CONFIG } from "@/lib/config";
 import { cityName } from "@/lib/events";
 import { store } from "@/lib/store";
+import { buzz } from "./fx";
 
 const LINKS = [
   { key: "events", href: "/events/", label: "Explore", icon: "🔍" },
@@ -146,7 +147,11 @@ export function Header() {
       <ProfileNudge />
       <nav className="tabbar" aria-label="Main (mobile)">
         {[{ key: "home", href: "/", label: "Home", icon: "⌂" }, ...LINKS.filter((l) => l.key !== "past")].map((l) => (
-          <Link key={l.key} href={l.href} className={active === l.key ? "active" : ""}><span>{l.icon}</span>{l.label}</Link>
+          <Link key={l.key} href={l.href} className={active === l.key ? "active" : ""} onClick={() => buzz()}>
+            {active === l.key && <motion.i layoutId="tab-on" className="tab-bg" transition={{ type: "spring", stiffness: 420, damping: 30 }} />}
+            <motion.span key={String(active === l.key)} initial={active === l.key ? { scale: 0.4, rotate: -20, y: 6 } : false} animate={{ scale: 1, rotate: 0, y: 0 }} transition={{ type: "spring", stiffness: 500, damping: 12 }}>{l.icon}</motion.span>
+            <b>{l.label}</b>
+          </Link>
         ))}
       </nav>
     </>

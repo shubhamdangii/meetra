@@ -1,11 +1,11 @@
 "use client";
 // Interactive parts of the home page.
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "./AppProvider";
 import { Chips, Empty, EventCard, Poster, Reveal, ease } from "./ui";
-import { CountUp, Gallery } from "./fx";
+import { buzz, CountUp, Gallery } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
 import { MON, type MeetEvent, cityName, eventUrl, hostNames, relDay } from "@/lib/events";
@@ -32,8 +32,12 @@ export function HeroStack() {
     return () => { clearInterval(t); window.removeEventListener("resize", m); };
   }, []);
   const k = mobile ? 0.55 : 1;
+  const dragged = useRef(false);
+  const { scrollY } = useScroll();
+  const py = useTransform(scrollY, [0, 600], [0, -70]);
+  const pr = useTransform(scrollY, [0, 600], [0, -4]);
   return (
-    <div className="hero-stage" aria-label="Featured upcoming plans">
+    <motion.div className="hero-stage" aria-label="Featured upcoming plans (swipe the top card)" style={{ y: py, rotate: pr }}>
       <span className="doodle" style={{ left: -6, top: -6 }}>✨</span>
       <span className="doodle" style={{ right: 20, top: -10, animationDelay: "-2s" }}>🎉</span>
       {!ready && <div className="skeleton" style={{ position: "absolute", left: 110 * k, top: 30, width: mobile ? 230 : 300, height: 380 }} />}
@@ -44,8 +48,12 @@ export function HeroStack() {
             initial={{ opacity: 0, y: 80, rotate: 0 }}
             animate={{ x: p.x * k, y: p.y, rotate: p.rotate, scale: p.scale, opacity: p.opacity }}
             transition={{ type: "spring", stiffness: 120, damping: 18, mass: 0.9 }}
-            whileHover={p.z === 3 ? { rotate: 0, scale: 1.03 } : undefined}>
-            <Link href={eventUrl(e)} style={{ display: "block" }}>
+            whileHover={p.z === 3 ? { rotate: 0, scale: 1.03 } : undefined}
+            drag={p.z === 3 ? "x" : false} dragSnapToOrigin dragElastic={0.6}
+            onDragStart={() => { dragged.current = true; }}
+            onDragEnd={(_, info) => { if (Math.abs(info.offset.x) > 50 || Math.abs(info.velocity.x) > 400) { setTurn((x) => x + 1); buzz(12); } setTimeout(() => { dragged.current = false; }, 50); }}
+            whileDrag={{ scale: 1.05, rotate: 0, cursor: "grabbing" }}>
+            <Link href={eventUrl(e)} style={{ display: "block" }} draggable={false} onClickCapture={(ev) => { if (dragged.current) { ev.preventDefault(); ev.stopPropagation(); } }}>
               <Poster e={e} />
               <div className="sc-body"><div className="meta">{relDay(e.date, today)} · {e.time} · {e.area}</div><h3>{e.title}</h3></div>
             </Link>
@@ -58,7 +66,8 @@ export function HeroStack() {
         <text fontWeight="800" fontSize="21" letterSpacing="3" fill="#16122B" style={{ fontFamily: "var(--display)" }}><textPath href="#circ">COME SOLO ✦ MAKE FRIENDS ✦ EVERY DAY ✦</textPath></text>
       </svg>
       <span className="stamp-core">👋</span>
-    </div>
+      <span className="stack-hint" aria-hidden="true">← swipe →</span>
+    </motion.div>
   );
 }
 
@@ -110,7 +119,7 @@ export function ExplorePreview() {
         <div>
           <span className="eyebrow">What&apos;s on</span>
           <h2 className="h2">Find your <span className="serif" style={{ color: "var(--violet)" }}>next</span> meetup</h2>
-          <p>{ready ? `${upcoming.filter(inCity).length} hosted plans in and around ${cityName(city).replace("All cities", "our cities")}. Swipe the rows →` : "Hosted plans every day."}</p>
+          <p>{ready ? `${upcoming.filter(inCity).length} hosted plans in and around ${cityName(city).replace("All cities", "our cities")}. ` : "Hosted plans every day."}</p>
         </div>
         <div className="toolbar">
           <label className="search"><span>🔍</span><input type="search" placeholder="Search dinners, treks, quiz…" aria-label="Search meetups" onChange={(e) => setQ(e.target.value.trim().toLowerCase())} /></label>
@@ -118,7 +127,7 @@ export function ExplorePreview() {
       </div>
       <Chips value={cat} onChange={setCat} />
       {!ready ? (
-        <div className="gallery"><div className="gallery-track">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ width: 260, height: 360 }} />)}</div></div>
+        <div className="grid">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" />)}</div>
       ) : (
         <AnimatePresence mode="popLayout">
           {buckets.map((b) => {
@@ -127,10 +136,8 @@ export function ExplorePreview() {
             return (
               <motion.div key={b.t + cat + q} className="group" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="group-head"><h3>{b.em} {b.t}</h3><span>{fmt(items[0].date)}{items.length > 1 ? " – " + fmt(items[items.length - 1].date) : ""} · <Link href={more} style={{ textDecoration: "underline" }}>{items.length} plans</Link></span></div>
-                <Gallery label={b.t}>
-                  {items.slice(0, 10).map((e, i) => <EventCard key={e.id} e={e} index={i} />)}
-                  {items.length > 10 && <Link className="g-more" href={more}><b>+{items.length - 10}</b><span>more plans {b.t.toLowerCase()}</span><i>See all →</i></Link>}
-                </Gallery>
+                <div className="grid">{items.slice(0, 4).map((e, i) => <EventCard key={e.id} e={e} index={i} />)}</div>
+                {items.length > 4 && <div className="more-row"><Link className="btn btn-white btn-sm" href={more}>See all {items.length} plans →</Link></div>}
               </motion.div>
             );
           })}
