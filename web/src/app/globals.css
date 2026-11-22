@@ -1018,3 +1018,28 @@ html,body{overflow-x:clip}
 .lb-nav{position:fixed;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:2px solid var(--ink);background:#fff;font-size:28px;line-height:1;cursor:pointer;display:none}
 .lb-nav.prev{left:14px}.lb-nav.next{right:14px}
 @media (min-width:721px){.lb-nav{display:grid;place-items:center}}
+
+/* hero never pushes the page sideways on small phones (rotated cards + spinning stamp) */
+.hero{overflow-x:clip}
+@media (max-width:720px){.stamp{width:96px;height:96px;right:2px;bottom:-18px}.stamp-core{right:30px;bottom:10px;width:36px;height:36px;font-size:16px}}
+
+/* ---------- email + password login ---------- */
+.email-box{display:grid;gap:4px;text-align:left}
+.email-box .field{margin-bottom:10px}
+.auth-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:2px solid var(--ink);border-radius:14px;background:#fff;margin-bottom:12px}
+.auth-seg button{border:0;border-radius:10px;padding:9px 6px;font-weight:700;font-size:15px;background:transparent;color:var(--ink);cursor:pointer;transition:background .2s}
+.auth-seg button.on{background:var(--sun);color:var(--ink)}
+.pw-wrap{position:relative}
+.pw-wrap input{width:100%;padding-right:64px}
+.pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;font-weight:700;font-size:13px;color:var(--violet);cursor:pointer;padding:6px}
+
+/* ---------- install as app ---------- */
+.install-item{width:100%;text-align:left;font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.install-banner{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;background:#fff;border:2px solid var(--ink);border-radius:18px;box-shadow:4px 4px 0 var(--ink)}
+.install-banner img{border-radius:12px;flex:0 0 44px}
+.install-banner div{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.install-banner small{color:var(--muted);font-size:12.5px}
+.ib-x{border:0;background:none;font-size:16px;padding:6px;cursor:pointer;color:var(--muted)}
+.ios-steps{background:#fff;border:2px solid var(--ink);border-radius:16px;padding:14px 16px;margin-top:10px;display:grid;gap:8px;width:100%}
+.install-banner .ios-steps{border:0;margin:0;padding:2px}
+.ios-steps ol{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px}

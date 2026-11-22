@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { InstallMenuItem } from "./InstallApp";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { CONFIG } from "@/lib/config";
@@ -186,6 +187,7 @@ function MobileMenu() {
                   <Link href={href} className="sheet-item"><span>{em}</span><b>{t}<small>{sub}</small></b><i>→</i></Link>
                 </motion.div>
               ))}
+              <InstallMenuItem />
             </motion.nav>
           </motion.div>
         )}

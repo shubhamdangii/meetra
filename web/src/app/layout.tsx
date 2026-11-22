@@ -4,6 +4,7 @@ import { AppProvider } from "@/components/AppProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Footer, Header } from "@/components/Chrome";
 import { ScrollFX, ScrollProgress, ScrollUpFX } from "@/components/fx";
+import { InstallBanner, PwaSetup } from "@/components/InstallApp";
 import { CONFIG } from "@/lib/config";
 import "./globals.css";
 
@@ -11,14 +12,17 @@ import "./globals.css";
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap", axes: ["opsz"] });
 const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: "italic", variable: "--font-serif", display: "swap" });
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const live = Object.values(CONFIG.cities).filter((c) => c.live).map((c) => c.name).join(" & ");
 
 export const metadata: Metadata = {
   title: { default: `${CONFIG.brand} · Hosted meetups in ${live}`, template: `%s · ${CONFIG.brand}` },
   description: `Small hosted meetups for people coming solo: dinners, games nights, walks, sports and trips in ${live}.`,
   openGraph: { title: `${CONFIG.brand} · Hosted meetups for people coming solo`, description: "100+ small hosted plans every month. Come alone, leave with a group chat." },
-  icons: { icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316122B'/><text x='50' y='72' font-size='64' text-anchor='middle' fill='%23FFC93C' font-family='Arial' font-weight='900'>m</text></svg>" },
+  icons: { apple: `${BASE}/icons/apple-touch-icon.png`, icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316122B'/><text x='50' y='72' font-size='64' text-anchor='middle' fill='%23FFC93C' font-family='Arial' font-weight='900'>m</text></svg>" },
   referrer: "strict-origin-when-cross-origin",
+  manifest: `${BASE}/manifest.webmanifest`,
+  appleWebApp: { capable: true, title: CONFIG.brand, statusBarStyle: "default" },
 };
 export const viewport: Viewport = { themeColor: "#FFF7EC", width: "device-width", initialScale: 1 };
 
@@ -55,6 +59,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Header />
             <main id="main">{children}</main>
             <Footer />
+            <PwaSetup />
+            <InstallBanner />
           </AppProvider>
         </AuthProvider>
       </body>

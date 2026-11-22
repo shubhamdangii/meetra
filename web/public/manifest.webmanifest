@@ -1,0 +1,22 @@
+{
+  "name": "meetra · Hosted meetups",
+  "short_name": "meetra",
+  "description": "Small hosted meetups for people coming solo in Jaipur & Ahmedabad.",
+  "id": "/meetra/",
+  "start_url": "/meetra/?source=app",
+  "scope": "/meetra/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF7EC",
+  "theme_color": "#16122B",
+  "categories": ["social", "lifestyle", "events"],
+  "icons": [
+    { "src": "/meetra/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/meetra/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/meetra/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Explore plans", "url": "/meetra/events/", "icons": [{ "src": "/meetra/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "My plans", "url": "/meetra/saved/", "icons": [{ "src": "/meetra/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

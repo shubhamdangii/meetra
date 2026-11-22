@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../AuthProvider";
+import { useApp } from "../AppProvider";
 import { CONFIG } from "@/lib/config";
 import { absUrl } from "@/lib/store";
 
@@ -35,6 +36,7 @@ export default function LoginPage() {
 
   const errText = params.get("error_description") || params.get("error");
   const cameBack = params.has("code");
+  const resetMode = params.get("reset") === "1";   // came back from a "reset password" email
   const showWa = CONFIG.loginWithWhatsApp || waTest;
 
   useEffect(() => { setWaTest(window.location.hash === "#whatsapp-test"); }, []);
@@ -43,7 +45,7 @@ export default function LoginPage() {
   // the saved "next" page and bounce people to /profile/ instead of back to the plan they were booking.)
   const went = useRef(false);
   useEffect(() => {
-    if (!auth.ready || !auth.session || went.current) return;
+    if (!auth.ready || !auth.session || went.current || resetMode) return;
     went.current = true;
     (async () => {
       const m = auth.me ?? (await auth.refreshMe());
@@ -114,11 +116,16 @@ export default function LoginPage() {
           {waTest && !CONFIG.loginWithWhatsApp && <div className="setup-note"><b>WhatsApp test mode.</b> Hidden from the public until switched on in config.</div>}
 
           <AnimatePresence mode="wait">
-            {!wa ? (
+            {resetMode && auth.session ? (
+              <motion.section key="reset" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                <NewPassword onDone={() => router.replace(auth.takeNext("/events/"))} />
+              </motion.section>
+            ) : !wa ? (
               <motion.section key="choose" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <h1>Welcome to <span className="serif">{CONFIG.brand}.</span></h1>
-                <p>Log in to request seats. New here? The same buttons create your account.</p>
+                <p>Log in to request seats. New here? Google creates your account in one tap, or sign up with email.</p>
                 {CONFIG.loginWithGoogle && <motion.button whileTap={{ scale: 0.97 }} className="provider" type="button" disabled={!auth.enabled || busy} onClick={google}><GoogleIcon /> Continue with Google</motion.button>}
+                {auth.enabled && <><div className="or">or use email</div><EmailBox /></>}
                 {CONFIG.loginWithGoogle && showWa && <div className="or">or</div>}
                 {showWa && <motion.button whileTap={{ scale: 0.97 }} className="provider wa" type="button" disabled={!auth.enabled || busy} onClick={startWa}><WaIcon /> Continue with WhatsApp</motion.button>}
                 <p className="form-msg err" role="status">{msg}</p>
@@ -143,5 +150,85 @@ export default function LoginPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+/* ---------- email + password: log in, sign up, forgot password ---------- */
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
+function EmailBox() {
+  const auth = useAuth();
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
+  const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false); const [note, setNote] = useState<{ t: string; ok: boolean } | null>(null);
+
+  async function submit(ev: React.FormEvent) {
+    ev.preventDefault();
+    if (!auth.client) return;
+    const em = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(em)) return setNote({ t: "Enter a valid email address.", ok: false });
+    if (mode !== "forgot" && pw.length < 8) return setNote({ t: "Password must be at least 8 characters.", ok: false });
+    setBusy(true); setNote(null);
+    try {
+      if (mode === "login") {
+        const { error } = await auth.client.auth.signInWithPassword({ email: em, password: pw });
+        if (error) setNote({ t: /confirm/i.test(error.message) ? "Please confirm your email first. Check your inbox (and spam) for our link." : /invalid/i.test(error.message) ? "Wrong email or password. Forgot it? Tap \"Forgot password\"." : error.message, ok: false });
+        // success → the login page sees the new session and sends you on
+      } else if (mode === "signup") {
+        const { data, error } = await auth.client.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: absUrl("/login/") } });
+        if (error) setNote({ t: /already|registered/i.test(error.message) ? "This email already has an account. Log in instead." : error.message, ok: false });
+        else if (data.user && (data.user.identities?.length ?? 1) === 0) setNote({ t: "This email already has an account. Log in instead (or use Google if you signed up with it).", ok: false });
+        else if (!data.session) setNote({ t: "Almost done! We sent a link to " + em + ". Open it on this phone to finish signing up.", ok: true });
+      } else {
+        const { error } = await auth.client.auth.resetPasswordForEmail(em, { redirectTo: absUrl("/login/?reset=1") });
+        setNote(error ? { t: error.message, ok: false } : { t: "If that email has an account, a reset link is on its way. Check your inbox (and spam).", ok: true });
+      }
+    } catch { setNote({ t: "Network problem. Try again.", ok: false }); }
+    setBusy(false);
+  }
+
+  const tabs: [typeof mode, string][] = [["login", "Log in"], ["signup", "Sign up"]];
+  return (
+    <form className="email-box" onSubmit={submit} noValidate>
+      {mode !== "forgot" && <div className="auth-seg" role="tablist">{tabs.map(([m, l]) => (
+        <button key={m} type="button" role="tab" aria-selected={mode === m} className={mode === m ? "on" : ""} onClick={() => { setMode(m); setNote(null); }}>{l}</button>
+      ))}</div>}
+      {mode === "forgot" && <p style={{ margin: "0 0 8px" }}><b>Reset your password.</b> We&apos;ll email you a link.</p>}
+      <div className="field"><label htmlFor="em">Email</label><input id="em" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required /></div>
+      {mode !== "forgot" && <div className="field"><label htmlFor="pw">Password</label>
+        <div className="pw-wrap"><input id="pw" type={show ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} minLength={8} placeholder={mode === "signup" ? "At least 8 characters" : ""} required />
+          <button type="button" className="pw-eye" onClick={() => setShow((x) => !x)} aria-label={show ? "Hide password" : "Show password"}>{show ? "Hide" : "Show"}</button></div></div>}
+      <motion.button whileTap={{ scale: 0.97 }} className="btn btn-ink btn-block" type="submit" disabled={busy}>
+        {busy ? "Please wait…" : mode === "login" ? "Log in →" : mode === "signup" ? "Create account →" : "Send reset link →"}
+      </motion.button>
+      <p style={{ marginTop: 10, fontSize: 14 }}>
+        {mode === "login" && <button type="button" className="linkish" onClick={() => { setMode("forgot"); setNote(null); }}>Forgot password?</button>}
+        {mode === "forgot" && <button type="button" className="linkish" onClick={() => { setMode("login"); setNote(null); }}>← Back to log in</button>}
+      </p>
+      {note && <p className={`form-msg ${note.ok ? "ok" : "err"}`} role="status">{note.t}</p>}
+    </form>
+  );
+}
+
+function NewPassword({ onDone }: { onDone: () => void }) {
+  const auth = useAuth(); const { toast } = useApp();
+  const [pw, setPw] = useState(""); const [pw2, setPw2] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  async function save(ev: React.FormEvent) {
+    ev.preventDefault();
+    if (pw.length < 8) return setErr("Password must be at least 8 characters.");
+    if (pw !== pw2) return setErr("The two passwords don't match.");
+    setBusy(true);
+    const { error } = await auth.client!.auth.updateUser({ password: pw });
+    setBusy(false);
+    if (error) return setErr(error.message);
+    toast("Password updated ✓"); onDone();
+  }
+  return (
+    <form className="email-box" onSubmit={save} noValidate>
+      <h1>New <span className="serif">password.</span></h1>
+      <div className="field"><label htmlFor="np">New password</label><input id="np" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="At least 8 characters" /></div>
+      <div className="field"><label htmlFor="np2">Type it again</label><input id="np2" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></div>
+      <button className="btn btn-ink btn-block" type="submit" disabled={busy}>{busy ? "Saving…" : "Save password →"}</button>
+      {err && <p className="form-msg err" role="status">{err}</p>}
+    </form>
   );
 }

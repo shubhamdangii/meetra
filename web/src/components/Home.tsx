@@ -15,10 +15,10 @@ import { AreaMap } from "./AreaMap";
 
 /* ---------- hero: a stack of upcoming plans that shuffles itself ---------- */
 const STACK_POS = [
-  { x: 110, y: 30, rotate: -3, scale: 1, z: 3, opacity: 1 },
-  { x: 220, y: 0, rotate: 8, scale: 0.92, z: 2, opacity: 1 },
+  { x: 0.5, y: 30, rotate: -3, scale: 1, z: 3, opacity: 1 },
+  { x: 1, y: 0, rotate: 8, scale: 0.92, z: 2, opacity: 1 },
   { x: 0, y: 10, rotate: -11, scale: 0.88, z: 1, opacity: 1 },
-  { x: 110, y: 60, rotate: 0, scale: 0.8, z: 0, opacity: 0 },
+  { x: 0.5, y: 60, rotate: 0, scale: 0.8, z: 0, opacity: 0 },
 ];
 export function HeroStack() {
   const { ready, upcoming, inCity, today } = useApp();
@@ -30,24 +30,29 @@ export function HeroStack() {
   }, [upcoming, inCity]);
   const [turn, setTurn] = useState(0);
   const [mobile, setMobile] = useState(false);
+  const stage = useRef<HTMLDivElement>(null);
+  const [stageW, setStageW] = useState(0);
   useEffect(() => {
-    const m = () => setMobile(window.innerWidth <= 720); m(); window.addEventListener("resize", m);
+    const m = () => { setMobile(window.innerWidth <= 720); setStageW(stage.current?.clientWidth ?? 0); }; m(); window.addEventListener("resize", m);
     const t = setInterval(() => { if (!document.hidden) setTurn((x) => x + 1); }, 3600);
     return () => { clearInterval(t); window.removeEventListener("resize", m); };
   }, []);
-  const k = mobile ? 0.55 : 1;
+  // Cards always fit inside the stage: card width and spread come from the stage's real width.
+  const cardW = mobile ? Math.min(230, Math.round((stageW || 330) * 0.66)) : 300;
+  const spread = Math.max(0, (stageW || (mobile ? 330 : 520)) - cardW - (mobile ? 18 : 24));
+  const xOf = (f: number) => Math.round(9 + f * spread);
   const dragged = useRef(false);
   return (
-    <motion.div className="hero-stage" aria-label="Featured upcoming plans (swipe the top card)">
+    <motion.div ref={stage} className="hero-stage" aria-label="Featured upcoming plans (swipe the top card)">
       <span className="doodle" style={{ left: -6, top: -6 }}>✨</span>
       <span className="doodle" style={{ right: 20, top: -10, animationDelay: "-2s" }}>🎉</span>
-      {!ready && <div className="skeleton" style={{ position: "absolute", left: 110 * k, top: 30, width: mobile ? 230 : 300, height: 380 }} />}
+      {!ready && <div className="skeleton" style={{ position: "absolute", left: xOf(0.5), top: 30, width: cardW, height: 380 }} />}
       {picks.map((e, i) => {
         const p = STACK_POS[(i - turn % picks.length + picks.length) % picks.length];
         return (
-          <motion.div key={e.id} className="stack-card" style={{ zIndex: p.z, width: mobile ? 230 : 300 }}
+          <motion.div key={e.id} className="stack-card" style={{ zIndex: p.z, width: cardW }}
             initial={{ opacity: 0, y: 80, rotate: 0 }}
-            animate={{ x: p.x * k, y: p.y, rotate: p.rotate, scale: p.scale, opacity: p.opacity }}
+            animate={{ x: xOf(p.x), y: p.y, rotate: p.rotate, scale: p.scale, opacity: p.opacity }}
             transition={{ type: "spring", stiffness: 120, damping: 18, mass: 0.9 }}
             whileHover={p.z === 3 ? { rotate: 0, scale: 1.03 } : undefined}
             drag={p.z === 3 ? "x" : false} dragSnapToOrigin dragElastic={0.6}
