@@ -52,13 +52,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await loadMe(c, data.session);
       setReady(true);
     });
-    const { data: sub } = c.auth.onAuthStateChange((_evt, s) => {
+    const { data: sub } = c.auth.onAuthStateChange((evt, s) => {
       setSession(s);
       // Never await Supabase calls inside this callback (it holds Supabase's login lock).
-      setTimeout(() => { loadMe(c, s); }, 0);
+      setTimeout(() => {
+        loadMe(c, s);
+        // Google sometimes lands people on the home page instead of /login/. Still send them back to
+        // the plan they were booking (the login page does this itself when that's where they landed).
+        if (evt === "SIGNED_IN" && !/\/login\/?$/.test(window.location.pathname)) {
+          let next: string | null = null;
+          try { next = sessionStorage.getItem(NEXT_KEY); if (next) sessionStorage.removeItem(NEXT_KEY); } catch {}
+          if (next && next.startsWith("/") && !next.startsWith("//")) router.replace(next);
+        }
+      }, 0);
     });
     return () => { alive = false; sub.subscription.unsubscribe(); };
-  }, [loadMe]);
+  }, [loadMe]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rememberNext = (url: string) => { try { sessionStorage.setItem(NEXT_KEY, url); } catch {} };
   const takeNext = (fallback = "/events/") => {

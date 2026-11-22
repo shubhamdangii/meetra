@@ -39,11 +39,21 @@ export default function LoginPage() {
 
   useEffect(() => { setWaTest(window.location.hash === "#whatsapp-test"); }, []);
 
-  // Already logged in → go on.
+  // Already logged in → go on, exactly once. (Running again when the profile loaded used to throw away
+  // the saved "next" page and bounce people to /profile/ instead of back to the plan they were booking.)
+  const went = useRef(false);
   useEffect(() => {
-    if (!auth.ready || !auth.session) return;
-    router.replace(auth.takeNext(auth.me && auth.me.profile_score >= 70 ? "/events/" : "/profile/"));
-  }, [auth.ready, auth.session, auth.me]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!auth.ready || !auth.session || went.current) return;
+    went.current = true;
+    (async () => {
+      const m = auth.me ?? (await auth.refreshMe());
+      router.replace(auth.takeNext(m && m.profile_score >= 70 ? "/events/" : "/profile/"));
+    })();
+  }, [auth.ready, auth.session]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Instagram / Facebook / WhatsApp in-app browsers: Google refuses to log in there.
+  const [inApp, setInApp] = useState(false);
+  useEffect(() => { setInApp(/Instagram|FBAN|FBAV|FB_IAB|Line\/|WhatsApp|Snapchat|; wv\)/i.test(navigator.userAgent)); }, []);
 
   // Came back from WhatsApp (page reloaded)? Keep waiting for the same code.
   useEffect(() => { const p = loadWa(); if (p && new Date(p.expiresAt) > new Date()) setWa(p); }, []);
@@ -94,6 +104,12 @@ export default function LoginPage() {
           {auth.enabled && auth.ready && !auth.session && (errText || cameBack) && (
             <div className="setup-note"><b>Login didn&apos;t finish.</b> {errText ? errText.replace(/\+/g, " ") : "Google sent you back, but this browser blocked the last step."}<br />
               Try again. If it keeps happening: turn off ad/tracker blocking for this site (in Brave: the lion icon → Shields off), or use Chrome or an incognito window.</div>
+          )}
+          {auth.enabled && inApp && !auth.session && (
+            <div className="setup-note"><b>Open this page in Chrome or Safari to log in.</b> Google blocks login inside Instagram and WhatsApp.
+              Tap <b>⋮</b> or <b>…</b> at the top → <b>Open in browser</b>.{" "}
+              <button type="button" className="btn btn-white btn-sm" style={{ marginTop: 8 }} onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => setMsg("Link copied. Paste it in Chrome or Safari."), () => {}); }}>Copy link</button>
+            </div>
           )}
           {waTest && !CONFIG.loginWithWhatsApp && <div className="setup-note"><b>WhatsApp test mode.</b> Hidden from the public until switched on in config.</div>}
 

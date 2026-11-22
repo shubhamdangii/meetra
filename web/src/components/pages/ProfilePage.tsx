@@ -33,11 +33,11 @@ function scoreParts(f: Form, avatar: string | null, phoneVerified: boolean, emai
   const bio = f.bio.trim().length;
   return [
     ["photo", 15, !!avatar], ["first name", 5, !!f.displayName.trim()], ["city", 5, !!f.city], ["what you do", 5, !!f.occupation.trim()],
-    ["bio of 20+ characters", 10, bio >= 20], ["longer bio (80+ characters)", 5, bio >= 80],
+    ["bio of 20+ characters", 10, bio >= 20], ["longer bio (80+ characters)", 10, bio >= 80],
     ["full name", 5, f.fullName.trim().length >= 2], ["date of birth", 5, !!f.dob], ["gender", 5, !!f.gender],
     ["WhatsApp number", 5, /^[6-9]\d{9}$/.test(f.phone)], ["verified WhatsApp", 10, phoneVerified],
     ["email", 5, /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())], ["verified email", 5, emailVerified],
-    ["Instagram", 5, !!instaUrl(f.instagram)], ["LinkedIn", 5, !!linkedinUrl(f.linkedin)], ["house rules", 5, f.rules],
+    ["house rules", 10, f.rules],   // Instagram / LinkedIn are optional and don't count (same weights as the database)
   ];
 }
 
@@ -247,8 +247,8 @@ export default function ProfilePage() {
         <Reveal className="pcard">
           <h2>Social profile</h2><p className="muted">Helps hosts see you&apos;re a real person. 🔒 Private.</p>
           <div className="pgrid">
-            {field("instagram", "Instagram", { placeholder: "@yourhandle" })}
-            {field("linkedin", "LinkedIn", { placeholder: "linkedin.com/in/yourname" })}
+            {field("instagram", "Instagram (optional)", { placeholder: "@yourhandle" })}
+            {field("linkedin", "LinkedIn (optional)", { placeholder: "linkedin.com/in/yourname" })}
             <div className="field full"><label htmlFor="heard">How did you hear about us?</label>
               <select id="heard" value={f.heard} onChange={(e) => set("heard", e.target.value)}>
                 <option value="">Choose…</option>{["Instagram", "A friend", "WhatsApp group", "Google", "At a café or venue", "Other"].map((o) => <option key={o}>{o}</option>)}
