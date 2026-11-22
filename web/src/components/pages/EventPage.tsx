@@ -84,6 +84,8 @@ export default function EventPage() {
   const hosts = e.hosts.map((h) => (HOSTS as any)[h] ?? { name: h, color: "#FFC93C", bio: `Verified ${CONFIG.brand} host.` });
   const left = counts ? Math.max(0, e.seats - counts.approved_seats) : e.left;
   const full = left === 0;
+  // real events close for requests at their booking deadline; sample plans once their day has passed
+  const closed = e.day < 0 || (!!e.bookingClosesAt && Date.now() >= e.bookingClosesAt.getTime());
   const pct = Math.round((1 - left / e.seats) * 100);
   const sameKey = upcoming.filter((x) => x.key === e.key && x.city === e.city && x.id !== e.id).slice(0, 4);
   const others = upcoming.filter((x) => x.city === e.city && x.key !== e.key && x.day <= e.day + 7).filter((x, i, a) => a.findIndex((y) => y.key === x.key) === i).slice(0, 4);
@@ -93,6 +95,7 @@ export default function EventPage() {
   async function request(ev: React.FormEvent) {
     ev.preventDefault();
     if (!e) return;
+    if (closed) return toast("Requests for this plan are closed.");
     const submitBtn = (ev.currentTarget as HTMLFormElement).querySelector("button[type=submit]");
     if (auth.enabled) {
       if (!auth.requireLogin(`/event/?id=${e.id}`)) return;
@@ -176,7 +179,7 @@ export default function EventPage() {
 
           <section className="ev-sec" id="host">
             <h2>Your <span className="serif" style={{ color: "var(--violet)" }}>host</span></h2>
-            {hosts.map((h: any) => (
+            {e.hostId ? <RealHost id={e.hostId} planRef={e.id} /> : hosts.map((h: any) => (
               <Reveal key={h.name} className="host-row" style={{ marginBottom: 14 }}>
                 <HostAv h={h} />
                 <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3>{h.name} <span className="verified">✓</span></h3><p className="muted">{h.bio}</p></div>
@@ -208,6 +211,7 @@ export default function EventPage() {
               <li><span className="ic">📅</span><div><small>Date</small><b>{fmtDay(e.date)}</b></div></li>
               <li><span className="ic">⏰</span><div><small>Time</small><b>{e.time} – {e.end}</b></div></li>
               <li><span className="ic">📍</span><div><small>Area</small><b>{e.area}, {city}</b></div></li>
+              {e.bookingClosesAt && <li><span className="ic">⏳</span><div><small>Requests close</small><b>{e.bookingClosesAt.toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true })}</b></div></li>}
               <li><span className="ic">👥</span><div style={{ flex: 1 }}><small>Group</small><b>Up to {e.seats} · {e.tags.includes("Women only") ? "women only" : "open to all"}</b>
                 <div className="meter"><motion.i initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.9, ease: "easeOut" }} /></div>
                 <small style={{ color: left <= 4 ? "#B3134B" : "var(--muted)" }}>{full ? `Full${counts ? ` · ${counts.waitlisted} on the waiting list` : " — join the waiting list"}` : `${left} of ${e.seats} seats left`}</small>
@@ -234,7 +238,7 @@ export default function EventPage() {
                   <div className="field"><label htmlFor="nm">Your name</label><input id="nm" required autoComplete="given-name" placeholder="First name is fine" value={name} onChange={(x) => setName(x.target.value)} /></div>
                   <div className="field"><label htmlFor="ice">What could someone ask you about that makes you forget the small talk?</label><textarea id="ice" maxLength={300} placeholder="Football, old Hindi songs, startups, cats…" value={ice} onChange={(x) => setIce(x.target.value)} /></div>
                   <label className="check"><input type="checkbox" checked={friend} onChange={(x) => setFriend(x.target.checked)} /> I&apos;m bringing a friend</label>
-                  <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun btn-block" type="submit" disabled={busy}>{full ? "Join the waiting list" : "Request a seat"} →</motion.button>
+                  <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun btn-block" type="submit" disabled={busy || closed}>{closed ? "Requests are closed" : full ? "Join the waiting list" : "Request a seat"}{closed ? "" : " →"}</motion.button>
                   {auth.enabled && (
                     <div className="priority">
                       <b>Seats go to the most complete profiles first.</b>
@@ -256,5 +260,33 @@ export default function EventPage() {
 
       <div className="mobile-book"><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className={`btn btn-sm ${showStatus ? "btn-white" : "btn-sun"}`} href="#book">{showStatus ? MOBILE_STATUS[myReq!.status] ?? "Your request" : full ? "Join waiting list" : "Request a seat"}</a></div>
     </div>
+  );
+}
+
+/* Host of a real event (from the admin desk): photo, bio, rating out of 5 and what guests said. */
+function RealHost({ id, planRef }: { id: number; planRef: string }) {
+  const auth = useAuth();
+  const [h, setH] = useState<{ name: string; bio: string; photo_url: string | null } | null>(null);
+  const [r, setR] = useState<{ avg_rating: number; reviews: number } | null>(null);
+  const [rev, setRev] = useState<{ rating: number; comment: string; first_name: string }[]>([]);
+  useEffect(() => {
+    if (!auth.client) return;
+    auth.client.from("host_profiles").select("name,bio,photo_url").eq("id", id).maybeSingle().then(({ data }) => setH(data as typeof h));
+    auth.client.rpc("host_ratings", { p_ids: [id] }).then(({ data }) => setR((data as (typeof r)[])?.[0] ?? null));
+    auth.client.rpc("plan_reviews", { p_plan_ref: planRef }).then(({ data }) => setRev(((data as typeof rev) ?? []).filter((x) => x.comment).slice(0, 4)));
+  }, [auth.client, id, planRef]);
+  if (!h) return <div className="skeleton" style={{ minHeight: 90 }} />;
+  return (
+    <Reveal className="host-row" style={{ marginBottom: 14 }}>
+      <div className="av" style={{ background: "#6C4CF5" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {h.photo_url ? <img src={h.photo_url} alt={h.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : h.name[0]}
+      </div>
+      <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3>{h.name} <span className="verified">✓</span></h3>
+        {r && r.reviews > 0 ? <p className="host-rating"><b>★ {Number(r.avg_rating).toFixed(1)}</b> / 5 · {r.reviews} review{r.reviews === 1 ? "" : "s"}</p> : <p className="host-rating muted">New host · no reviews yet</p>}
+        {h.bio && <p className="muted">{h.bio}</p>}
+        {rev.length > 0 && <ul className="host-reviews">{rev.map((x, i) => <li key={i}><b>{"★".repeat(x.rating)}</b> “{x.comment}” <small>– {x.first_name}</small></li>)}</ul>}
+      </div>
+    </Reveal>
   );
 }

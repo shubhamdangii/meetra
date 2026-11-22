@@ -7,7 +7,8 @@ import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { CalendarButton, InviteBox, STATUS_UI, useMyRequests, type MyRequest } from "../plans";
 import { Empty, EventCard, Poster } from "../ui";
-import { buzz } from "../fx";
+import { burstFrom, buzz } from "../fx";
+import { useEffect, useState } from "react";
 import { type MeetEvent, addressDropAt, eventUrl, fmtWhen, startsAt } from "@/lib/events";
 
 export default function SavedPage() {
@@ -109,7 +110,42 @@ function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyReque
       {!past && r?.status === "waitlisted" && <p className="plan-note">We&apos;ll WhatsApp you the moment a seat opens up.</p>}
       {!past && r?.status === "pending" && <p className="plan-note">The team is building the table. You&apos;ll hear back on WhatsApp.</p>}
       {!past && r?.status === "attended" && <p className="plan-note">You&apos;re checked in. Have the best time 💜</p>}
+      {r?.status === "attended" && <RateBox planRef={e.id} />}
       {!past && r && r.status !== "declined" && r.status !== "attended" && onCancel && <button className="linkish plan-cancel" onClick={() => onCancel(r)}>{r.status === "approved" ? "I can't make it" : "Cancel my spot"}</button>}
     </motion.article>
+  );
+}
+
+/* Only people who were checked in can rate the host (the database checks this too). */
+function RateBox({ planRef }: { planRef: string }) {
+  const auth = useAuth(); const { toast } = useApp();
+  const [stars, setStars] = useState(0); const [hover, setHover] = useState(0); const [text, setText] = useState("");
+  const [done, setDone] = useState<number | null>(null); const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!auth.client || !auth.me) return;
+    auth.client.from("host_reviews").select("rating,comment").eq("plan_ref", planRef).eq("user_id", auth.me.id).maybeSingle()
+      .then(({ data }) => { if (data) { setDone((data as { rating: number }).rating); setText((data as { comment: string }).comment ?? ""); } });
+  }, [auth.client, auth.me, planRef]);
+  async function send(ev: React.MouseEvent<HTMLButtonElement>) {
+    if (!stars || !auth.client) return;
+    const btn = ev.currentTarget; setBusy(true);
+    const { error } = await auth.client.rpc("submit_review", { p_plan_ref: planRef, p_rating: stars, p_comment: text.trim() });
+    setBusy(false);
+    if (error) return toast(error.message);
+    burstFrom(btn, ["⭐", "💜", "✨"], 14); buzz(); setDone(stars); toast("Thanks for the review ✓");
+  }
+  if (done) return <p className="plan-note">You rated your host {"★".repeat(done)}{"☆".repeat(5 - done)} · thank you!</p>;
+  return (
+    <div className="rate-box">
+      <b>How was your host?</b>
+      <div className="rate-stars" role="radiogroup" aria-label="Rating out of 5" onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <motion.button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} star${n > 1 ? "s" : ""}`}
+            className={(hover || stars) >= n ? "on" : ""} whileTap={{ scale: 1.4, rotate: 15 }} onMouseEnter={() => setHover(n)} onClick={() => { setStars(n); buzz(8); }}>★</motion.button>
+        ))}
+      </div>
+      {stars > 0 && <textarea rows={2} maxLength={600} placeholder="Anything to share? (optional)" value={text} onChange={(e) => setText(e.target.value)} />}
+      {stars > 0 && <button type="button" className="btn btn-ink btn-sm" disabled={busy} onClick={send}>Send review</button>}
+    </div>
   );
 }

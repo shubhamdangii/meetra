@@ -321,3 +321,6 @@ verify_jwt = false   # public: start/poll are protected by a per-browser secret
 
 [functions.wa-webhook]
 verify_jwt = false   # Meta calls it; protected by the X-Hub-Signature-256 check instead
+
+[functions.admin-push]
+verify_jwt = false   # only the database calls it, with the X-Push-Secret header

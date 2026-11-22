@@ -18,6 +18,7 @@ export type MeetEvent = {
   price: number; priceType: "free" | "reservation" | "per person" | "estimate";
   seats: number; left: number; emoji: string; pal: number; pattern: string;
   blurb: string; steps: string[]; tags: string[]; image: string | null;
+  hostId?: number; bookingClosesAt?: Date;   // real events from the admin desk only
 };
 
 export const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -36,9 +37,10 @@ export type CustomPlan = {
   id: number; city_slug: string; title: string; category: string; starts_on: string; time_label: string; end_label: string | null;
   area: string; price: number; price_type: MeetEvent["priceType"]; seats: number; emoji: string; blurb: string;
   steps: string[]; tags: string[]; host_name: string | null; status: string;
+  plan_ref: string; host_id: number | null; starts_at: string; ends_at: string; booking_closes_at: string; deleted_at: string | null; cancel_reason: string | null;
 };
 const PATTERNS = ["dots", "grid", "rings", "stripes", "sun", "waves"];
-export const customPlanId = (c: Pick<CustomPlan, "id" | "city_slug" | "starts_on">) => `x${c.id}-${c.city_slug}-${c.starts_on.replace(/-/g, "")}`;
+export const customPlanId = (c: Pick<CustomPlan, "id" | "city_slug" | "starts_on"> & { plan_ref?: string }) => c.plan_ref || `x${c.id}-${c.city_slug}-${c.starts_on.replace(/-/g, "")}`;
 
 export function buildEvents(today: Date, custom: CustomPlan[] = []) {
   const diff = (d: Date) => Math.round((d.getTime() - today.getTime()) / 864e5);
@@ -74,7 +76,7 @@ export function buildEvents(today: Date, custom: CustomPlan[] = []) {
     });
   });
   custom.forEach((c) => {
-    if (c.status !== "published" || !CONFIG.cities[c.city_slug]) return;
+    if (c.status !== "approved" || c.deleted_at || !CONFIG.cities[c.city_slug]) return;
     const [y, m, dd] = c.starts_on.split("-").map(Number);
     const d = new Date(y, m - 1, dd);
     const id = customPlanId(c);
@@ -85,6 +87,7 @@ export function buildEvents(today: Date, custom: CustomPlan[] = []) {
       pal: hash(id) % 8, pattern: PATTERNS[hash(id) % PATTERNS.length], blurb: c.blurb,
       steps: c.steps?.length ? c.steps : ["Your host starts with an easy game", "Settle in with the group", "Swap numbers only if you want to"],
       tags: ["New", ...(c.tags || [])].slice(0, 3), image: null,
+      hostId: c.host_id ?? undefined, bookingClosesAt: c.booking_closes_at ? new Date(c.booking_closes_at) : undefined,
     });
   });
   all.sort((a, b) => a.date.getTime() - b.date.getTime() || mins(a.time) - mins(b.time));

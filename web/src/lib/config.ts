@@ -5,7 +5,7 @@
 export const CONFIG: {
   brand: string; tagline: string; whatsapp: string; email: string; instagram: string; whatsappCommunity: string;
   defaultCity: string; cities: Record<string, { name: string; tag: string; live: boolean }>;
-  showSampleNotice: boolean; samplePlans: boolean; siteUrl: string; supabaseUrl: string; supabaseAnonKey: string; loginWithGoogle: boolean; loginWithWhatsApp: boolean;
+  showSampleNotice: boolean; samplePlans: boolean; siteUrl: string; supabaseUrl: string; supabaseAnonKey: string; loginWithGoogle: boolean; loginWithWhatsApp: boolean; vapidPublicKey: string;
 } = {
   brand: "meetra",                 // shown as "meetra." everywhere
   tagline: "Hosted meetups for people coming solo.",
@@ -42,6 +42,7 @@ export const CONFIG: {
   supabaseUrl: "https://eqzwolwhecotwiphmjrd.supabase.co",          // e.g. "https://abcdefgh.supabase.co"
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxendvbHdoZWNvdHdpcGhtanJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMzcwMDQsImV4cCI6MjExMDgxMzAwNH0.vLSh3R25fNUzIN9UJ_VMlrd1KU_PWATJyQzy03HO-5w",      // e.g. "eyJhbGciOi…" or "sb_publishable_…"
   loginWithGoogle: true,
+  vapidPublicKey: "BD0VsBuhWW5t20gjGrNrx9CPhYd1as12jZESKk93XrUdIWD_uWhnyMU90-i79-6F8T9NBgOS4EqKefNG7KS2Cl8", // public half of the admin push key (safe to share; the private half is a Supabase secret)
   loginWithWhatsApp: false, // true once the Meta WhatsApp number is connected (see SETUP-LOGIN.md)
   // (Twilio sandbox test mode removed: WhatsApp login now works by the member sending us a message.)
 };
