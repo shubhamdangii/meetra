@@ -2,6 +2,15 @@
 // Dates are relative to "today", so this runs in the browser (never at build time).
 import { CONFIG } from "./config";
 import { CATEGORIES, HOSTS, PALETTES, TEMPLATES } from "./data";
+import manifest from "./image-manifest.json";
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+type Manifest = { events: Record<string, string[]>; hosts: Record<string, string> };
+const M = manifest as unknown as Manifest;
+/** Photos the owner dropped in public/images/events/<key>/ (cover.* first). Empty → emoji poster. */
+export const eventImages = (key: string): string[] => (M.events[key] || []).map((f) => `${BASE}/images/events/${key}/${f}`);
+/** Host photo from public/images/hosts/<city>/<id>.jpg, or null. */
+export const hostImage = (id: string): string | null => (M.hosts[id.toLowerCase()] ? `${BASE}/images/${M.hosts[id.toLowerCase()]}` : null);
 
 export type MeetEvent = {
   id: string; key: string; city: string; date: Date; day: number; title: string;
@@ -59,7 +68,7 @@ export function buildEvents(today: Date, custom: CustomPlan[] = []) {
           hosts: ov.hosts || ["team"], price: ov.price ?? t.price, priceType: t.priceType,
           seats, left: Math.max(0, seats - taken), emoji: ov.emoji || t.emoji,
           pal: ov.pal ?? t.pal, pattern: t.pattern, blurb: ov.blurb || t.blurb,
-          steps: t.steps, tags: t.tags || [], image: ov.image || t.image || null,
+          steps: t.steps, tags: t.tags || [], image: ov.image || t.image || eventImages(t.key)[0] || null,
         });
       });
     });

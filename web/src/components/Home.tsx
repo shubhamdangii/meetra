@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "./AppProvider";
-import { Chips, Empty, EventCard, Poster, Reveal, ease } from "./ui";
+import { Chips, Empty, EventCard, HostAv, Poster, Reveal, ease } from "./ui";
 import { buzz, CountUp, Gallery, Wavy } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
@@ -234,7 +234,7 @@ export function Hosts() {
       {list.map(([k, h], i) => (
         <motion.div key={k} className="host" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           transition={{ delay: Math.min(i, 5) * 0.07, duration: 0.5, ease }} whileHover={{ y: -6, rotate: -2 }}>
-          <div className="av" style={{ background: h.color }}>{h.name[0]}</div>
+          <HostAv h={h} />
           <b>{h.name}<span className="verified">✓</span></b><small>{firstPlan[k] || ""}</small>
         </motion.div>
       ))}

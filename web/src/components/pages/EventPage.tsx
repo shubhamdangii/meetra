@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
-import { EventCard, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
+import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
 import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
@@ -169,7 +169,7 @@ export default function EventPage() {
             <h2>Your <span className="serif" style={{ color: "var(--violet)" }}>host</span></h2>
             {hosts.map((h: any) => (
               <Reveal key={h.name} className="host-row" style={{ marginBottom: 14 }}>
-                <div className="av" style={{ background: h.color }}>{h.name[0]}</div>
+                <HostAv h={h} />
                 <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3>{h.name} <span className="verified">✓</span></h3><p className="muted">{h.bio}</p></div>
               </Reveal>
             ))}

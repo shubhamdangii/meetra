@@ -4,8 +4,8 @@
   "private": true,
   "description": "meetra: hosted meetups for people coming solo (Next.js static site for GitHub Pages)",
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build && node scripts/fix-export.mjs",
+    "dev": "node scripts/images-manifest.mjs && next dev -p 3000",
+    "build": "node scripts/images-manifest.mjs && next build && node scripts/fix-export.mjs",
     "start": "npx serve@14.2.4 out -l 3000",
     "typecheck": "tsc --noEmit"
   },
