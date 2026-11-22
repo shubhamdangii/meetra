@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExplorePreview, Faces, HeroCount, HeroStack, Hosts, Marquee, Stats, Steps, Wall } from "@/components/Home";
+import { ExplorePreview, Faces, HeroCount, HeroStack, Hosts, Marquee, Moments, Stats, Steps, Wall } from "@/components/Home";
 import { Magnetic, WordReveal, Wavy } from "@/components/fx";
 import { Reveal } from "@/components/ui";
 
@@ -38,6 +38,11 @@ export default function HomePage() {
 
       <Marquee />
       <ExplorePreview />
+
+      <section className="wrap sec moments" style={{ paddingTop: 10 }}>
+        <div className="sec-head"><div><span className="eyebrow">No stock photos. Ever.</span><h2 className="h2"><Wavy text="Real people," /> <span className="serif" style={{ color: "var(--pink)" }}><Wavy text="real nights." /></span></h2><p>Straight from our meetups in Jaipur and Ahmedabad.</p></div></div>
+        <Moments />
+      </section>
 
       <section className="wrap sec" id="how" style={{ paddingTop: 10 }}>
         <div className="sec-head"><div><span className="eyebrow">How it works</span><h2 className="h2"><Wavy text="Three steps to" /> <span className="hl"><Wavy text="new friends" /></span></h2></div></div>

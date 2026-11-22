@@ -8,7 +8,8 @@ import { Chips, Empty, EventCard, HostAv, Poster, Reveal, ease } from "./ui";
 import { buzz, CountUp, Gallery, Wavy } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
-import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostNames, relDay } from "@/lib/events";
+import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostNames, momentPhotos, relDay } from "@/lib/events";
+import { PhotoStrip } from "./Photos";
 import { CITY_CENTER, areaPoint, kmBetween } from "@/lib/geo";
 import { AreaMap } from "./AreaMap";
 
@@ -23,7 +24,8 @@ export function HeroStack() {
   const { ready, upcoming, inCity, today } = useApp();
   const picks = useMemo(() => {
     const out: MeetEvent[] = []; const seen = new Set<string>();
-    for (const e of upcoming.filter(inCity)) { if (!seen.has(e.cat)) { seen.add(e.cat); out.push(e); } if (out.length === 4) break; }
+    const pool = upcoming.filter(inCity); const sorted = [...pool.filter((e) => e.image), ...pool.filter((e) => !e.image)];
+    for (const e of sorted) { if (!seen.has(e.cat)) { seen.add(e.cat); out.push(e); } if (out.length === 4) break; }
     return out;
   }, [upcoming, inCity]);
   const [turn, setTurn] = useState(0);
@@ -265,6 +267,12 @@ export function Wall() {
       {CONFIG.showSampleNotice && <span className="notice">✏️ Sample reviews: replace them in src/lib/data.ts with real ones after your first meetups.</span>}
     </>
   );
+}
+
+/* ---------- real photos from past meetups ---------- */
+export function Moments() {
+  const photos = useMemo(() => momentPhotos(24), []);
+  return <PhotoStrip photos={photos} label="Photos from past meetups" auto={3800} />;
 }
 
 export function Stats() {

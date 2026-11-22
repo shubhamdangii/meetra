@@ -143,3 +143,15 @@ export function downloadCalendar(e: MeetEvent) {
   a.download = `${e.key}.ics`; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
+
+/** Home "real moments" strip: event photos (captioned) interleaved with the miscellaneous folder. */
+export function momentPhotos(limit = 24): { src: string; caption?: string }[] {
+  const ev = (TEMPLATES as any[]).flatMap((t) => eventImages(t.key).slice(0, 2).map((src) => ({ src, caption: t.title as string })));
+  const misc = eventImages("miscellaneous").map((src) => ({ src }));
+  const out: { src: string; caption?: string }[] = [];
+  for (let i = 0; out.length < limit && (i < ev.length || i < misc.length); i++) {
+    if (ev[i]) out.push(ev[i]);
+    if (misc[i] && out.length < limit) out.push(misc[i]);
+  }
+  return out;
+}

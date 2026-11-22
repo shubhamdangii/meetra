@@ -9,8 +9,9 @@ import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../
 import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
-import { addressDropAt, catOf, fmtDay, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
+import { addressDropAt, catOf, eventImages, fmtDay, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
 import { CalendarButton } from "../plans";
+import { PhotoStrip } from "../Photos";
 import { AreaMap } from "../AreaMap";
 import { areaPoint } from "@/lib/geo";
 
@@ -153,6 +154,14 @@ export default function EventPage() {
           <motion.div className="ev-hero" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}><Poster e={e} title /></motion.div>
           <p className="lede">{e.blurb}</p>
           <div className="anchor-links"><a href="#unfolds">How it unfolds</a><a href="#host">Your host</a><a href="#where">Location</a><a href="#before">Before you go</a></div>
+
+          {eventImages(e.key).length > 1 && (
+            <section className="ev-sec" id="photos">
+              <h2>From past <span className="serif" style={{ color: "var(--pink)" }}>meetups</span></h2>
+              <p className="muted" style={{ marginBottom: 6 }}>Real photos from this plan. Tap to open.</p>
+              <PhotoStrip photos={eventImages(e.key).map((src) => ({ src }))} label={`Photos from ${e.title}`} />
+            </section>
+          )}
 
           <section className="ev-sec" id="unfolds">
             <h2>How it <span className="serif" style={{ color: "var(--violet)" }}>unfolds</span></h2>
