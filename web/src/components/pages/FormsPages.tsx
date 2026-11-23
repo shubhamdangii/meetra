@@ -66,7 +66,7 @@ export function PartnerForm() {
             </div>
             <div className="field"><label htmlFor="pl">Instagram or website (optional)</label><input id="pl" value={v.link} onChange={set("link")} placeholder="@yourcafe" /></div>
             <div className="field"><label htmlFor="pm">Tell us a little (optional)</label><textarea id="pm" rows={3} maxLength={1500} value={v.msg} onChange={set("msg")} placeholder="Space size, best days, what you have in mind…" /></div>
-            <input tabIndex={-1} autoComplete="off" aria-hidden="true" value={v.trap} onChange={set("trap")} style={{ position: "absolute", left: -9999, width: 1, height: 1 }} />
+            <input tabIndex={-1} autoComplete="off" aria-hidden="true" value={v.trap} onChange={set("trap")} style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", clipPath: "inset(50%)", whiteSpace: "nowrap", border: 0, padding: 0, margin: -1 }} />
             {err && <p className="form-msg err" role="alert">{err}</p>}
             <motion.button whileTap={{ scale: 0.96 }} className="btn btn-ink btn-block" type="submit" disabled={busy}>{busy ? "Sending…" : "Send enquiry →"}</motion.button>
           </motion.form>

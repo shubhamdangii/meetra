@@ -54,6 +54,13 @@ export default function EventPage() {
   const [name, setName] = useState(""); const [ice, setIce] = useState(""); const [friend, setFriend] = useState(false);
   const [busy, setBusy] = useState(false);
   const [waText, setWaText] = useState<string | null>(null);
+  // hide the sticky phone bar while the booking card itself is on screen (it used to cover the form)
+  const [bookOnScreen, setBookOnScreen] = useState(false);
+  useEffect(() => {
+    const el = document.getElementById("book"); if (!el || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(([x]) => setBookOnScreen(x.isIntersecting), { rootMargin: "0px 0px -80px 0px" });
+    io.observe(el); return () => io.disconnect();
+  }, [e?.id, ready]);
 
   // Real numbers + my request, when login is on.
   useEffect(() => {
@@ -268,7 +275,7 @@ export default function EventPage() {
       {sameKey.length > 0 && <section className="sec" style={{ paddingBottom: 0 }}><div className="group-head"><h3>More dates for {e.title.split(" · ")[0]}</h3></div><div className="grid">{sameKey.map((x, i) => <EventCard key={x.id} e={x} index={i} />)}</div></section>}
       <section className="sec"><div className="group-head"><h3>More plans to try</h3><Link className="btn btn-white btn-sm" href="/events/">Explore all →</Link></div><div className="grid">{others.map((x, i) => <EventCard key={x.id} e={x} index={i} />)}</div></section>
 
-      <div className="mobile-book"><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className={`btn btn-sm ${showStatus ? "btn-white" : "btn-sun"}`} href="#book">{showStatus ? MOBILE_STATUS[myReq!.status] ?? "Your request" : full ? "Join waiting list" : "Request a seat"}</a></div>
+      <div className={`mobile-book ${bookOnScreen ? "away" : ""}`} aria-hidden={bookOnScreen}><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className={`btn btn-sm ${showStatus ? "btn-white" : "btn-sun"}`} href="#book">{showStatus ? MOBILE_STATUS[myReq!.status] ?? "Your request" : full ? "Join waiting list" : "Request a seat"}</a></div>
     </div>
   );
 }
