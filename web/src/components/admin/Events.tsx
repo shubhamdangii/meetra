@@ -50,7 +50,7 @@ export function validateEvent(f: EventFormValue, opts: { allowPastStart?: boolea
   return null;
 }
 
-export function EventForm({ value, onChange, hosts, lockCity }: { value: EventFormValue; onChange: (f: EventFormValue) => void; hosts: AdminHost[]; lockCity?: boolean }) {
+export function EventForm({ value, onChange, hosts, lockCity, hideHost }: { value: EventFormValue; onChange: (f: EventFormValue) => void; hosts: AdminHost[]; lockCity?: boolean; hideHost?: boolean }) {
   const set = (k: keyof EventFormValue, v: string) => onChange({ ...value, [k]: v, ...(k === "city_slug" ? { host_id: "" } : {}) });
   const cityHosts = hosts.filter((h) => h.city_slug === value.city_slug && h.status === "active");
   const min = nowLocalInput();
@@ -59,9 +59,9 @@ export function EventForm({ value, onChange, hosts, lockCity }: { value: EventFo
       <div className="field span2"><label>Title *</label><input value={value.title} maxLength={100} onChange={(e) => set("title", e.target.value)} placeholder="Sunday Board Games Brunch" /></div>
       <div className="field"><label>City *</label><select value={value.city_slug} disabled={lockCity} onChange={(e) => set("city_slug", e.target.value)}>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select></div>
       <div className="field"><label>Category *</label><select value={value.category} onChange={(e) => set("category", e.target.value)}>{CATS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
-      <div className="field"><label>Host</label><select value={value.host_id} onChange={(e) => set("host_id", e.target.value)}>
+      {!hideHost && <div className="field"><label>Host</label><select value={value.host_id} onChange={(e) => set("host_id", e.target.value)}>
         <option value="">the meetra team</option>{cityHosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
-        {!cityHosts.length && <small className="muted">No active hosts in {cityName(value.city_slug)} yet. Add one in the Hosts tab.</small>}</div>
+        {!cityHosts.length && <small className="muted">No active hosts in {cityName(value.city_slug)} yet. Add one in the Hosts tab.</small>}</div>}
       <div className="field"><label>Area *</label><input value={value.area} maxLength={60} onChange={(e) => set("area", e.target.value)} placeholder="C-Scheme" /></div>
       <div className="field"><label>Starts *</label><input type="datetime-local" min={min} value={value.starts} onChange={(e) => set("starts", e.target.value)} /></div>
       <div className="field"><label>Ends *</label><input type="datetime-local" min={value.starts || min} value={value.ends} onChange={(e) => set("ends", e.target.value)} /></div>

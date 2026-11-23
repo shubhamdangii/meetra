@@ -8,13 +8,14 @@ import { CONFIG } from "@/lib/config";
 
 type H = { id: number; created_at: string; city_slug: string; plan_title: string; category: string; pitch: string | null; experience: string | null;
   frequency: string | null; group_size: number | null; availability: string | null; status: string; team_note: string | null;
-  display_name: string; full_name: string | null; avatar_url: string | null; phone: string | null; instagram_url: string | null; linkedin_url: string | null; profile_score: number };
+  display_name: string; full_name: string | null; avatar_url: string | null; phone: string | null; instagram_url: string | null; linkedin_url: string | null; profile_score: number;
+  host_id: number | null; pending_req: string | null };
 
 const NEXT: Record<string, [string, string][]> = {
   applied: [["shortlisted", "Shortlist"], ["waitlisted", "Waitlist"], ["rejected", "Reject"]],
   shortlisted: [["call_scheduled", "Call booked"], ["waitlisted", "Waitlist"], ["rejected", "Reject"]],
   call_scheduled: [["trial", "Trial plan"], ["waitlisted", "Waitlist"], ["rejected", "Reject"]],
-  trial: [["approved", "Approve 🎉"], ["rejected", "Reject"]],
+  trial: [["rejected", "Reject"]],
   waitlisted: [["shortlisted", "Shortlist"], ["rejected", "Reject"]],
   approved: [], rejected: [["applied", "Reopen"]], withdrawn: [],
 };
@@ -22,7 +23,14 @@ const LABEL: Record<string, string> = { applied: "applied", shortlisted: "shortl
 
 export function AdminHosts() {
   const auth = useAuth();
-  const { city, toast } = useApp();
+  const { city, toast, confirm } = useApp();
+  const isMain = !!auth.team?.is_super;
+  const approveHost = async (r: H) => {
+    if (!(await confirm({ title: `Make ${r.full_name || r.display_name} a host?`, body: "Their host profile is built from their own profile. The other main admin confirms it in Approvals, then their Host desk opens.", ok: "Send for approval", icon: "🎙️" }))) return;
+    const { data, error } = await auth.client!.rpc("admin_approve_host_application", { p_app_id: r.id, p_note: null });
+    if (error) return toast("⚠️ " + error.message);
+    toast(`${data} sent ✓ The other admin approves it`); load();
+  };
   const [rows, setRows] = useState<H[] | null>(null);
   const [showClosed, setShowClosed] = useState(false);
   const [notes, setNotes] = useState<Record<number, string>>({});
@@ -74,7 +82,13 @@ export function AdminHosts() {
                 <textarea className="note-in" rows={2} maxLength={1000} aria-label={`Note for ${r.display_name}`} value={notes[r.id] ?? r.team_note ?? ""} onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })} placeholder="e.g. Call Sat 4 pm" />
                 {notes[r.id] !== undefined && notes[r.id] !== (r.team_note ?? "") && <button className="linkish" onClick={() => { update(r.id, { team_note: notes[r.id].trim() || null }); setNotes((n) => { const c = { ...n }; delete c[r.id]; return c; }); }}>Save note</button>}
               </td>
-              <td><div className="acts">{(NEXT[r.status] ?? []).map(([s, l]) => <button key={s} onClick={() => update(r.id, { status: s })}>{l}</button>)}</div></td>
+              <td><div className="acts">
+                {r.host_id ? <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/host-profile/?id=${r.host_id}`} target="_blank" rel="noopener noreferrer">🎙️ Host ✓</a>
+                  : r.pending_req ? <span className="muted" style={{ fontSize: 12 }}>⏳ {r.pending_req} waiting</span>
+                  : isMain && !["rejected", "withdrawn"].includes(r.status) ? <button className="ok" onClick={() => approveHost(r)}>{r.status === "approved" ? "Create host profile" : "Approve as host 🎉"}</button>
+                  : !isMain && r.status === "trial" ? <span className="muted" style={{ fontSize: 12 }}>A main admin approves hosts</span> : null}
+                {(NEXT[r.status] ?? []).map(([s, l]) => <button key={s} onClick={() => update(r.id, { status: s })}>{l}</button>)}
+              </div></td>
             </motion.tr>
           ))}
         </tbody>

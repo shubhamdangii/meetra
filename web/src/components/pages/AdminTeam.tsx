@@ -18,7 +18,7 @@ type G = { request_id: number; display_name: string; full_name: string | null; a
 type Hit = { kind: "ok" | "again" | "bad"; title: string; sub?: string; avatar?: string | null };
 
 /** Door: scan any pass (the database works out which plan it belongs to); tap a plan chip for its guest list. */
-export function AdminCheckIn({ plans }: { plans: MeetEvent[] }) {
+export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: MeetEvent[]; guestsFn?: "admin_plan_queue" | "host_guest_list" }) {
   const auth = useAuth();
   const { toast, today } = useApp();
   // the plan happening nearest to now first
@@ -32,10 +32,10 @@ export function AdminCheckIn({ plans }: { plans: MeetEvent[] }) {
 
   const loadOne = useCallback(async (ref: string) => {
     if (!auth.client) return;
-    const { data, error } = await auth.client.rpc("admin_plan_queue", { p_plan_ref: ref });
+    const { data, error } = await auth.client.rpc(guestsFn, { p_plan_ref: ref });
     if (error) return;
     setLists((l) => ({ ...l, [ref]: (data as G[]).filter((g) => g.status === "approved" || g.status === "attended") }));
-  }, [auth.client]);
+  }, [auth.client, guestsFn]);
   const loadAll = useCallback(() => { sorted.forEach((p) => loadOne(p.id)); }, [sorted, loadOne]);
   useEffect(() => { loadAll(); }, [loadAll]);
 

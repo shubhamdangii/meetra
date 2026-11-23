@@ -1303,3 +1303,25 @@ a.host{text-decoration:none;color:inherit;display:block}
 }
 .mobile-book{transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .3s}
 .mobile-book.away{transform:translateY(140%);opacity:0;pointer-events:none}
+/* ---------- host desk ---------- */
+.hd{padding-bottom:40px}
+.hd-head{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--ink);border-radius:22px;padding:14px;box-shadow:4px 4px 0 var(--ink);flex-wrap:wrap}
+.hd-head .grow{flex:1;min-width:0}
+.hd-head h2{font-size:26px;line-height:1.1}
+.hd-av{width:64px;height:64px;border-radius:18px;border:2px solid var(--ink);display:grid;place-items:center;color:#fff;font-weight:900;font-size:28px;flex:0 0 64px}
+.hd-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.hd-actions .btn{flex:1 1 180px}
+.hd-door{overflow:hidden;margin-bottom:14px}
+.hd-how{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:4px 0 18px}
+.hd-how li{background:#F6F3FB;border-radius:12px;padding:8px;font-size:12.5px;font-weight:600;display:flex;gap:6px;align-items:center;line-height:1.2}
+.hd-how b{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:12px}
+.hd-group{margin-bottom:18px}
+.hd-group h3{font-size:18px;margin-bottom:8px}.hd-group h3 small{color:var(--muted);font-weight:600}
+.hd-ev{background:#fff;border:2px solid var(--ink);border-radius:18px;padding:12px;display:grid;gap:8px;margin-bottom:10px;min-width:0}
+.hd-ev .top{display:flex;gap:10px;align-items:flex-start}
+.hd-ev .top .grow{flex:1;min-width:0;display:flex;flex-direction:column}
+.hd-ev .top b{overflow-wrap:anywhere}.hd-ev .top small{color:var(--muted);font-size:12.5px}
+.hd-ev .em{font-size:24px;line-height:1}
+.hd-remark{background:#FFF4CC;border:1.5px solid var(--ink);border-radius:12px;padding:8px 10px;font-size:13.5px}
+.hd-empty{border:2px dashed var(--ink);border-radius:20px;padding:24px;text-align:center;display:grid;gap:4px;justify-items:center;background:#fff}
+.hd-empty span{font-size:34px}

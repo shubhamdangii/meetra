@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
+import { HostDesk, useMyHost } from "../host/HostDesk";
 import { burstFrom, Gallery } from "../fx";
 import { Reveal, WhatsAppDone } from "../ui";
 import { CONFIG } from "@/lib/config";
@@ -45,7 +46,16 @@ const liveCities = Object.entries(CONFIG.cities).filter(([, c]) => c.live);
 
 const blank = (city: string) => ({ city_slug: CONFIG.cities[city]?.live ? city : CONFIG.defaultCity, plan_title: "", category: "games", pitch: "", experience: "", frequency: "monthly", group_size: "10", availability: "" });
 
+/** /host/: approved hosts get their Host desk; everyone else sees the application. */
 export function HostPage() {
+  const host = useMyHost();
+  const auth = useAuth();
+  if (auth.enabled && auth.session && host === undefined) return <div className="skeleton" style={{ minHeight: 320, marginBottom: 40 }} />;
+  if (host) return <HostDesk host={host} />;
+  return <HostApply />;
+}
+
+function HostApply() {
   const { city, toast, confirm } = useApp();
   const auth = useAuth();
   const [v, setV] = useState(() => blank(city));
