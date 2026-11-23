@@ -1325,3 +1325,4 @@ a.host{text-decoration:none;color:inherit;display:block}
 .hd-remark{background:#FFF4CC;border:1.5px solid var(--ink);border-radius:12px;padding:8px 10px;font-size:13.5px}
 .hd-empty{border:2px dashed var(--ink);border-radius:20px;padding:24px;text-align:center;display:grid;gap:4px;justify-items:center;background:#fff}
 .hd-empty span{font-size:34px}
+@media (max-width:520px){.hd-head .btn{flex:1 1 100%}.hd-head .grow{flex:1 1 calc(100% - 80px)}.hd-how li{font-size:11.5px;padding:7px 6px}}

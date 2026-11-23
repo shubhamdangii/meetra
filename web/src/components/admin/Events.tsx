@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { CATS, CITIES, Chip, Empty, Modal, cityName, fmtDT, fromLocalInput, nowLocalInput, toLocalInput, useAsk, useCall, useRpc } from "./shared";
+import { CATEGORIES } from "@/lib/data";
 
 export type AdminEvent = {
   id: number; plan_ref: string; title: string; city_slug: string; category: string; host_id: number | null; host_name: string | null;
@@ -58,11 +59,11 @@ export function EventForm({ value, onChange, hosts, lockCity, hideHost }: { valu
     <div className="adm-form">
       <div className="field span2"><label>Title *</label><input value={value.title} maxLength={100} onChange={(e) => set("title", e.target.value)} placeholder="Sunday Board Games Brunch" /></div>
       <div className="field"><label>City *</label><select value={value.city_slug} disabled={lockCity} onChange={(e) => set("city_slug", e.target.value)}>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select></div>
-      <div className="field"><label>Category *</label><select value={value.category} onChange={(e) => set("category", e.target.value)}>{CATS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+      <div className="field"><label>Category *</label><select value={value.category} onChange={(e) => set("category", e.target.value)}>{CATS.map((c) => { const k = (CATEGORIES as { id: string; label: string; icon: string }[]).find((x) => x.id === c); return <option key={c} value={c}>{k ? `${k.icon} ${k.label}` : c}</option>; })}</select></div>
       {!hideHost && <div className="field"><label>Host</label><select value={value.host_id} onChange={(e) => set("host_id", e.target.value)}>
         <option value="">the meetra team</option>{cityHosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
         {!cityHosts.length && <small className="muted">No active hosts in {cityName(value.city_slug)} yet. Add one in the Hosts tab.</small>}</div>}
-      <div className="field"><label>Area *</label><input value={value.area} maxLength={60} onChange={(e) => set("area", e.target.value)} placeholder="C-Scheme" /></div>
+      <div className="field"><label>Area *</label><input value={value.area} maxLength={60} onChange={(e) => set("area", e.target.value)} placeholder={value.city_slug === "jaipur" ? "e.g. C-Scheme" : "e.g. Prahlad Nagar"} /></div>
       <div className="field"><label>Starts *</label><input type="datetime-local" min={min} value={value.starts} onChange={(e) => set("starts", e.target.value)} /></div>
       <div className="field"><label>Ends *</label><input type="datetime-local" min={value.starts || min} value={value.ends} onChange={(e) => set("ends", e.target.value)} /></div>
       <div className="field"><label>Booking closes</label><input type="datetime-local" min={min} max={value.starts || undefined} value={value.closes} onChange={(e) => set("closes", e.target.value)} />
