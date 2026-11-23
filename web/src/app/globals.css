@@ -1326,3 +1326,14 @@ a.host{text-decoration:none;color:inherit;display:block}
 .hd-empty{border:2px dashed var(--ink);border-radius:20px;padding:24px;text-align:center;display:grid;gap:4px;justify-items:center;background:#fff}
 .hd-empty span{font-size:34px}
 @media (max-width:520px){.hd-head .btn{flex:1 1 100%}.hd-head .grow{flex:1 1 calc(100% - 80px)}.hd-how li{font-size:11.5px;padding:7px 6px}}
+@media (max-width:720px){.nav-links{display:none}}
+@media (max-width:360px){
+  .logo{font-size:22px}
+  .nav{gap:8px}
+  .city-btn{padding:6px 8px;font-size:12px}
+  .city-btn span{max-width:72px}
+  .city-btn .caret{display:none}
+  .avatar-btn{width:32px;height:32px}
+  .menu-btn{width:36px;height:36px}
+}
+.city-btn .caret{font-style:normal}

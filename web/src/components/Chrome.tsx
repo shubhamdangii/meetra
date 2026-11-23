@@ -66,7 +66,7 @@ function CityPicker() {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button className="city-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        📍 <span>{ready ? cityName(city) : CONFIG.cities[CONFIG.defaultCity].name}</span> ▾
+        📍 <span>{ready ? cityName(city) : CONFIG.cities[CONFIG.defaultCity].name}</span> <i className="caret" aria-hidden="true">▾</i>
       </button>
       <AnimatePresence>
         {open && (
