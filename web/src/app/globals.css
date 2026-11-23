@@ -1337,3 +1337,23 @@ a.host{text-decoration:none;color:inherit;display:block}
   .menu-btn{width:36px;height:36px}
 }
 .city-btn .caret{font-style:normal}
+/* ---------- admin tables become cards on phones ---------- */
+.adm-tabs{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}
+@media (max-width:720px){
+  .adm-root .tbl-wrap{overflow:visible;border:0;background:none;box-shadow:none;border-radius:0}
+  .adm-root .tbl-wrap table,.adm-root .tbl-wrap tbody{display:block;width:100%}
+  .adm-root .tbl-wrap thead{display:none}
+  .adm-root .tbl-wrap tbody tr{display:grid;grid-template-columns:1fr;gap:2px;background:#fff;border:2px solid var(--ink);border-radius:16px;padding:10px 12px;margin-bottom:10px;box-shadow:3px 3px 0 var(--ink)}
+  .adm-root .tbl-wrap tbody tr:hover{background:#fff}
+  .adm-root .tbl-wrap tbody td{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;border:0;text-align:right;min-width:0;max-width:none;white-space:normal}
+  .adm-root .tbl-wrap tbody td::before{content:attr(data-label);flex:0 0 auto;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:left}
+  .adm-root .tbl-wrap tbody td[data-label=""]::before{display:none}
+  .adm-root .tbl-wrap tbody td:first-child{justify-content:flex-start;text-align:left;padding-bottom:8px;border-bottom:1px dashed #E5E0EF;margin-bottom:2px}
+  .adm-root .tbl-wrap tbody td:first-child::before{display:none}
+  .adm-root .tbl-wrap tbody td>*{min-width:0}
+  .adm-root .tbl-wrap tbody td .acts{justify-content:flex-end}
+  .adm-root .tbl-wrap tbody td[data-label=""]{justify-content:flex-end}
+  .adm-root .tbl-wrap tbody td textarea{width:100%;min-width:0}
+  .adm-root .tbl-wrap tbody td.num{font-weight:800}
+  .adm-root .tbl-wrap tbody td[colspan]{justify-content:center}
+}

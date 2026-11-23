@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { AdminHosts } from "./AdminHosts";
@@ -67,6 +67,18 @@ export default function AdminPage() {
     const t = setInterval(() => { if (Date.now() - last > 30 * 60e3) { toast("Logged out after 30 minutes of no activity (admin safety)"); auth.logout(); } }, 30e3);
     return () => { clearInterval(t); evs.forEach((e) => window.removeEventListener(e, bump)); };
   }, [team, auth, toast]);
+  // Phones: every table becomes a stack of cards. Each cell gets its column name as a label.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = rootRef.current; if (!root) return;
+    const label = () => root.querySelectorAll("table").forEach((t) => {
+      const hs = [...t.querySelectorAll("thead th")].map((th) => th.textContent?.replace(/[↑↓]/g, "").trim() ?? "");
+      t.querySelectorAll("tbody tr").forEach((tr) => [...tr.children].forEach((td, i) => { if (td.getAttribute("data-label") !== hs[i]) td.setAttribute("data-label", hs[i] ?? ""); }));
+    });
+    label();
+    const mo = new MutationObserver(label); mo.observe(root, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  });
   const openLink = useCallback((link: string) => {
     try { const u = new URL(link, window.location.origin); const t = u.searchParams.get("tab") as Tab | null; if (t) setTab(t, u.searchParams.get("req") ?? undefined); } catch {}
   }, [setTab]);
@@ -107,7 +119,7 @@ export default function AdminPage() {
   const cols: [keyof Row, string][] = [["title", "Plan"], ["day", "Date"], ["interested", "♥"], ["skipped", "✕"], ["rate", "Interest %"], ["requests", "Requests"], ["approved_seats", "Seats filled"], ["waitlisted", "Waiting"]];
 
   return (
-    <div className="wrap" style={{ paddingBottom: 60 }}>
+    <div className="wrap adm-root" ref={rootRef} style={{ paddingBottom: 60 }}>
       {head}
       <nav className="adm-tabs" aria-label="Admin sections">
         {(isMain ? ([["dashboard", "📊 Dashboard"], ["approvals", "🛂 Approvals"], ["events", "🚀 Events"], ["hosts", "🎙️ Hosts"], ["requests", "🎟 Seat requests"], ["door", "📷 Door"], ["interest", "♥ Interest"], ["brands", "🤝 Brands"], ["team", "👥 Team"], ["activity", "🧾 Activity"]] as [Tab, string][])
