@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { CITIES, Empty, cityName, fmtDT, useAsk, useCall, useRpc } from "./shared";
 
-type Member = { user_id: string | null; display_name: string | null; email: string | null; avatar_url: string | null; is_super: boolean; cities: string[] | null };
+type Member = { user_id: string | null; display_name: string | null; email: string | null; avatar_url: string | null; is_super: boolean; cities: string[] | null; invited?: boolean };
 
 /** Team: the 2 main admins (fixed) + sub-admins (city helpers), added/removed through approval. */
 export function AdminTeamDesk({ goApprovals }: { goApprovals: (req?: string) => void }) {
@@ -38,7 +38,25 @@ export function AdminTeamDesk({ goApprovals }: { goApprovals: (req?: string) => 
       ))}</div>
 
       <h3 className="adm-h" style={{ marginTop: 26 }}>Sub-admins</h3>
-      <p className="adm-note">Sub-admins only handle seat requests, door check-in and host applications for their city. Adding or removing one needs the other main admin&apos;s approval.</p>
+      <details className="adm-doc" open={!subs.length}>
+        <summary>📘 What can a sub-admin do?</summary>
+        <div className="adm-doc-grid">
+          <div><b>✅ Can (only in their city)</b><ul>
+            <li>See seat requests and approve, waitlist or decline them</li>
+            <li>Use Auto-fill seats by priority</li>
+            <li>Scan door passes and tick guests in at the Door</li>
+            <li>See the Interest numbers (♥ / ✕) for their city&apos;s plans</li>
+            <li>Review host applications for their city</li></ul></div>
+          <div><b>🚫 Can&apos;t</b><ul>
+            <li>Create, change, cancel or remove events</li>
+            <li>Add, edit, deactivate or remove hosts</li>
+            <li>Approve anything in the Approval Center</li>
+            <li>See other cities, the Dashboard, Team or Activity log</li>
+            <li>Add or remove other admins</li></ul></div>
+        </div>
+        <p className="muted" style={{ fontSize: 13 }}><b>How to add one:</b> type their email and city → <i>Request add</i> → the other main admin approves it in Approvals.
+          If they&apos;ve never logged in, they become a sub-admin automatically the first time they log in with that email. They then open <b>Admin</b> from the menu.</p>
+      </details>
       <form className="adm-bar" onSubmit={add}>
         <input className="adm-search" type="email" placeholder="Their login email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <select className="select" value={city} onChange={(e) => setCity(e.target.value)}>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select>
@@ -47,10 +65,11 @@ export function AdminTeamDesk({ goApprovals }: { goApprovals: (req?: string) => 
       {err && <p className="form-msg err">{err}</p>}
       {!t.data ? <div className="skeleton" style={{ minHeight: 80 }} /> : !subs.length ? <Empty>No sub-admins right now.</Empty> : (
         <div className="adm-list">{subs.map((x) => (
-          <div key={x.user_id} className="adm-card"><div className="adm-card-top">
+          <div key={x.user_id ?? x.email ?? ""} className="adm-card"><div className="adm-card-top">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {x.avatar_url ? <img className="adm-av" src={x.avatar_url} alt="" /> : <span className="adm-av ph">{(x.display_name ?? "?")[0]}</span>}
-            <div className="grow"><b>{x.display_name}</b><small>{x.email}</small></div></div>
+            <div className="grow"><b>{x.invited ? x.email : x.display_name}</b><small>{x.invited ? "Invited · becomes sub-admin on first login" : x.email}</small></div>
+            {x.invited && <span className="adm-chip c-pending">Invited</span>}</div>
             <div className="acts">{(x.cities ?? []).map((c) => <button key={c} onClick={() => remove(x, c)}>{cityName(c)} ✕</button>)}</div></div>
         ))}</div>
       )}

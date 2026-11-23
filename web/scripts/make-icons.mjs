@@ -39,4 +39,3 @@ fs.writeFileSync("public/icons/icon-192.png", draw(192, 0.04));
 fs.writeFileSync("public/icons/icon-512.png", draw(512, 0.04));
 fs.writeFileSync("public/icons/maskable-512.png", draw(512, 0.14));
 fs.writeFileSync("public/icons/apple-touch-icon.png", draw(180, 0.06));
-console.log("icons written");

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Instrument_Serif } from "next/font/google";
+import { Newsreader, Schibsted_Grotesk } from "next/font/google";
 import { AppProvider } from "@/components/AppProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Footer, Header } from "@/components/Chrome";
@@ -9,8 +9,9 @@ import { CONFIG } from "@/lib/config";
 import "./globals.css";
 
 // Fonts are downloaded at build time and served from our own site (no Google Fonts requests from visitors).
-const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap", axes: ["opsz"] });
-const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: "italic", variable: "--font-serif", display: "swap" });
+// Schibsted Grotesk + Newsreader (both free Google Fonts, SIL Open Font License).
+const display = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
+const serif = Newsreader({ subsets: ["latin"], style: ["italic"], weight: ["400", "500"], variable: "--font-serif", display: "swap" });
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const live = Object.values(CONFIG.cities).filter((c) => c.live).map((c) => c.name).join(" & ");

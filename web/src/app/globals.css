@@ -7,8 +7,8 @@
   --line:#16122B; --soft:#F3EBDD;
   --r:22px; --r-sm:14px;
   --sh:4px 4px 0 var(--ink); --sh-lg:7px 7px 0 var(--ink);
-  --display:var(--font-display),"Bricolage Grotesque",system-ui,sans-serif;
-  --serif:var(--font-serif),"Instrument Serif",Georgia,serif;
+  --display:var(--font-display),"Schibsted Grotesk","Helvetica Neue",Arial,sans-serif;
+  --serif:var(--font-serif),"Newsreader",Georgia,serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
@@ -274,7 +274,7 @@ section{position:relative}
 .ev-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
 .ev-head h1{font-size:clamp(38px,6vw,68px);line-height:.95;letter-spacing:-.055em}
 .ev-head .meta{color:var(--ink-2);font-weight:600;margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.ev-layout{display:grid;grid-template-columns:1fr 380px;gap:36px;align-items:start}
+.ev-layout{display:grid;grid-template-columns:minmax(0,1fr) clamp(320px,32vw,390px);gap:clamp(20px,3vw,36px);align-items:start}
 .ev-hero{border:2px solid var(--ink);border-radius:28px;box-shadow:var(--sh-lg);overflow:hidden}
 .ev-hero .poster{aspect-ratio:16/10}
 .ev-hero .poster .blob{width:40%}
@@ -296,7 +296,7 @@ section{position:relative}
 .host-row .av{position:relative;overflow:hidden;width:84px;height:84px;flex:0 0 84px;border-radius:20px;border:2px solid var(--ink);display:grid;place-items:center;font-size:36px;font-weight:800;color:#fff}
 .host-row h3{font-size:22px;letter-spacing:-.03em}
 
-.book{position:sticky;top:90px;max-height:calc(100vh - 110px);overflow:auto;background:#fff;border:2px solid var(--ink);border-radius:24px;box-shadow:var(--sh-lg);overflow:hidden}
+.book{position:sticky;top:90px;max-height:calc(100vh - 110px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--violet) transparent;background:#fff;border:2px solid var(--ink);border-radius:24px;box-shadow:var(--sh-lg)}
 .book-top{background:var(--sun);padding:20px 22px;border-bottom:2px solid var(--ink)}
 .book-top .amt{font-size:36px;font-weight:800;letter-spacing:-.05em;line-height:1}
 .book-top small{font-weight:600;color:var(--ink-2)}
@@ -318,7 +318,7 @@ section{position:relative}
 .mobile-book{display:none}
 @media (max-width:980px){
   .ev-layout{grid-template-columns:1fr}
-  .book{position:static}
+  .book{position:static;max-height:none;overflow:visible}
   .mobile-book{display:flex;position:fixed;left:12px;right:12px;bottom:86px;z-index:44;background:#fff;border:2px solid var(--ink);border-radius:18px;box-shadow:var(--sh);padding:10px 10px 10px 16px;justify-content:space-between;align-items:center}
   .mobile-book b{font-size:20px;letter-spacing:-.03em}
 }
@@ -1185,3 +1185,31 @@ html,body{overflow-x:clip}
 .host-rating{font-size:14px;margin:2px 0 6px}
 .host-reviews{list-style:none;padding:0;display:grid;gap:6px;margin-top:8px;font-size:14px}
 .host-reviews b{color:#F2B300}
+.adm-doc{background:#fff;border:2px solid var(--ink);border-radius:16px;padding:10px 14px;margin-bottom:14px}
+.adm-doc summary{font-weight:800;cursor:pointer}
+.adm-doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
+.adm-doc ul{padding-left:18px;font-size:14px;display:grid;gap:3px;margin-top:4px}
+@media (max-width:600px){.adm-doc-grid{grid-template-columns:1fr}}
+/* event booking card: its own thin scrollbar when the laptop screen is short */
+.book::-webkit-scrollbar{width:8px}
+.book::-webkit-scrollbar-thumb{background:var(--violet);border-radius:8px;border:2px solid #fff}
+.book::-webkit-scrollbar-track{background:transparent}
+.book .book-top{border-radius:22px 22px 0 0}
+/* toasts: colour by outcome; confirm dialog */
+.toast.t-ok{background:#0B7A55}
+.toast.t-err{background:#B3134B}
+.toast{white-space:normal;max-width:min(92vw,460px);text-align:center}
+.cfm-bg{position:fixed;inset:0;z-index:200;background:rgba(22,18,43,.55);display:grid;place-items:center;padding:16px}
+.cfm{width:min(400px,100%);background:#fff;border:2px solid var(--ink);border-radius:24px;box-shadow:6px 6px 0 var(--ink);padding:22px 20px 18px;text-align:center;display:grid;gap:8px;justify-items:center}
+.cfm-ic{font-size:40px;line-height:1}
+.cfm h3{font-size:21px;letter-spacing:-.02em;line-height:1.15}
+.cfm p{color:var(--ink-2);font-size:15px}
+.cfm-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:8px}
+.btn-danger{background:#D6336C;color:#fff;border:2px solid var(--ink)}
+
+/* ---------- headings: Schibsted Grotesk, calmer letter-spacing (one place to tune) ---------- */
+h1,.hero h1,.page-hero h1{letter-spacing:-.045em;font-weight:900}
+h2,.sec-head h2,.h2{letter-spacing:-.04em;font-weight:800}
+h3{letter-spacing:-.025em;font-weight:700}
+h4{letter-spacing:-.01em}
+.serif{letter-spacing:-.015em;font-weight:500}

@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import { type MeetEvent, addressDropAt, eventUrl, fmtWhen, startsAt } from "@/lib/events";
 
 export default function SavedPage() {
-  const { ready, upcoming, byId, requests, savedIds, toast } = useApp();
+  const { ready, upcoming, byId, requests, savedIds, toast, confirm } = useApp();
   const auth = useAuth();
   const { rows, setRows } = useMyRequests();
   const now = Date.now();
@@ -28,10 +28,14 @@ export default function SavedPage() {
   const find = <Link className="btn btn-sun btn-sm" href="/events/" style={{ marginTop: 16 }}>Find a plan →</Link>;
 
   async function cancel(r: MyRequest) {
-    if (!auth.client || !confirm("Cancel your spot on this plan?")) return;
+    if (!auth.client) return;
+    const e = byId(r.plan_ref);
+    const ok = await confirm({ title: r.status === "approved" ? "Give up your seat?" : "Cancel your request?", danger: true, ok: "Yes, cancel", cancel: "Keep my spot",
+      body: `${e?.title ?? "This plan"}${r.status === "approved" ? ". Your seat goes to the next person on the waiting list." : ". You can request again later if seats are left."}` });
+    if (!ok) return;
     const { error } = await auth.client.from("plan_requests").update({ status: "cancelled" }).eq("id", r.id);
     if (error) return toast("Couldn't cancel: " + error.message);
-    setRows((l) => l && l.map((x) => (x.id === r.id ? { ...x, status: "cancelled" } : x))); toast("Spot cancelled"); buzz();
+    setRows((l) => l && l.map((x) => (x.id === r.id ? { ...x, status: "cancelled" } : x))); toast("Cancelled ✓ We've let the host know"); buzz();
   }
 
   return (

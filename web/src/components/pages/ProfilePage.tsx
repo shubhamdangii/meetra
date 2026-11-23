@@ -111,8 +111,8 @@ export default function ProfilePage() {
       const url = auth.client.storage.from("avatars").getPublicUrl(path).data.publicUrl;
       const r = await auth.client.from("users").update({ avatar_url: url }).eq("id", me.id);
       if (r.error) throw r.error;
-      setAvatar(url); setPhotoMsg("Photo saved ✓"); auth.refreshMe();
-    } catch (e) { setPhotoMsg("Upload failed: " + (e as Error).message); }
+      setAvatar(url); setPhotoMsg("Photo saved ✓"); toast("Photo saved ✓"); auth.refreshMe();
+    } catch (e) { setPhotoMsg("Upload failed: " + (e as Error).message); toast("Couldn't upload the photo. Try a smaller one."); }
   }
 
   async function verifyWhatsApp() {

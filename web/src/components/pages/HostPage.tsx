@@ -46,7 +46,7 @@ const liveCities = Object.entries(CONFIG.cities).filter(([, c]) => c.live);
 const blank = (city: string) => ({ city_slug: CONFIG.cities[city]?.live ? city : CONFIG.defaultCity, plan_title: "", category: "games", pitch: "", experience: "", frequency: "monthly", group_size: "10", availability: "" });
 
 export function HostPage() {
-  const { city, toast } = useApp();
+  const { city, toast, confirm } = useApp();
   const auth = useAuth();
   const [v, setV] = useState(() => blank(city));
   const [app, setApp] = useState<App | null | undefined>(undefined); // undefined = loading
@@ -95,7 +95,8 @@ export function HostPage() {
   }
 
   async function withdraw() {
-    if (!app || !auth.client || !confirm("Withdraw your host application? You can apply again later.")) return;
+    if (!app || !auth.client) return;
+    if (!(await confirm({ title: "Withdraw your host application?", body: "You can apply again later.", danger: true, ok: "Yes, withdraw", cancel: "Keep it" }))) return;
     const { error } = await auth.client.from("host_applications").update({ status: "withdrawn" }).eq("id", app.id);
     if (error) return toast("Couldn't withdraw: " + error.message);
     toast("Application withdrawn"); setV(blank(city)); load();

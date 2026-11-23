@@ -89,6 +89,7 @@ function CityPicker() {
 
 function AccountSlot() {
   const { enabled, session, me, logout, team } = useAuth();
+  const { toast } = useApp();
   const [open, setOpen] = useState(false);
   const ref = useOutsideClose(open, () => setOpen(false));
   if (!enabled) return null;
@@ -109,7 +110,7 @@ function AccountSlot() {
             <Link href="/games/" role="menuitem" onClick={() => setOpen(false)}><span>Party games</span></Link>
             <Link href="/swipe/" role="menuitem" onClick={() => setOpen(false)}><span>Discover plans</span></Link>
             {team && <Link href="/admin/" role="menuitem" onClick={() => setOpen(false)}><span>{team.is_super ? "Admin desk" : "City desk"}</span><small>{team.is_super ? "main admin" : team.cities.map((c) => CONFIG.cities[c]?.name ?? c).join(", ")}</small></Link>}
-            <button role="menuitem" onClick={() => { setOpen(false); logout(); }}><span>Log out</span></button>
+            <button role="menuitem" onClick={async () => { setOpen(false); await logout(); toast("Logged out ✓ See you soon"); }}><span>Log out</span></button>
           </motion.div>
         )}
       </AnimatePresence>

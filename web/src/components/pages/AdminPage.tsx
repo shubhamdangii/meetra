@@ -103,8 +103,9 @@ export default function AdminPage() {
   useEffect(() => { if (isAdmin && tab === "requests") loadQueue(); }, [isAdmin, tab, loadQueue]);
 
   const setStatus = async (id: number, status: string) => {
-    const { error } = await auth.client!.from("plan_requests").update({ status }).eq("id", id);
+    const { data, error } = await auth.client!.from("plan_requests").update({ status }).eq("id", id).select("id,status");
     if (error) return toast("Couldn't update: " + error.message);
+    if (!data?.length) { loadQueue(); return toast("⚠️ Not saved: you don't have access to this request. Refreshed the list."); }
     toast("Updated ✓"); loadQueue(); loadSum();
   };
   const fill = async () => {

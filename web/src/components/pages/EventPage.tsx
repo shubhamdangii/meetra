@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
@@ -10,7 +10,7 @@ import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
 import { addressDropAt, catOf, eventImages, fmtDay, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
-import { CalendarButton } from "../plans";
+import { CalendarButton, useLiveRefresh } from "../plans";
 import { PhotoStrip } from "../Photos";
 import { AreaMap } from "../AreaMap";
 import { areaPoint } from "@/lib/geo";
@@ -28,7 +28,7 @@ const MOBILE_STATUS: Record<string, string> = { pending: "⏳ Requested", approv
 
 export default function EventPage() {
   const params = useSearchParams();
-  const { ready, byId, upcoming, today, addRequest, toast } = useApp();
+  const { ready, byId, upcoming, today, addRequest, toast, confirm } = useApp();
   const auth = useAuth();
   const rawId = params.get("id") ?? "";
 
@@ -60,12 +60,16 @@ export default function EventPage() {
     if (!e || !auth.client) return;
     auth.client.rpc("plan_counts", { p_refs: [e.id] }).then(({ data }) => setCounts(data?.[0] ?? null));
   }, [e, auth.client]);
-  useEffect(() => {
+  const loadMine = useCallback(() => {
     if (!e || !auth.client || !auth.me) { setMyReq(null); return; }
     auth.client.from("plan_requests").select("id,status,party_size").eq("plan_ref", e.id).eq("user_id", auth.me.id).maybeSingle()
       .then(({ data }) => setMyReq(data as MyReq));
-    if (auth.me.display_name && auth.me.display_name !== "New member") setName((n) => n || auth.me!.display_name);
   }, [e, auth.client, auth.me]);
+  useEffect(() => {
+    loadMine();
+    if (auth.me?.display_name && auth.me.display_name !== "New member") setName((n) => n || auth.me!.display_name);
+  }, [loadMine, auth.me]);
+  useLiveRefresh(loadMine);
   useEffect(() => {
     if (myReq?.status === "waitlisted" && auth.client && e) auth.client.rpc("my_waitlist_position", { p_plan_ref: e.id }).then(({ data }) => setPos(data ?? null));
   }, [myReq, auth.client, e]);
@@ -123,10 +127,13 @@ export default function EventPage() {
   }
 
   async function cancel() {
-    if (!myReq || !auth.client) return;
+    if (!myReq || !auth.client || !e) return;
+    const ok = await confirm({ title: myReq.status === "approved" ? "Give up your seat?" : "Cancel your request?", danger: true, ok: "Yes, cancel", cancel: "Keep my spot",
+      body: `${e.title} · ${fmtDay(e.date)}${myReq.status === "approved" ? ". Your seat goes to the next person on the waiting list." : ""}` });
+    if (!ok) return;
     const { error } = await auth.client.from("plan_requests").update({ status: "cancelled" }).eq("id", myReq.id);
     if (error) return toast("Couldn't cancel: " + error.message);
-    setMyReq({ ...myReq, status: "cancelled" }); toast("Request cancelled");
+    setMyReq({ ...myReq, status: "cancelled" }); toast("Cancelled ✓");
   }
 
   const share = async () => {

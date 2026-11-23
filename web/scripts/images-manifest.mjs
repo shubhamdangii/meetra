@@ -12,4 +12,3 @@ for (const k of fs.existsSync(path.join(root, "events")) ? fs.readdirSync(path.j
 for (const c of ["jaipur", "ahmedabad"]) for (const f of list(path.join(root, "hosts", c))) m.hosts[path.parse(f).name.toLowerCase()] = `hosts/${c}/${f}`;
 m.hero = list(path.join(root, "hero")); m.gallery = list(path.join(root, "gallery"));
 fs.writeFileSync(path.resolve("src/lib/image-manifest.json"), JSON.stringify(m, null, 1));
-console.log("images:", Object.keys(m.events).length, "events,", Object.keys(m.hosts).length, "hosts");

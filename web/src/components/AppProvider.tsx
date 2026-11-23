@@ -7,6 +7,7 @@ import { buildEvents, type CustomPlan, type MeetEvent, startOfToday } from "@/li
 import { getSupabase } from "@/lib/supabase";
 import { store } from "@/lib/store";
 
+export type ConfirmOpts = { title: string; body?: string; ok?: string; cancel?: string; danger?: boolean; icon?: string };
 type Req = { id: string; name: string; friend: boolean; at: number };
 type Ctx = {
   ready: boolean;                       // false during the static pre-render; true in the browser
@@ -17,6 +18,8 @@ type Ctx = {
   isSaved: (id: string) => boolean; toggleSave: (id: string) => void; savedIds: string[];
   requests: Req[]; addRequest: (r: Req) => void;
   toast: (msg: string) => void;
+  /** Styled "Are you sure?" dialog. Resolves true when the person confirms. */
+  confirm: (o: ConfirmOpts) => Promise<boolean>;
   reloadCustom: () => void;
 };
 const AppCtx = createContext<Ctx | null>(null);
@@ -31,6 +34,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [custom, setCustom] = useState<CustomPlan[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [ask, setAsk] = useState<(ConfirmOpts & { resolve: (v: boolean) => void }) | null>(null);
+  const confirmFn = useCallback((o: ConfirmOpts) => new Promise<boolean>((resolve) => setAsk({ ...o, resolve })), []);
+  const answer = (v: boolean) => { ask?.resolve(v); setAsk(null); };
+  useEffect(() => {
+    if (!ask) return;
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") { ask.resolve(false); setAsk(null); } };
+    window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k);
+  }, [ask]);
 
   // Everything that depends on the date or the visitor's browser starts after mount.
   useEffect(() => {
@@ -52,7 +63,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToastMsg(null), 2600);
+    toastTimer.current = setTimeout(() => setToastMsg(null), /couldn|⚠️|error|failed|not saved/i.test(msg) ? 5000 : 3000);
   }, []);
 
   const value: Ctx = {
@@ -75,6 +86,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     requests,
     addRequest: (r) => setRequests((l) => { const next = [r, ...l.filter((x) => x.id !== r.id)]; store.set("mt-requests", next); return next; }),
     toast,
+    confirm: confirmFn,
     reloadCustom: () => { const from = new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10); getSupabase()?.from("custom_plans").select("*").gte("starts_on", from).then(({ data }) => setCustom((data as CustomPlan[]) ?? [])); },
   };
 
@@ -83,10 +95,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       {children}
       <AnimatePresence>
         {toastMsg && (
-          <motion.div key={toastMsg} className="toast show" role="status"
+          <motion.div key={toastMsg} className={`toast show ${/couldn|⚠️|error|failed|not saved/i.test(toastMsg) ? "t-err" : /✓|✅|🎉|saved|sent|cancelled|updated|thanks/i.test(toastMsg) ? "t-ok" : ""}`} role={/couldn|⚠️|error|failed/i.test(toastMsg) ? "alert" : "status"}
             initial={{ y: 40, opacity: 0, x: "-50%" }} animate={{ y: 0, opacity: 1, x: "-50%" }} exit={{ y: 40, opacity: 0, x: "-50%" }}
             transition={{ type: "spring", stiffness: 420, damping: 30 }}>
             {toastMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {ask && (
+          <motion.div className="cfm-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => answer(false)}>
+            <motion.div className="cfm" role="alertdialog" aria-modal="true" aria-labelledby="cfm-t" onClick={(e) => e.stopPropagation()}
+              initial={{ y: 60, scale: 0.9, rotate: -2, opacity: 0 }} animate={{ y: 0, scale: 1, rotate: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 24 }}>
+              <motion.span className="cfm-ic" aria-hidden="true" initial={{ scale: 0.3, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 500, damping: 12, delay: 0.08 }}>{ask.icon ?? (ask.danger ? "⚠️" : "🤔")}</motion.span>
+              <h3 id="cfm-t">{ask.title}</h3>
+              {ask.body && <p>{ask.body}</p>}
+              <div className="cfm-btns">
+                <button type="button" className="btn btn-white" onClick={() => answer(false)} autoFocus>{ask.cancel ?? "Go back"}</button>
+                <button type="button" className={`btn ${ask.danger ? "btn-danger" : "btn-ink"}`} onClick={() => answer(true)}>{ask.ok ?? "Yes"}</button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

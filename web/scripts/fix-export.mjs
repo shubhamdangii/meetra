@@ -32,4 +32,3 @@ function flatten(segDir, parent, prefix) {
 walk(out);
 // GitHub Pages: don't run Jekyll (it would hide folders starting with "_", like _next).
 fs.writeFileSync(path.join(out, ".nojekyll"), "");
-console.log(`fix-export: added ${copied} flat route files, wrote .nojekyll`);

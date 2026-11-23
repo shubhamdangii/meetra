@@ -17,6 +17,17 @@ export type ReqStatus = "pending" | "approved" | "waitlisted" | "declined" | "ca
 export type MyRequest = { id: number; plan_ref: string; status: ReqStatus; party_size: number; created_at: string; decided_at: string | null };
 
 /** All my seat requests (newest first). null while loading or when logged out. */
+/** Re-run `load` when the tab comes back into view and every 20 s while it's visible,
+ *  so a seat the team just approved shows up without a page reload. */
+export function useLiveRefresh(load: () => void, everyMs = 20000) {
+  useEffect(() => {
+    const onShow = () => { if (!document.hidden) load(); };
+    document.addEventListener("visibilitychange", onShow); window.addEventListener("focus", onShow);
+    const t = setInterval(onShow, everyMs);
+    return () => { document.removeEventListener("visibilitychange", onShow); window.removeEventListener("focus", onShow); clearInterval(t); };
+  }, [load, everyMs]);
+}
+
 export function useMyRequests() {
   const auth = useAuth();
   const [rows, setRows] = useState<MyRequest[] | null>(null);
@@ -26,6 +37,7 @@ export function useMyRequests() {
       .then(({ data }) => setRows((data as MyRequest[]) ?? []));
   }, [auth.client, auth.me]);
   useEffect(load, [load]);
+  useLiveRefresh(load);
   return { rows, reload: load, setRows };
 }
 
