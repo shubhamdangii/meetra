@@ -69,6 +69,7 @@ export default function ProfilePage() {
   const [verifyMsg, setVerifyMsg] = useState("");
   const [link, setLink] = useState<{ code: string; waNumber: string; waLink: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<string>("");   // snapshot of the form as last loaded/saved
   const linkPoll = useRef<ReturnType<typeof setInterval> | null>(null);
   const me = auth.me;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((x) => ({ ...x, [k]: v }));
@@ -85,15 +86,23 @@ export default function ProfilePage() {
       if (u.error || p.error) { setMsg({ text: "Couldn't load your profile: " + (u.error || p.error)!.message, ok: false }); return; }
       const U: any = u.data, P: any = p.data;
       setAvatar(U.avatar_url); setAcceptedAt(P.accepted_rules_at);
-      setF({
+      const loadedForm: Form = {
         displayName: U.display_name === "New member" ? "" : U.display_name, city: U.city_slug || (city !== "all" ? city : ""), occupation: U.occupation || "", bio: U.bio || "",
         fullName: P.full_name || "", dob: P.date_of_birth || "", gender: P.gender || "", phone: (P.phone || "").replace(/^\+91/, ""), email: P.email || "",
         instagram: P.instagram_url ? "@" + P.instagram_url.split("/").filter(Boolean).pop() : "", linkedin: P.linkedin_url || "", heard: P.heard_from || "", rules: !!P.accepted_rules_at,
-      });
+      };
+      setF(loadedForm); setSaved(JSON.stringify(loadedForm));
       setLoaded(true);
     })();
   }, [auth.enabled, auth.ready, auth.session, me, auth.client, loaded, city, router]);
   useEffect(() => () => { if (linkPoll.current) clearInterval(linkPoll.current); }, []);
+  // warn before leaving with unsaved changes
+  const dirty = loaded && JSON.stringify(f) !== saved;
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h); return () => window.removeEventListener("beforeunload", h);
+  }, [dirty]);
 
   const parts = scoreParts(f, avatar, !!me?.phone_verified, !!me?.email_verified);
   const score = parts.reduce((s, p) => s + (p[2] ? p[1] : 0), 0);
@@ -147,12 +156,11 @@ export default function ProfilePage() {
     };
     if (!me.phone_verified) pri.phone = phoneVal;                 // verified values are locked
     if (!me.email_verified) pri.email = f.email.trim().toLowerCase() || null;
-    const r1 = await auth.client.from("users").update(pub).eq("id", me.id);
-    const r2 = r1.error ? r1 : await auth.client.from("user_private").update(pri).eq("user_id", me.id);
+    const [r1, r2] = await Promise.all([auth.client.from("users").update(pub).eq("id", me.id), auth.client.from("user_private").update(pri).eq("user_id", me.id)]);
     setSaving(false);
     const err = r1.error || r2.error;
     if (err) return setMsg({ text: /18 or older/.test(err.message) ? "You must be 18 or older to join." : "Couldn't save: " + err.message, ok: false });
-    setAcceptedAt((pri.accepted_rules_at as string) ?? null);
+    setAcceptedAt((pri.accepted_rules_at as string) ?? null); setSaved(JSON.stringify(f));
     const m = await auth.refreshMe();
     setMsg({ text: `Saved ✓ Your priority score is ${m?.profile_score ?? score}/100.`, ok: true });
     toast(`Saved · score ${m?.profile_score ?? score}/100`);
@@ -262,8 +270,8 @@ export default function ProfilePage() {
         </Reveal>
 
         <div className="save-bar">
-          <div><b>Priority score: {score}/100</b><br /><small>{score === 100 ? "Top priority. Save any changes." : "Save to update your priority. Nothing here is required."}</small></div>
-          <motion.button whileTap={{ scale: 0.94 }} className="btn btn-sun" type="submit" disabled={!auth.enabled || saving}>Save</motion.button>
+          <div><b>Priority score: {score}/100</b><br /><small>{dirty ? <span style={{ color: "#B3134B", fontWeight: 700 }}>● Unsaved changes</span> : score === 100 ? "Top priority. All saved ✓" : "Save to update your priority. Nothing here is required."}</small></div>
+          <motion.button whileTap={{ scale: 0.94 }} className="btn btn-sun" type="submit" disabled={!auth.enabled || saving || (loaded && !dirty)}>{saving ? "Saving…" : dirty || !loaded ? "Save" : "Saved ✓"}</motion.button>
         </div>
         {msg && <p className={`form-msg ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</p>}
       </form>

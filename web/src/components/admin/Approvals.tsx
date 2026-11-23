@@ -23,6 +23,7 @@ export function AdminApprovals({ focus, onChanged }: { focus?: string; onChanged
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("waiting");
   const [edit, setEdit] = useState<{ req: Req; ev?: EventFormValue; host?: HostFormValue; reason?: string } | null>(null); const [err, setErr] = useState<string | null>(null);
   const focused = useRef<string | null>(null);
+  const [openId, setOpenId] = useState<number | null>(null);
   const hostNames = useMemo(() => new Map((hs.data ?? []).map((h) => [h.id, h.name])), [hs.data]);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function AdminApprovals({ focus, onChanged }: { focus?: string; onChanged
     const f = r.data.find((x) => x.req_no === focus); if (!f) return;
     focused.current = focus;
     setTab(f.status === "pending" ? (f.mine ? "mine" : "waiting") : (f.status as typeof tab) in Object.fromEntries(TABS) ? (f.status as typeof tab) : "all");
-    setTimeout(() => document.getElementById("req-" + focus)?.scrollIntoView({ block: "center", behavior: "smooth" }), 250);
+    setOpenId(f.id);   // a notification link opens that request's details straight away
   }, [focus, r.data]);
 
   const list = (r.data ?? []).filter((x) => tab === "all" || (tab === "waiting" ? x.status === "pending" && !x.mine : tab === "mine" ? x.mine && ["pending", "rejected"].includes(x.status) : x.status === tab));
@@ -40,11 +41,11 @@ export function AdminApprovals({ focus, onChanged }: { focus?: string; onChanged
   async function decide(x: Req, approve: boolean) {
     const remark = await ask(approve ? `Approve ${x.req_no}?` : `Reject ${x.req_no}?`, approve ? "Remark" : "Reason for rejecting (the maker sees this)", { required: !approve, ok: approve ? "Approve ✓" : "Reject" });
     if (remark === null) return;
-    if (await call("admin_decide_request", { p_id: x.id, p_approve: approve, p_remark: remark }, approve ? `${x.req_no} approved ✓ Live now` : `${x.req_no} rejected`)) done();
+    if (await call("admin_decide_request", { p_id: x.id, p_approve: approve, p_remark: remark }, approve ? `${x.req_no} approved ✓ Live now` : `${x.req_no} rejected`)) { setOpenId(null); done(); }
   }
-  async function withdraw(x: Req) { if (await call("admin_withdraw_request", { p_id: x.id }, `${x.req_no} withdrawn`)) done(); }
+  async function withdraw(x: Req) { if (await call("admin_withdraw_request", { p_id: x.id }, `${x.req_no} withdrawn`)) { setOpenId(null); done(); } }
   function openResubmit(x: Req) {
-    setErr(null);
+    setErr(null); setOpenId(null);
     if (x.entity === "event" && ["create", "update"].includes(x.action)) setEdit({ req: x, ev: eventToForm({ ...(x.old_value ?? {}), ...x.new_value }) });
     else if (x.entity === "host" && ["create", "update"].includes(x.action)) setEdit({ req: x, host: hostToForm({ ...(x.old_value ?? {}), ...x.new_value }) });
     else setEdit({ req: x, reason: String(x.new_value.reason ?? "") });
@@ -69,8 +70,26 @@ export function AdminApprovals({ focus, onChanged }: { focus?: string; onChanged
         <button onClick={done} aria-label="Refresh">↻</button></div>
       {r.error && <p className="form-msg err">{r.error}</p>}
       {!r.data ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>{tab === "waiting" ? "Nothing waiting for you. 🎉" : "No requests here."}</Empty> : (
-        <div className="adm-list one">{list.map((x, i) => (
-          <motion.article key={x.id} id={"req-" + x.req_no} className={`adm-card req ${focus === x.req_no ? "focus" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.03 }}>
+        <div className="tbl-wrap"><table className="adm-tbl">
+          <thead><tr><th>Request</th><th>What</th><th>Item</th><th>By</th><th>Status</th><th>Requested</th><th>Decided</th><th /></tr></thead>
+          <tbody>{list.map((x) => (
+            <tr key={x.id} className={focus === x.req_no ? "focus" : ""}>
+              <td><button className="adm-link mono" onClick={() => setOpenId(x.id)}>{x.req_no}</button></td>
+              <td style={{ whiteSpace: "nowrap" }}>{ENTITY[x.entity]} · {ACTION[x.action] ?? x.action}</td>
+              <td><button className="adm-link" onClick={() => setOpenId(x.id)}>{x.target_label}</button></td>
+              <td>{x.mine ? "You" : x.maker_name ?? "admin"}</td>
+              <td><Chip s={x.status} /></td>
+              <td style={{ whiteSpace: "nowrap" }}>{fmtDT(x.created_at)}</td>
+              <td style={{ whiteSpace: "nowrap" }}>{x.decided_at ? <>{fmtDT(x.decided_at)}<br /><small className="muted">{x.checker_name ?? ""}</small></> : "–"}</td>
+              <td>{x.status === "pending" && !x.mine ? <button className="adm-cta" onClick={() => setOpenId(x.id)}>Review →</button>
+                : x.status === "rejected" && x.mine ? <button className="adm-cta" onClick={() => openResubmit(x)}>Fix →</button> : null}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+      {(() => { const x = (r.data ?? []).find((q) => q.id === openId); return (
+        <Modal open={!!x} onClose={() => setOpenId(null)} wide title={x ? `${x.req_no} · ${ACTION[x.action] ?? x.action} ${x.entity}` : ""}>
+          {x && <div className="adm-card req" style={{ boxShadow: "none" }}>
             <div className="adm-card-top"><span className="adm-reqno">{x.req_no}</span>
               <div className="grow"><b>{ENTITY[x.entity]} · {ACTION[x.action] ?? x.action}: {x.target_label}</b>
                 <small>By <b>{x.mine ? "you" : x.maker_name ?? "admin"}</b> · {fmtDT(x.created_at)}{x.resubmits ? ` · resubmitted ${x.resubmits}×` : ""}</small></div>
@@ -84,9 +103,8 @@ export function AdminApprovals({ focus, onChanged }: { focus?: string; onChanged
               {x.status === "pending" && x.mine && <><span className="muted" style={{ fontSize: 13 }}>Waiting for the other admin…</span><button onClick={() => withdraw(x)}>Withdraw</button></>}
               {x.status === "rejected" && x.mine && <><button className="ok" onClick={() => openResubmit(x)}>✎ Edit & resubmit</button><button onClick={() => withdraw(x)}>Drop it</button></>}
             </div>
-          </motion.article>
-        ))}</div>
-      )}
+</div>}
+        </Modal>); })()}
       <Modal open={!!edit} onClose={() => setEdit(null)} wide title={edit ? `Edit & resubmit ${edit.req.req_no}` : ""}>
         {edit && <>
           {edit.req.checker_remark && <p className="adm-quote">Rejected because: “{edit.req.checker_remark}”</p>}

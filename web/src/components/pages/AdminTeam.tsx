@@ -17,35 +17,41 @@ const cityName = (c: string) => CONFIG.cities[c]?.name ?? c;
 type G = { request_id: number; display_name: string; full_name: string | null; avatar_url: string | null; phone: string | null; status: string; party_size: number };
 type Hit = { kind: "ok" | "again" | "bad"; title: string; sub?: string; avatar?: string | null };
 
+/** Door: scan any pass (the database works out which plan it belongs to); tap a plan chip for its guest list. */
 export function AdminCheckIn({ plans }: { plans: MeetEvent[] }) {
   const auth = useAuth();
   const { toast, today } = useApp();
-  const [plan, setPlan] = useState(plans[0]?.id ?? "");
-  const [guests, setGuests] = useState<G[] | null>(null);
+  // the plan happening nearest to now first
+  const sorted = useMemo(() => [...plans].sort((a, b) => Math.abs(a.day) - Math.abs(b.day) || a.date.getTime() - b.date.getTime()), [plans]);
+  const [plan, setPlan] = useState(sorted[0]?.id ?? "");
+  const [lists, setLists] = useState<Record<string, G[]>>({});
   const [scan, setScan] = useState(false);
   const [hit, setHit] = useState<Hit | null>(null);
   const [code, setCode] = useState("");
-  useEffect(() => { if (!plan && plans[0]) setPlan(plans[0].id); }, [plans, plan]);
+  useEffect(() => { if (!plan && sorted[0]) setPlan(sorted[0].id); }, [sorted, plan]);
 
-  const load = useCallback(async () => {
-    if (!auth.client || !plan) return;
-    const { data, error } = await auth.client.rpc("admin_plan_queue", { p_plan_ref: plan });
-    if (error) return toast("Couldn't load guests: " + error.message);
-    setGuests((data as G[]).filter((g) => g.status === "approved" || g.status === "attended"));
-  }, [auth.client, plan, toast]);
-  useEffect(() => { setGuests(null); load(); }, [load]);
-
-  const checkIn = useCallback(async (id: number, undo = false) => {
+  const loadOne = useCallback(async (ref: string) => {
     if (!auth.client) return;
-    const { data, error } = await auth.client.rpc("admin_check_in", { p_request_id: id, p_plan_ref: plan || null, p_undo: undo });
-    if (error) { setHit({ kind: "bad", title: "Can't let in", sub: error.message }); buzz(300); return; }
-    const r = (data as any[])[0];
-    if (undo) { toast(`${r.display_name} un-checked`); load(); return; }
-    setHit(r.already ? { kind: "again", title: `${r.display_name} is already in`, sub: "Scanned before. Same pass twice?", avatar: r.avatar_url }
-      : { kind: "ok", title: `${r.display_name}${r.party_size > 1 ? " +1" : ""}`, sub: "Checked in ✓ Welcome them!", avatar: r.avatar_url });
+    const { data, error } = await auth.client.rpc("admin_plan_queue", { p_plan_ref: ref });
+    if (error) return;
+    setLists((l) => ({ ...l, [ref]: (data as G[]).filter((g) => g.status === "approved" || g.status === "attended") }));
+  }, [auth.client]);
+  const loadAll = useCallback(() => { sorted.forEach((p) => loadOne(p.id)); }, [sorted, loadOne]);
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const checkIn = useCallback(async (id: number, undo = false, ref: string | null = null) => {
+    if (!auth.client) return;
+    const { data, error } = await auth.client.rpc("admin_check_in", { p_request_id: id, p_plan_ref: ref, p_undo: undo });
+    if (error) { setHit({ kind: "bad", title: "Can't let in", sub: error.message.replace(/^.*?: /, "") }); buzz(300); return; }
+    const r = (data as { display_name: string; party_size: number; already: boolean; avatar_url: string | null; plan_ref: string }[])[0];
+    const p = plans.find((x) => x.id === r.plan_ref);
+    if (undo) { toast(`${r.display_name} un-checked`); loadOne(r.plan_ref); return; }
+    setPlan(r.plan_ref);
+    setHit(r.already ? { kind: "again", title: `${r.display_name} is already in`, sub: `${p?.title ?? r.plan_ref} · scanned before. Same pass twice?`, avatar: r.avatar_url }
+      : { kind: "ok", title: `${r.display_name}${r.party_size > 1 ? " +1" : ""}`, sub: `Checked in ✓ ${p ? p.title : ""}`, avatar: r.avatar_url });
     if (!r.already) { buzz(60); burst(innerWidth / 2, innerHeight / 2, ["✅", "🎉", "✨"], 14); } else buzz(200);
-    load();
-  }, [auth.client, plan, toast, load]);
+    loadOne(r.plan_ref);
+  }, [auth.client, toast, loadOne, plans]);
 
   const onCode = useCallback((text: string) => {
     const m = /-PASS:(\d+):/.exec(text) ?? /^#?0*(\d{1,9})$/.exec(text.trim());
@@ -53,22 +59,20 @@ export function AdminCheckIn({ plans }: { plans: MeetEvent[] }) {
     checkIn(Number(m[1]));
   }, [checkIn]);
 
-  const inCount = guests?.filter((g) => g.status === "attended").reduce((s, g) => s + g.party_size, 0) ?? 0;
-  const total = guests?.reduce((s, g) => s + g.party_size, 0) ?? 0;
+  const guests = lists[plan] ?? null;
+  const tally = (ref: string) => { const g = lists[ref] ?? []; return [g.filter((x) => x.status === "attended").reduce((s, x) => s + x.party_size, 0), g.reduce((s, x) => s + x.party_size, 0)]; };
+  const [inCount, total] = tally(plan);
   const sel = plans.find((p) => p.id === plan);
+
+  // auto-hide a result after a few seconds so the next guest can be scanned
+  useEffect(() => { if (!hit || hit.kind === "bad") return; const t = setTimeout(() => setHit(null), 3500); return () => clearTimeout(t); }, [hit]);
 
   return (
     <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="ci">
-      {!plans.length ? <div className="setup-note">No plans today or tomorrow in your cities.</div> : <>
-        <div className="toolbar2">
-          <select className="select" value={plan} onChange={(e) => setPlan(e.target.value)} aria-label="Plan at the door">
-            {plans.map((p) => <option key={p.id} value={p.id}>{relDay(p.date, today)} · {p.time} · {p.title} ({cityName(p.city)})</option>)}
-          </select>
-        </div>
-        <div className="ci-top">
-          <div className="ci-count"><b>{inCount}</b><span>/ {total} in</span><i style={{ width: total ? `${(inCount / total) * 100}%` : 0 }} /></div>
-          <button className={`btn ${scan ? "btn-white" : "btn-sun"}`} onClick={() => { setScan((s) => !s); setHit(null); }}>{scan ? "Stop camera" : "📷 Scan passes"}</button>
-        </div>
+      {!plans.length ? <div className="setup-note">No plans yesterday, today or tomorrow in your cities.</div> : <>
+        <motion.button whileTap={{ scale: 0.97 }} className={`ci-scan-btn ${scan ? "on" : ""}`} onClick={() => { setScan((s) => !s); setHit(null); }}>
+          {scan ? "■ Stop camera" : "📷 Scan door passes"}<small>{scan ? "Point at the QR. It works for any plan." : "Any plan · we find the guest's plan automatically"}</small>
+        </motion.button>
         {scan && <Scanner onCode={onCode} paused={!!hit} />}
         <AnimatePresence>
           {hit && (
@@ -83,17 +87,27 @@ export function AdminCheckIn({ plans }: { plans: MeetEvent[] }) {
           <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="Or type the pass number, e.g. 00123" aria-label="Pass number" />
           <button className="btn btn-ink btn-sm" type="submit">Check in</button>
         </form>
-        <div className="group-head" style={{ marginTop: 18 }}><h3 style={{ fontSize: 20 }}>Guest list</h3><span>{sel && <Link href={eventUrl(sel)} style={{ textDecoration: "underline" }}>plan page</Link>}</span></div>
+        <div className="ci-plans" role="tablist" aria-label="Plans at the door">
+          {sorted.map((p) => { const [a, b] = tally(p.id); return (
+            <button key={p.id} role="tab" aria-selected={p.id === plan} className={p.id === plan ? "on" : ""} onClick={() => setPlan(p.id)}>
+              <b>{p.title.split(" · ")[0]}</b><small>{relDay(p.date, today)} · {p.time} · {cityName(p.city)}</small>
+              <span className="n">{lists[p.id] ? `${a}/${b} in` : "…"}</span>
+            </button>); })}
+        </div>
+        <div className="ci-top">
+          <div className="ci-count"><b>{inCount}</b><span>/ {total} in</span><i style={{ width: total ? `${(inCount / total) * 100}%` : 0 }} /></div>
+          {sel && <Link className="btn btn-white btn-sm" href={eventUrl(sel)}>Plan page</Link>}
+        </div>
         <div className="ci-list">
-          {!guests ? <div className="skeleton" style={{ minHeight: 80 }} /> : !guests.length ? <p className="muted">No confirmed guests yet. Approve requests in the Requests tab.</p> : guests.map((g) => {
+          {!guests ? <div className="skeleton" style={{ minHeight: 80 }} /> : !guests.length ? <p className="muted">No confirmed guests yet. Approve requests in Seat requests.</p> : [...guests].sort((a, b) => Number(a.status === "attended") - Number(b.status === "attended")).map((g) => {
             const inn = g.status === "attended";
             return (
               <div key={g.request_id} className={`ci-row ${inn ? "in" : ""}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {g.avatar_url ? <img src={g.avatar_url} alt="" /> : <span className="ph">{(g.display_name || "?")[0]}</span>}
                 <span className="ci-name"><b>{g.full_name || g.display_name}{g.party_size > 1 ? " +1" : ""}</b><small>#{String(g.request_id).padStart(5, "0")}{g.phone ? ` · ${g.phone}` : ""}</small></span>
-                {inn ? <button className="pill on" onClick={() => checkIn(g.request_id, true)} title="Undo">✓ In</button>
-                  : <button className="pill" onClick={() => checkIn(g.request_id)}>Check in</button>}
+                {inn ? <button className="pill on" onClick={() => checkIn(g.request_id, true, plan)} title="Undo">✓ In</button>
+                  : <button className="pill" onClick={() => checkIn(g.request_id, false, plan)}>Check in</button>}
               </div>
             );
           })}

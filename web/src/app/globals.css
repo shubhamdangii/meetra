@@ -1246,3 +1246,40 @@ a.host{text-decoration:none;color:inherit;display:block}
 .hf-gallery .g img{width:100%;height:100%;object-fit:cover}
 .hf-gallery .g button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--ink);background:#fff;font-size:11px;cursor:pointer}
 .hf-gallery .add{display:grid;place-items:center;font-size:26px;cursor:pointer;border-style:dashed;color:var(--muted)}
+/* door: one big scan button, plan chips instead of a dropdown */
+.ci-scan-btn{width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px;border:2px solid var(--ink);border-radius:20px;background:var(--sun);font:inherit;font-size:20px;font-weight:800;box-shadow:4px 4px 0 var(--ink);margin-bottom:12px;cursor:pointer;color:var(--ink)}
+.ci-scan-btn small{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.ci-scan-btn.on{background:#fff}
+.ci-plans{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:6px -20px 12px;padding:2px 20px 6px}
+.ci-plans::-webkit-scrollbar{display:none}
+.ci-plans button{flex:0 0 auto;min-width:170px;max-width:230px;text-align:left;display:grid;gap:1px;border:2px solid var(--ink);border-radius:16px;padding:9px 12px;background:#fff;cursor:pointer;font:inherit;color:var(--ink)}
+.ci-plans button.on{background:var(--ink);color:#fff}
+.ci-plans b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-plans small{font-size:11.5px;opacity:.75}
+.ci-plans .n{font-size:12px;font-weight:800;margin-top:2px}
+/* admin tables (Approvals / Events / Hosts) */
+.adm-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.adm-tbl th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:2px solid var(--ink);white-space:nowrap;background:#FAF7F2}
+.adm-tbl td{padding:10px 12px;border-bottom:1px solid #EEE9F4;vertical-align:middle}
+.adm-tbl tr:last-child td{border-bottom:0}
+.adm-tbl tbody tr:hover{background:#FBF9FF}
+.adm-tbl tr.focus{background:#FFF4CC}
+.adm-link{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--violet);text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
+.adm-link.mono{font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.adm-link.small{font-size:12px;font-weight:600}
+.adm-cta{white-space:nowrap;border:1.5px solid var(--ink);border-radius:999px;padding:5px 11px;background:var(--sun);font-weight:800;font-size:12.5px;cursor:pointer}
+.adm-tbl .who{display:flex;align-items:center;gap:8px}
+.adm-tbl .who img,.adm-tbl .who .ph{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid var(--ink);display:grid;place-items:center;background:var(--sun);font-weight:800;flex:0 0 32px}
+/* seat requests filters */
+.sr-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px}
+.sr-filters label{display:grid;gap:3px;font-size:12px;font-weight:700;color:var(--ink-2)}
+.sr-filters .select{width:100%;max-width:100%}
+.sr-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.sr-sum{flex:1 1 220px;font-size:13.5px;color:var(--ink-2)}
+/* brands form */
+.pk-kinds{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.pk-kinds button{display:grid;gap:1px;text-align:left;border:2px solid var(--ink);border-radius:14px;padding:9px 11px;background:#fff;cursor:pointer;font:inherit;color:var(--ink)}
+.pk-kinds button span{font-size:20px}.pk-kinds button b{font-size:14px}.pk-kinds button small{font-size:11.5px;color:var(--muted)}
+.pk-kinds button.on{background:var(--sun);box-shadow:3px 3px 0 var(--ink)}
+.pk-row{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+@media (max-width:520px){.pk-row{grid-template-columns:1fr}}

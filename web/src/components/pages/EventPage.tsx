@@ -106,7 +106,10 @@ export default function EventPage() {
       if (!auth.client || !auth.me) return toast("Still loading your account — try again in a second.");
       setBusy(true);
       const row = { plan_ref: e.id, party_size: friend ? 2 : 1, icebreaker: ice.trim() || null, status: full ? "waitlisted" : "pending" };
-      let res = await auth.client.from("plan_requests").insert(row).select("id,status,party_size").single();
+      // asked before (and cancelled)? re-send that request instead of creating a duplicate
+      let res = myReq
+        ? await auth.client.from("plan_requests").update({ status: row.status, party_size: row.party_size, icebreaker: row.icebreaker }).eq("id", myReq.id).select("id,status,party_size").single()
+        : await auth.client.from("plan_requests").insert(row).select("id,status,party_size").single();
       if (res.error && /duplicate|unique/i.test(res.error.message)) {
         res = await auth.client.from("plan_requests").update({ status: row.status, party_size: row.party_size, icebreaker: row.icebreaker })
           .eq("plan_ref", e.id).eq("user_id", auth.me.id).select("id,status,party_size").single();

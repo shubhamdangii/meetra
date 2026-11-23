@@ -89,6 +89,8 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
   const [edit, setEdit] = useState<{ mode: "new" | "draft" | "change"; ev?: AdminEvent; f: EventFormValue } | null>(null);
   const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const [hist, setHist] = useState<AdminEvent | null>(null);
+  const [openEv, setOpen] = useState<AdminEvent | null>(null);
+  const openNow = openEv ? (ev.data ?? []).find((x) => x.id === openEv.id) ?? null : null;
   const hosts = hs.data ?? [];
 
   const list = useMemo(() => (ev.data ?? []).filter((e) => (!city || e.city_slug === city) && (!host || String(e.host_id ?? "team") === host)
@@ -151,11 +153,27 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
       <div className="adm-seg">{FILTERS.map((f) => <button key={f} className={st === f ? "on" : ""} onClick={() => setSt(f)}>{f === "all" ? "All" : f === "pending" ? "Pending" : f[0].toUpperCase() + f.slice(1)} <small>{counts[f]}</small></button>)}</div>
       {ev.error && <p className="form-msg err">{ev.error}</p>}
       {!ev.data ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>No events here yet. Tap <b>＋ New event</b> to start a draft.</Empty> : (
-        <div className="adm-list">
-          {list.map((e, i) => {
+        <div className="tbl-wrap"><table className="adm-tbl">
+          <thead><tr><th>Event</th><th>City · Host</th><th>Starts</th><th>Status</th><th>Seats</th><th /></tr></thead>
+          <tbody>{list.map((e) => {
             const pct = Math.min(100, Math.round((e.confirmed / Math.max(1, e.seats)) * 100));
             return (
-              <motion.article key={e.id} className="adm-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.03 }}>
+              <tr key={e.id}>
+                <td><button className="adm-link" onClick={() => setOpen(e)}>{e.emoji} {e.title}</button>{e.pending_req && <><br /><button className="adm-link small" onClick={() => goApprovals(e.pending_req!)}>⏳ {e.pending_req}</button></>}</td>
+                <td>{cityName(e.city_slug)}<br /><small className="muted">{e.host_name ?? "the meetra team"}</small></td>
+                <td style={{ whiteSpace: "nowrap" }}>{fmtDT(e.starts_at)}</td>
+                <td><Chip s={e.display_status} /></td>
+                <td style={{ minWidth: 110 }}><div className="adm-occ"><div><i style={{ width: `${pct}%` }} /></div><small><b>{e.confirmed}/{e.seats}</b> · {e.pending} pending</small></div></td>
+                <td><button className="adm-cta" onClick={() => setOpen(e)}>Open →</button></td>
+              </tr>
+            );
+          })}</tbody>
+        </table></div>
+      )}
+
+      <Modal open={!!openNow} onClose={() => setOpen(null)} wide title={openNow ? openNow.title : ""}>
+        {openNow && (() => { const e = openNow; const pct = Math.min(100, Math.round((e.confirmed / Math.max(1, e.seats)) * 100)); return (
+          <div className="adm-card" style={{ boxShadow: "none" }}>
                 <div className="adm-card-top"><span className="adm-em" aria-hidden="true">{e.emoji}</span>
                   <div className="grow"><b>{e.title}</b><small>{cityName(e.city_slug)} · {e.area} · {e.host_name ?? "the meetra team"}</small></div>
                   <Chip s={e.display_status} /></div>
@@ -166,20 +184,16 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
                 {e.cancel_reason && e.status === "cancelled" && <p className="muted" style={{ fontSize: 13 }}>Cancelled: {e.cancel_reason}</p>}
                 {e.pending_req && <button className="adm-req-link" onClick={() => goApprovals(e.pending_req!)}>⏳ {e.pending_req} waiting for approval →</button>}
                 <div className="acts">
-                  {e.status === "draft" && <><button onClick={() => { setErr(null); setEdit({ mode: "draft", ev: e, f: eventToForm(e) }); }}>Edit</button>
-                    <button onClick={() => act(e, "submit")}>Send for approval</button><button onClick={() => act(e, "discard")}>Discard</button></>}
-                  {e.display_status === "active" && !e.pending_req && <><button onClick={() => { setErr(null); setEdit({ mode: "change", ev: e, f: eventToForm(e) }); }}>Request change</button>
-                    <button onClick={() => act(e, "cancel")}>Request cancel</button></>}
-                  {["active", "completed", "cancelled"].includes(e.display_status) && !e.pending_req && <button onClick={() => act(e, "delete")}>Request removal</button>}
+                  {e.status === "draft" && <><button onClick={() => { setErr(null); setOpen(null); setEdit({ mode: "draft", ev: e, f: eventToForm(e) }); }}>Edit</button>
+                    <button onClick={() => { setOpen(null); act(e, "submit"); }}>Send for approval</button><button onClick={() => { setOpen(null); act(e, "discard"); }}>Discard</button></>}
+                  {e.display_status === "active" && !e.pending_req && <><button onClick={() => { setErr(null); setOpen(null); setEdit({ mode: "change", ev: e, f: eventToForm(e) }); }}>Request change</button>
+                    <button onClick={() => { setOpen(null); act(e, "cancel"); }}>Request cancel</button></>}
+                  {["active", "completed", "cancelled"].includes(e.display_status) && !e.pending_req && <button onClick={() => { setOpen(null); act(e, "delete"); }}>Request removal</button>}
                   {e.status !== "draft" && e.status !== "pending" && <Link href={`/event/?id=${e.plan_ref}`}>View on site</Link>}
-                  <button onClick={() => setHist(e)}>History</button>
+                  <button onClick={() => { setOpen(null); setHist(e); }}>History</button>
                 </div>
-              </motion.article>
-            );
-          })}
-        </div>
-      )}
-
+          </div>); })()}
+      </Modal>
       <Modal open={!!edit} onClose={() => setEdit(null)} wide title={edit?.mode === "new" ? "New event (draft)" : edit?.mode === "draft" ? "Edit draft" : `Request a change: ${edit?.ev?.title}`}>
         {edit && <>
           {edit.mode === "change" && <p className="adm-note">The live event stays as it is until the other admin approves this change.</p>}

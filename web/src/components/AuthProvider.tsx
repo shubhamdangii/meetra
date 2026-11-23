@@ -2,7 +2,7 @@
 // Login state (Supabase Auth). If login is switched off in config, everything here is a no-op.
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { getSupabase, loginEnabled } from "@/lib/supabase";
 
 export type Me = {
@@ -32,13 +32,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(!loginEnabled);
   const [team, setTeam] = useState<Team | null>(null);
 
-  const loadMe = useCallback(async (c: SupabaseClient | null, s: Session | null) => {
-    if (!c || !s) { setMe(null); setTeam(null); return null; }
-    const [{ data, error }, t] = await Promise.all([c.rpc("me"), c.rpc("my_team_access")]);
-    const m = error ? null : ((Array.isArray(data) ? data[0] : data) as Me) || null;
-    const tm = t.error ? null : ((Array.isArray(t.data) ? t.data[0] : t.data) as Team) || null;
-    setTeam(tm && (tm.is_super || tm.cities?.length) ? tm : null);
-    setMe(m); return m;
+  // One profile load per logged-in user: the initial session, SIGNED_IN and TOKEN_REFRESHED events all
+  // arrive within the first second and used to load the profile three times. `force` reloads (after saving).
+  const inflight = useRef<{ uid: string; p: Promise<Me | null> } | null>(null);
+  const loadMe = useCallback(async (c: SupabaseClient | null, s: Session | null, force = false): Promise<Me | null> => {
+    if (!c || !s) { inflight.current = null; setMe(null); setTeam(null); return null; }
+    if (!force && inflight.current?.uid === s.user.id) return inflight.current.p;
+    const p = (async () => {
+      const [{ data, error }, t] = await Promise.all([c.rpc("me"), c.rpc("my_team_access")]);
+      const m = error ? null : ((Array.isArray(data) ? data[0] : data) as Me) || null;
+      const tm = t.error ? null : ((Array.isArray(t.data) ? t.data[0] : t.data) as Team) || null;
+      setTeam(tm && (tm.is_super || tm.cities?.length) ? tm : null);
+      setMe(m); return m;
+    })();
+    inflight.current = { uid: s.user.id, p };
+    p.catch(() => { if (inflight.current?.p === p) inflight.current = null; });
+    return p;
   }, []);
 
   useEffect(() => {
@@ -78,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value: Ctx = {
     enabled: loginEnabled, ready, client, session, me, team,
-    refreshMe: () => loadMe(client, session),
+    refreshMe: () => loadMe(client, session, true),
     logout: async () => { try { await client?.auth.signOut(); } catch {} setSession(null); setMe(null); setTeam(null); router.push("/"); },
     requireLogin: (next) => {
       if (!loginEnabled) return true;

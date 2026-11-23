@@ -1,6 +1,7 @@
 "use client";
 // Hosts, city-wise and event-wise. Adding, editing, deactivating or removing a host goes to the other admin.
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AdminHosts as HostApplications } from "../pages/AdminHosts";
@@ -149,26 +150,23 @@ function HostsList({ goApprovals }: { goApprovals: (req?: string) => void }) {
       </div>
       {hs.error && <p className="form-msg err">{hs.error}</p>}
       {!hs.data ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>No hosts match. Tap <b>＋ Add host</b>.</Empty> : (
-        <div className="adm-list">{list.map((h, i) => (
-          <motion.article key={h.id} className="adm-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.03 }}>
-            <div className="adm-card-top">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {h.photo_url ? <img className="adm-av" src={h.photo_url} alt="" /> : <span className="adm-av ph">{h.name[0]}</span>}
-              <div className="grow"><b>{h.name}</b><small>{h.cities.map(cityName).join(", ")}</small></div><Chip s={h.status} /></div>
-            <Stars v={h.avg_rating} n={h.reviews} />
-            <div className="adm-stats">
-              <span><b>{h.total_events}</b>events</span><span><b>{h.active_events}</b>live now</span><span><b>{h.upcoming_events}</b>upcoming</span>
-              <span><b>{h.completed_events}</b>completed</span><span><b>{h.bookings}</b>bookings</span></div>
-            {h.pending_req && <button className="adm-req-link" onClick={() => goApprovals(h.pending_req!)}>⏳ {h.pending_req} waiting for approval →</button>}
-            <div className="acts">
-              <button onClick={() => setView(h)}>Profile</button>
-              {!h.pending_req && <><button onClick={() => { setErr(null); setForm({ h, f: hostToForm(h) }); }}>Request edit</button>
-                {h.status === "active" ? <button onClick={() => act(h, "deactivate")}>Deactivate</button> : <button onClick={() => act(h, "activate")}>Activate</button>}
-                <button onClick={() => act(h, "delete")}>Remove</button></>}
-            </div>
-            {(evOfHost.get(h.id)?.length ?? 0) > 0 && <small className="muted">Next: {evOfHost.get(h.id)!.filter((e) => e.display_status === "active").map((e) => e.title).slice(0, 2).join(", ") || "–"}</small>}
-          </motion.article>
-        ))}</div>
+        <div className="tbl-wrap"><table className="adm-tbl">
+          <thead><tr><th>Host</th><th>City</th><th>Status</th><th>Rating</th><th>Events</th><th>Upcoming</th><th>Bookings</th><th /></tr></thead>
+          <tbody>{list.map((h) => (
+            <tr key={h.id}>
+              <td><div className="who">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {h.photo_url ? <img src={h.photo_url} alt="" /> : <span className="ph">{h.name[0]}</span>}
+                <div><button className="adm-link" onClick={() => setView(h)}>{h.name}</button>
+                  {h.pending_req && <><br /><button className="adm-link small" onClick={() => goApprovals(h.pending_req!)}>⏳ {h.pending_req}</button></>}</div></div></td>
+              <td>{h.cities.map(cityName).join(", ")}</td>
+              <td><Chip s={h.status} /></td>
+              <td><Stars v={h.avg_rating} n={h.reviews} /></td>
+              <td className="num">{h.total_events}</td><td className="num">{h.upcoming_events}</td><td className="num">{h.bookings}</td>
+              <td><button className="adm-cta" onClick={() => setView(h)}>Open →</button></td>
+            </tr>
+          ))}</tbody>
+        </table></div>
       )}
       <Modal open={!!form} onClose={() => setForm(null)} wide title={form?.h ? `Request edit: ${form.h.name}` : "Add a host"}>
         {form && <>
@@ -178,7 +176,15 @@ function HostsList({ goApprovals }: { goApprovals: (req?: string) => void }) {
           <div className="adm-row-end"><button className="btn btn-white btn-sm" onClick={() => setForm(null)}>Close</button><button className="btn btn-ink btn-sm" onClick={submit}>Send for approval</button></div>
         </>}
       </Modal>
-      <Modal open={!!view} onClose={() => setView(null)} wide title={view ? `${view.name} · ${cityName(view.city_slug)}` : ""}>{view && <HostProfile h={view} />}</Modal>
+      <Modal open={!!view} onClose={() => setView(null)} wide title={view ? `${view.name} · ${cityName(view.city_slug)}` : ""}>{view && <>
+        <div className="acts" style={{ marginBottom: 12 }}>
+          <Link href={`/host-profile/?id=${view.id}`}>Public profile ↗</Link>
+          {view.pending_req ? <button onClick={() => { setView(null); goApprovals(view.pending_req!); }}>⏳ {view.pending_req} pending →</button> : <>
+            <button onClick={() => { const h = view; setView(null); setErr(null); setForm({ h, f: hostToForm(h) }); }}>Request edit</button>
+            {view.status === "active" ? <button onClick={() => { const h = view; setView(null); act(h, "deactivate"); }}>Deactivate</button> : <button onClick={() => { const h = view; setView(null); act(h, "activate"); }}>Activate</button>}
+            <button onClick={() => { const h = view; setView(null); act(h, "delete"); }}>Remove</button></>}
+        </div>
+        <HostProfile h={view} /></>}</Modal>
       {ui}
     </motion.div>
   );
