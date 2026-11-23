@@ -128,7 +128,7 @@ const FIELD_LABEL: Record<string, string> = {
   title: "Title", category: "Category", city_slug: "City", host_id: "Host", host_name: "Host", starts_at: "Starts", ends_at: "Ends",
   booking_closes_at: "Booking closes", area: "Area", price: "Price ₹", price_type: "Price type", seats: "Seats", emoji: "Emoji",
   blurb: "Description", steps: "How it unfolds", tags: "Tags", reason: "Reason", name: "Name", bio: "Bio", photo_url: "Photo",
-  phone: "Phone", email: "Email", instagram: "Instagram", status: "Status", city: "City", user_id: "Member",
+  phone: "Phone", email: "Email", instagram: "Instagram", status: "Status", city: "City", user_id: "Member", gallery: "Gallery",
 };
 const show = (k: string, v: unknown) => {
   if (v == null || v === "") return "–";
