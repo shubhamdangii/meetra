@@ -10,6 +10,7 @@ import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
 import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostNames, momentPhotos, relDay } from "@/lib/events";
 import { PhotoStrip } from "./Photos";
+import { atLeast, isReal, useFeaturedReviews, useHostCount, usePublicHosts, type PublicHost } from "@/lib/publicData";
 import { CITY_CENTER, areaPoint, kmBetween } from "@/lib/geo";
 import { AreaMap } from "./AreaMap";
 
@@ -79,17 +80,23 @@ export function HeroStack() {
 
 export function HeroCount() {
   const { ready, upcoming, inCity, city } = useApp();
-  const n = upcoming.filter(inCity).filter((e) => e.day < 30).length;
-  const where = ready ? cityName(city).replace("All cities", "your city") : "Jaipur";
-  return <span className="tag" style={{ marginBottom: 18, background: "var(--mint)" }}>● {ready && n === 0 ? `New plans every week in ${where}` : `${ready ? n : 100}${n === 1 ? "" : "+"} plan${n === 1 ? "" : "s"} this month in ${where}`}</span>;
+  const n = upcoming.filter(inCity).filter((e) => isReal(e) && e.day < 30).length;
+  const where = ready ? cityName(city) : CONFIG.cities[CONFIG.defaultCity].name;
+  return <span className="tag" style={{ marginBottom: 18, background: "var(--mint)" }}>● {atLeast(n, 30)} plans in {where}</span>;
 }
 
+const FACE_COLORS = ["#FF4F87", "#6C4CF5", "#FF7A3D", "#1BB78A", "#2E8BFF"];
 export function Faces() {
   const { city } = useApp();
+  const { data: hosts } = usePublicHosts(city, 10);
+  if (!hosts.length) return null;
   return (
     <div className="faces">
-      {Object.values(HOSTS as Record<string, any>).filter((h) => city === "all" || h.city === city).slice(0, 5).map((h: any, i) => (
-        <motion.span key={h.name} style={{ background: h.color }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 + i * 0.08, type: "spring", stiffness: 400, damping: 14 }}>{h.name[0]}</motion.span>
+      {hosts.slice(0, 5).map((h, i) => (
+        <motion.span key={h.id} title={h.name} style={{ background: FACE_COLORS[i % FACE_COLORS.length], position: "relative", overflow: "hidden" }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 + i * 0.08, type: "spring", stiffness: 400, damping: 14 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {h.photo_url ? <img src={h.photo_url} alt={h.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : h.name[0]}
+        </motion.span>
       ))}
     </div>
   );
@@ -169,6 +176,7 @@ function PlansMap({ list }: { list: MeetEvent[] }) {
 /* ---------- explore: one swipeable row per time bucket ---------- */
 export function ExplorePreview() {
   const { ready, upcoming, inCity, today, city } = useApp();
+  const { data: hostCount } = useHostCount(city);
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
   const [price, setPrice] = useState("all");
@@ -189,7 +197,7 @@ export function ExplorePreview() {
         <div>
           <span className="eyebrow">What&apos;s on</span>
           <h2 className="h2"><Wavy text="Find your" /> <span className="serif" style={{ color: "var(--violet)" }}><Wavy text="next" /></span> <Wavy text="meetup" /></h2>
-          <p>{ready ? `${upcoming.filter(inCity).length} hosted plans in and around ${cityName(city).replace("All cities", "our cities")}. ` : "Hosted plans every day."}</p>
+          <p>{ready ? `${atLeast(hostCount, 15)} verified hosts in and around ${cityName(city)}.` : "Hosted plans every day."}</p>
         </div>
         <div className="toolbar">
           <label className="search"><span>🔍</span><input type="search" placeholder="Search dinners, treks, quiz…" aria-label="Search meetups" onChange={(e) => setQ(e.target.value.trim().toLowerCase())} /></label>
@@ -232,45 +240,58 @@ export function ExplorePreview() {
 }
 
 export function Hosts() {
-  const { city, upcoming } = useApp();
-  const firstPlan: Record<string, string> = {};
-  upcoming.forEach((e) => e.hosts.forEach((h) => { firstPlan[h] = firstPlan[h] || e.title.split(" · ")[0]; }));
-  const list = Object.entries(HOSTS as Record<string, any>).filter(([k, h]) => k !== "team" && (city === "all" || h.city === city));
+  const { city } = useApp();
+  const { data: list, loaded } = usePublicHosts(city, 10);
+  if (!loaded) return <div className="skeleton" style={{ minHeight: 220, opacity: 0.25 }} />;
+  if (!list.length) return <div className="hosts-empty"><b>Our first {cityName(city)} hosts are joining now.</b><span>Love bringing people together? You could be one of them.</span></div>;
   return (
     <Gallery label="Hosts" className="on-dark">
-      {list.map(([k, h], i) => (
-        <motion.div key={k} className="host" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+      {list.map((h, i) => (
+        <motion.div key={h.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           transition={{ delay: Math.min(i, 5) * 0.07, duration: 0.5, ease }} whileHover={{ y: -6, rotate: -2 }}>
-          <HostAv h={h} />
-          <b>{h.name}<span className="verified">✓</span></b><small>{firstPlan[k] || ""}</small>
+          <Link href={`/host-profile/?id=${h.id}`} className="host" aria-label={`${h.name}, see profile`}>
+            <HostPhoto h={h} i={i} />
+            <b>{h.name}<span className="verified">✓</span></b>
+            <small>{h.reviews ? `★ ${Number(h.avg_rating).toFixed(1)} · ${h.reviews} review${h.reviews > 1 ? "s" : ""}` : h.events ? `${h.events} plan${h.events > 1 ? "s" : ""} hosted` : "New host"}</small>
+          </Link>
         </motion.div>
       ))}
     </Gallery>
   );
 }
 
+export function HostPhoto({ h, i = 0, className = "av" }: { h: Pick<PublicHost, "name" | "photo_url">; i?: number; className?: string }) {
+  return (
+    <div className={className} style={{ background: FACE_COLORS[i % FACE_COLORS.length], position: "relative", overflow: "hidden" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {h.photo_url ? <img src={h.photo_url} alt={h.name} loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : h.name[0]}
+    </div>
+  );
+}
+
 export function Wall() {
   const rots = [-2, 1.5, -1, 2.2, -1.6, 0.8];
+  const { city, byId } = useApp();
+  const { data: reviews, loaded } = useFeaturedReviews(city);
+  if (!loaded) return <div className="skeleton" style={{ minHeight: 200, opacity: 0.4 }} />;
+  if (!reviews.length) return <div className="reviews-empty"><span aria-hidden="true">💬</span><b>Real reviews land here every week.</b><p>Only guests who were checked in at a meetup can rate it, so every word here is from someone who was there.</p></div>;
   return (
-    <>
-      <Gallery label="Reviews" auto={4200}>
-        {(REVIEWS as any[]).map((r, i) => {
-          const parts = r.head.split(r.hl);
-          return (
-            <motion.figure key={r.name} className={`quote c${i % 6}`}
-              initial={{ opacity: 0, y: 30, rotate: 0 }} whileInView={{ opacity: 1, y: 0, rotate: rots[i % rots.length] }}
-              viewport={{ once: true }} transition={{ duration: 0.6, ease, delay: Math.min(i, 3) * 0.08 }}
-              whileHover={{ rotate: 0, scale: 1.02 }}>
-              <div className="who"><span className="av">{r.name[0]}</span>{r.name}</div>
-              <span className="tag">{r.plan}</span>
-              <h4>“{parts[0]}<span className="hl">{r.hl}</span>{parts.slice(1).join(r.hl)}”</h4>
-              <p>“{r.text}”</p>
-            </motion.figure>
-          );
-        })}
-      </Gallery>
-      {CONFIG.showSampleNotice && <span className="notice">✏️ Sample reviews: replace them in src/lib/data.ts with real ones after your first meetups.</span>}
-    </>
+    <Gallery label="Reviews" auto={4200}>
+      {reviews.map((r, i) => {
+        const title = r.event_title ?? byId(r.plan_ref)?.title.split(" · ")[0] ?? "a meetra plan";
+        return (
+          <motion.figure key={r.first_name + r.created_at} className={`quote c${i % 6}`}
+            initial={{ opacity: 0, y: 30, rotate: 0 }} whileInView={{ opacity: 1, y: 0, rotate: rots[i % rots.length] }}
+            viewport={{ once: true }} transition={{ duration: 0.6, ease, delay: Math.min(i, 3) * 0.08 }}
+            whileHover={{ rotate: 0, scale: 1.02 }}>
+            <div className="who"><span className="av">{(r.first_name || "?")[0]}</span>{r.first_name}{r.this_week && <small className="wk">this week</small>}</div>
+            <span className="tag">{title}</span>
+            <h4 aria-label={`${r.rating} out of 5`}>{"★".repeat(r.rating)}<span style={{ opacity: 0.25 }}>{"★".repeat(5 - r.rating)}</span></h4>
+            <p>“{r.comment}”</p>
+          </motion.figure>
+        );
+      })}
+    </Gallery>
   );
 }
 
@@ -281,12 +302,17 @@ export function Moments() {
 }
 
 export function Stats() {
-  const { upcoming, inCity } = useApp();
+  const { upcoming, inCity, city } = useApp();
+  const { data: hostCount } = useHostCount(city);
   const evs = upcoming.filter(inCity);
-  const month = evs.filter((e) => e.day < 30).length;
-  const hosts = new Set(evs.flatMap((e) => e.hosts)).size;
+  const real = evs.filter((e) => isReal(e) && e.day < 28).length;
   const cats = new Set(evs.map((e) => e.cat)).size;
-  const rows: [number, string, string][] = [[month, "+", "plans in the next 4 weeks"], [hosts, "", "verified hosts"], [cats, "", "kinds of plans"]];
+  // [number to count up to, suffix, label]: below the floor we show the floor with a "+"
+  const rows: [number, string, string][] = [
+    [Math.max(real, 30), real >= 30 ? "" : "+", "plans in the next 4 weeks"],
+    [Math.max(hostCount, 15), hostCount >= 15 ? "" : "+", "verified hosts"],
+    [cats, "", "kinds of plans"],
+  ];
   return (
     <div className="stats">
       {rows.map(([n, suf, l]) => (

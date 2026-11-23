@@ -47,7 +47,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setToday(startOfToday());
     const c = store.get("mt-city", CONFIG.defaultCity);
-    setCityState(c === "all" || CONFIG.cities[c]?.live ? c : CONFIG.defaultCity);
+    setCityState(CONFIG.cities[c]?.live ? c : CONFIG.defaultCity);   // "all" is no longer offered
     setSaved(store.get<string[]>("mt-saved", []));
     setRequests(store.get<Req[]>("mt-requests", []));
     setReady(true);

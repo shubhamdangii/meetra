@@ -7,6 +7,7 @@ import { useApp } from "../AppProvider";
 import { Chips, Empty, EventCard } from "../ui";
 import { CATEGORIES } from "@/lib/data";
 import { DOW, PRICE_BANDS, type MeetEvent, addDays, cityName, fmtDay, hostNames, priceOk, relDay } from "@/lib/events";
+import { atLeast, isReal } from "@/lib/publicData";
 
 const WHENS = ["all", "today", "tomorrow", "weekend", "week", "next", "later"];
 
@@ -50,7 +51,7 @@ export default function EventsPage() {
       <section className="page-hero">
         <span className="eyebrow">Explore</span>
         <h1>Something on, <span className="serif">every day.</span></h1>
-        <p>{ready ? `${base.length} hosted plans in the next 4 weeks in ${cityName(city)}. Pick a day, pick a vibe.` : "Hosted plans every day. Pick a day, pick a vibe."}</p>
+        <p>{ready ? `${atLeast(base.filter((e) => isReal(e) && e.day < 28).length, 30)} hosted plans in the next 4 weeks in ${cityName(city)}. Pick a day, pick a vibe.` : "Hosted plans every day. Pick a day, pick a vibe."}</p>
       </section>
 
       <div className="sec-head" style={{ marginBottom: 16 }}>

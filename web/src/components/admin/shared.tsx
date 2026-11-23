@@ -132,6 +132,8 @@ const FIELD_LABEL: Record<string, string> = {
 };
 const show = (k: string, v: unknown) => {
   if (v == null || v === "") return "–";
+  if (k === "gallery" && Array.isArray(v)) return `${v.length} photo${v.length === 1 ? "" : "s"}`;
+  if (k === "photo_url" && typeof v === "string") return "photo ✓ (" + v.split("/").pop()!.slice(0, 18) + ")";
   if (/_at$/.test(k) && typeof v === "string") return fmtDT(v);
   if (k === "city_slug" || k === "city") return cityName(String(v));
   if (Array.isArray(v)) return v.length ? v.join(" · ") : "–";

@@ -71,15 +71,12 @@ function CityPicker() {
       <AnimatePresence>
         {open && (
           <motion.div className="city-menu open" role="menu" style={{ top: 50, right: 0 }} {...menuMotion}>
-            {Object.entries(CONFIG.cities).map(([k, c]) => (
+            {Object.entries(CONFIG.cities).filter(([, c]) => c.live).map(([k, c]) => (
               <button key={k} role="menuitem" disabled={!c.live} className={city === k ? "on" : ""}
                 onClick={() => { setCity(k); setOpen(false); toast(`📍 Showing ${c.name}`); }}>
                 <span>{c.name}</span><small>{c.live ? c.tag : "coming soon"}</small>
               </button>
             ))}
-            <button role="menuitem" className={city === "all" ? "on" : ""} onClick={() => { setCity("all"); setOpen(false); toast("📍 Showing all cities"); }}>
-              <span>All cities</span><small>everything</small>
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

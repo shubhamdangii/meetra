@@ -14,11 +14,10 @@ export const CONFIG: {
   instagram: "https://instagram.com/",
   whatsappCommunity: "https://chat.whatsapp.com/",
 
-  defaultCity: "jaipur",
+  defaultCity: "ahmedabad",
   cities: {
-    jaipur:    { name: "Jaipur",    tag: "the Pink City",   live: true },
     ahmedabad: { name: "Ahmedabad", tag: "Amdavad",         live: true },
-    udaipur:   { name: "Udaipur",   tag: "coming soon",     live: false }
+    jaipur:    { name: "Jaipur",    tag: "the Pink City",   live: true },
   },
 
   // Set to false once you replace the sample reviews/stories with real ones.

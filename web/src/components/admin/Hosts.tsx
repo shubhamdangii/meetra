@@ -2,21 +2,37 @@
 // Hosts, city-wise and event-wise. Adding, editing, deactivating or removing a host goes to the other admin.
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { AdminHosts as HostApplications } from "../pages/AdminHosts";
+import { useApp } from "../AppProvider";
+import { useAuth } from "../AuthProvider";
 import type { AdminEvent } from "./Events";
 import { CITIES, Chip, Empty, Modal, Stars, cityName, fmtDT, useAsk, useCall, useRpc } from "./shared";
 
 export type HostRow = {
   id: number; name: string; city_slug: string; bio: string; photo_url: string | null; phone: string | null; email: string | null; instagram: string | null;
   status: string; total_events: number; active_events: number; upcoming_events: number; completed_events: number; bookings: number;
-  avg_rating: number | null; reviews: number; cities: string[]; pending_req: string | null; created_at: string;
+  avg_rating: number | null; reviews: number; cities: string[]; pending_req: string | null; created_at: string; gallery: string[];
 };
-export type HostFormValue = { name: string; city_slug: string; bio: string; photo_url: string; phone: string; email: string; instagram: string };
-export const blankHost = (city = "jaipur"): HostFormValue => ({ name: "", city_slug: city, bio: "", photo_url: "", phone: "", email: "", instagram: "" });
-export const hostToForm = (h: Partial<HostRow> & Record<string, unknown>): HostFormValue => ({ name: String(h.name ?? ""), city_slug: String(h.city_slug ?? "jaipur"), bio: String(h.bio ?? ""),
-  photo_url: String(h.photo_url ?? ""), phone: String(h.phone ?? "").replace(/^\+91/, ""), email: String(h.email ?? ""), instagram: String(h.instagram ?? "") });
+export type HostFormValue = { name: string; city_slug: string; bio: string; photo_url: string; phone: string; email: string; instagram: string; gallery: string[] };
+export const blankHost = (city = "ahmedabad"): HostFormValue => ({ name: "", city_slug: city, bio: "", photo_url: "", phone: "", email: "", instagram: "", gallery: [] });
+export const hostToForm = (h: Partial<HostRow> & Record<string, unknown>): HostFormValue => ({ name: String(h.name ?? ""), city_slug: String(h.city_slug ?? "ahmedabad"), bio: String(h.bio ?? ""),
+  photo_url: String(h.photo_url ?? ""), phone: String(h.phone ?? "").replace(/^\+91/, ""), email: String(h.email ?? ""), instagram: String(h.instagram ?? ""),
+  gallery: Array.isArray(h.gallery) ? (h.gallery as string[]) : [] });
 export const hostPayload = (f: HostFormValue) => ({ name: f.name.trim(), city_slug: f.city_slug, bio: f.bio.trim(), photo_url: f.photo_url.trim() || null,
-  phone: f.phone.trim() ? "+91" + f.phone.trim().replace(/\D/g, "").slice(-10) : null, email: f.email.trim().toLowerCase() || null, instagram: f.instagram.trim().replace(/^@/, "") || null });
+  phone: f.phone.trim() ? "+91" + f.phone.trim().replace(/\D/g, "").slice(-10) : null, email: f.email.trim().toLowerCase() || null, instagram: f.instagram.trim().replace(/^@/, "") || null,
+  gallery: f.gallery });
+
+/** Upload one photo to the host-media bucket (main admins only) and return its public URL. */
+async function uploadHostPhoto(client: SupabaseClient, file: File): Promise<string> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Use a JPG, PNG or WebP photo");
+  if (file.size > 3 * 1024 * 1024) throw new Error("Photo must be under 3 MB");
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const up = await client.storage.from("host-media").upload(path, file, { contentType: file.type });
+  if (up.error) throw up.error;
+  return client.storage.from("host-media").getPublicUrl(path).data.publicUrl;
+}
 export function validateHost(f: HostFormValue): string | null {
   if (f.name.trim().length < 2) return "Name needs at least 2 characters.";
   if (f.phone.trim() && !/^[6-9]\d{9}$/.test(f.phone.trim().replace(/\D/g, "").slice(-10))) return "Phone must be a 10-digit Indian mobile number.";
@@ -26,7 +42,23 @@ export function validateHost(f: HostFormValue): string | null {
 }
 
 export function HostForm({ value, onChange }: { value: HostFormValue; onChange: (f: HostFormValue) => void }) {
+  const auth = useAuth(); const { toast } = useApp();
+  const [busy, setBusy] = useState<"photo" | "gallery" | null>(null);
   const set = (k: keyof HostFormValue, v: string) => onChange({ ...value, [k]: v });
+  async function pick(files: FileList | null, kind: "photo" | "gallery") {
+    if (!files?.length || !auth.client) return;
+    setBusy(kind);
+    try {
+      if (kind === "photo") onChange({ ...value, photo_url: await uploadHostPhoto(auth.client, files[0]) });
+      else {
+        const room = 12 - value.gallery.length; const urls: string[] = [];
+        for (const f of Array.from(files).slice(0, room)) urls.push(await uploadHostPhoto(auth.client, f));
+        onChange({ ...value, gallery: [...value.gallery, ...urls] });
+        toast(files.length > room ? `Only 12 gallery photos allowed. Added ${urls.length}.` : `${urls.length} photo${urls.length > 1 ? "s" : ""} added ✓`);
+      }
+    } catch (e) { toast("⚠️ " + (e as Error).message); }
+    setBusy(null);
+  }
   return (
     <div className="adm-form">
       <div className="field"><label>Name *</label><input value={value.name} maxLength={60} onChange={(e) => set("name", e.target.value)} /></div>
@@ -34,8 +66,25 @@ export function HostForm({ value, onChange }: { value: HostFormValue; onChange: 
       <div className="field"><label>WhatsApp number</label><input inputMode="numeric" maxLength={10} placeholder="98xxxxxxxx" value={value.phone} onChange={(e) => set("phone", e.target.value.replace(/\D/g, ""))} /></div>
       <div className="field"><label>Email</label><input type="email" value={value.email} onChange={(e) => set("email", e.target.value)} /></div>
       <div className="field"><label>Instagram</label><input value={value.instagram} placeholder="@handle" onChange={(e) => set("instagram", e.target.value)} /></div>
-      <div className="field"><label>Photo link (https://…)</label><input value={value.photo_url} onChange={(e) => set("photo_url", e.target.value)} /></div>
+      <div className="field"><label>Profile photo</label>
+        <div className="hf-photo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {value.photo_url ? <img src={value.photo_url} alt="" /> : <span>{value.name[0] ?? "?"}</span>}
+          <label className="btn btn-white btn-sm">{busy === "photo" ? "Uploading…" : value.photo_url ? "Change" : "Upload"}<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => pick(e.target.files, "photo")} /></label>
+          {value.photo_url && <button type="button" className="linkish" onClick={() => set("photo_url", "")}>Remove</button>}
+        </div></div>
       <div className="field span2"><label>Bio (shown on the site)</label><textarea rows={3} maxLength={400} value={value.bio} onChange={(e) => set("bio", e.target.value)} /></div>
+      <div className="field span2"><label>Gallery ({value.gallery.length}/12) · shown on their public profile</label>
+        <div className="hf-gallery">
+          {value.gallery.map((u, i) => (
+            <div key={u} className="g">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt={`Gallery photo ${i + 1}`} />
+              <button type="button" aria-label="Remove photo" onClick={() => onChange({ ...value, gallery: value.gallery.filter((x) => x !== u) })}>✕</button>
+            </div>
+          ))}
+          {value.gallery.length < 12 && <label className="g add" aria-label="Add gallery photos">{busy === "gallery" ? "…" : "＋"}<input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => pick(e.target.files, "gallery")} /></label>}
+        </div></div>
     </div>
   );
 }

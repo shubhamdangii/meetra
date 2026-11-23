@@ -289,7 +289,7 @@ function RealHost({ id, planRef }: { id: number; planRef: string }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {h.photo_url ? <img src={h.photo_url} alt={h.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : h.name[0]}
       </div>
-      <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3>{h.name} <span className="verified">✓</span></h3>
+      <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3><Link href={`/host-profile/?id=${id}`} style={{ textDecoration: "underline", textDecorationThickness: 2, textUnderlineOffset: 4 }}>{h.name}</Link> <span className="verified">✓</span></h3>
         {r && r.reviews > 0 ? <p className="host-rating"><b>★ {Number(r.avg_rating).toFixed(1)}</b> / 5 · {r.reviews} review{r.reviews === 1 ? "" : "s"}</p> : <p className="host-rating muted">New host · no reviews yet</p>}
         {h.bio && <p className="muted">{h.bio}</p>}
         {rev.length > 0 && <ul className="host-reviews">{rev.map((x, i) => <li key={i}><b>{"★".repeat(x.rating)}</b> “{x.comment}” <small>– {x.first_name}</small></li>)}</ul>}

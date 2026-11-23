@@ -53,6 +53,25 @@ export default function LoginPage() {
     })();
   }, [auth.ready, auth.session]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Came back from Google with a code but no session (the browser lost the PKCE key: another
+  // browser/app opened the link, or a privacy shield wiped storage). Retry once automatically:
+  // Google remembers the account, so it is one tap. A second failure shows the message + button.
+  const [retrying, setRetrying] = useState(false);
+  useEffect(() => {
+    if (!auth.ready || auth.session || !(cameBack || errText) || !auth.client) return;
+    const t = setTimeout(async () => {
+      const { data } = await auth.client!.auth.getSession();
+      if (data.session) return;
+      let tried = false; try { tried = sessionStorage.getItem("mt-login-retry") === "1"; } catch {}
+      if (tried || /access_denied|cancel/i.test(errText ?? "")) return;
+      try { sessionStorage.setItem("mt-login-retry", "1"); } catch {}
+      setRetrying(true);
+      await auth.client!.auth.signInWithOAuth({ provider: "google", options: { redirectTo: absUrl("/login/") } });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [auth.ready, auth.session, auth.client, cameBack, errText]);
+  useEffect(() => { if (auth.session) { try { sessionStorage.removeItem("mt-login-retry"); } catch {} } }, [auth.session]);
+
   // Instagram / Facebook / WhatsApp in-app browsers: Google refuses to log in there.
   const [inApp, setInApp] = useState(false);
   useEffect(() => { setInApp(/Instagram|FBAN|FBAV|FB_IAB|Line\/|WhatsApp|Snapchat|; wv\)/i.test(navigator.userAgent)); }, []);
@@ -83,6 +102,7 @@ export default function LoginPage() {
 
   async function google() {
     if (!auth.client) return;
+    try { sessionStorage.removeItem("mt-login-retry"); } catch {}
     setBusy(true);
     const { error } = await auth.client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: absUrl("/login/"), queryParams: { prompt: "select_account" } } });
     if (error) { setBusy(false); setMsg("Google login didn't start: " + error.message); }
@@ -103,7 +123,8 @@ export default function LoginPage() {
       <div className="auth-wrap">
         <motion.div className="auth-card" initial={{ opacity: 0, y: 24, rotate: -1 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ type: "spring", stiffness: 200, damping: 20 }}>
           {!auth.enabled && <div className="setup-note"><b>Login isn&apos;t switched on yet.</b> Add your Supabase URL and anon key in <code>src/lib/config.ts</code>.</div>}
-          {auth.enabled && auth.ready && !auth.session && (errText || cameBack) && (
+          {retrying && <div className="setup-note"><span className="spinner" aria-hidden="true" /> <b>Finishing your login…</b> Google may ask you to pick your account once more.</div>}
+          {auth.enabled && auth.ready && !auth.session && !retrying && (errText || cameBack) && (
             <div className="setup-note"><b>Login didn&apos;t finish.</b> {errText ? errText.replace(/\+/g, " ") : "Google sent you back, but this browser blocked the last step."}<br />
               Try again. If it keeps happening: turn off ad/tracker blocking for this site (in Brave: the lion icon → Shields off), or use Chrome or an incognito window.</div>
           )}
