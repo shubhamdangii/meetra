@@ -42,7 +42,7 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
   const checkIn = useCallback(async (id: number, undo = false, ref: string | null = null) => {
     if (!auth.client) return;
     const { data, error } = await auth.client.rpc("admin_check_in", { p_request_id: id, p_plan_ref: ref, p_undo: undo });
-    if (error) { setHit({ kind: "bad", title: "Can't let in", sub: error.message.replace(/^.*?: /, "") }); buzz(300); return; }
+    if (error) { setHit({ kind: "bad", title: "Can't let in", sub: error.message }); buzz(300); return; }
     const r = (data as { display_name: string; party_size: number; already: boolean; avatar_url: string | null; plan_ref: string }[])[0];
     const p = plans.find((x) => x.id === r.plan_ref);
     if (undo) { toast(`${r.display_name} un-checked`); loadOne(r.plan_ref); return; }

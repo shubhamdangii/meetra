@@ -1357,3 +1357,7 @@ a.host{text-decoration:none;color:inherit;display:block}
   .adm-root .tbl-wrap tbody td.num{font-weight:800}
   .adm-root .tbl-wrap tbody td[colspan]{justify-content:center}
 }
+/* request/event card header inside popups: wrap instead of squeezing the title */
+.adm-modal .adm-card-top{flex-wrap:wrap}
+.adm-modal .adm-card-top .grow{flex:1 1 100%;order:3}
+.adm-modal .adm-card-top .grow b{overflow-wrap:break-word;word-break:normal}

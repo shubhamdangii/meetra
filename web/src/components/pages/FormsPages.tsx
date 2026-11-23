@@ -31,7 +31,7 @@ export function PartnerForm() {
     const { error } = sb ? await sb.rpc("submit_partner_lead", { p_name: v.name, p_company: v.company, p_kind: v.kind, p_city: city, p_phone: phone, p_email: v.email, p_link: v.link, p_message: v.msg })
       : { error: { message: "Not connected" } };
     setBusy(false);
-    if (error) return setErr(error.message.replace(/^.*?: /, ""));
+    if (error) return setErr(error.message);
     burstFrom(btn, ["🤝", "✨", "🎉"], 14); toast("Sent ✓ The team will reach out within 2 working days");
     setDone(`Hi ${CONFIG.brand}! I just sent a partnership enquiry for ${v.company} (${v.kind}).`);
   }

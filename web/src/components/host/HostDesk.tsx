@@ -50,7 +50,7 @@ export function HostDesk({ host }: { host: MyHost }) {
 
   const call = async <T,>(fn: string, args: Record<string, unknown>): Promise<T | undefined> => {
     const { data, error } = await auth.client!.rpc(fn, args);
-    if (error) { toast("⚠️ " + error.message.replace(/^.*?: /, "")); return undefined; }
+    if (error) { toast("⚠️ " + error.message); return undefined; }
     return (data ?? true) as T;
   };
 

@@ -51,7 +51,7 @@ export function useCall() {
   return useCallback(async <T,>(fn: string, args: Record<string, unknown>, okMsg?: string): Promise<T | undefined> => {
     if (!auth.client) return;
     const { data, error } = await auth.client.rpc(fn, args);
-    if (error) { toast("⚠️ " + error.message.replace(/^.*?: /, "")); return undefined; }
+    if (error) { toast("⚠️ " + error.message); return undefined; }
     if (okMsg) toast(okMsg);
     return (data ?? true) as T;
   }, [auth.client, toast]);
@@ -141,7 +141,8 @@ const show = (k: string, v: unknown) => {
 };
 /** Old value vs new value table. */
 export function Diff({ oldV, newV, hostNames }: { oldV: Record<string, unknown> | null; newV: Record<string, unknown> | null; hostNames?: Map<number, string> }) {
-  const keys = [...new Set([...Object.keys(newV ?? {}), ...Object.keys(oldV ?? {})])].filter((k) => k !== "host_name" || !newV?.host_id);
+  const keys = [...new Set([...Object.keys(newV ?? {}), ...Object.keys(oldV ?? {})])].filter((k) => (k !== "host_name" || !newV?.host_id) && k !== "user_id" && k !== "application_id");
+  const linked = !!(newV?.user_id || oldV?.user_id);
   if (!keys.length) return null;
   const val = (k: string, o: Record<string, unknown> | null) => k === "host_id" && o?.[k] != null ? (hostNames?.get(Number(o[k])) ?? (o.host_name as string) ?? `#${o[k]}`) : show(k, o?.[k]);
   return (
@@ -149,7 +150,7 @@ export function Diff({ oldV, newV, hostNames }: { oldV: Record<string, unknown> 
       <tbody>{keys.map((k) => {
         const o = val(k, oldV), n = val(k, newV); const changed = oldV && o !== n;
         return <tr key={k} className={changed ? "chg" : ""}><td>{FIELD_LABEL[k] ?? k}</td>{oldV && <td className="old">{o}</td>}<td className="new">{n}</td></tr>;
-      })}</tbody></table></div>
+      })}{linked && <tr><td>Login</td>{oldV && <td />}<td className="new">Linked to the member&apos;s account ✓</td></tr>}</tbody></table></div>
   );
 }
 
