@@ -14,7 +14,7 @@ import { type MeetEvent, downloadCalendar, eventUrl, fmtDay } from "@/lib/events
 import { absUrl } from "@/lib/store";
 
 export type ReqStatus = "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended";
-export type MyRequest = { id: number; plan_ref: string; status: ReqStatus; party_size: number; created_at: string; decided_at: string | null };
+export type MyRequest = { id: number; plan_ref: string; status: ReqStatus; party_size: number; created_at: string; decided_at: string | null; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null };
 
 /** All my seat requests (newest first). null while loading or when logged out. */
 /** Re-run `load` when the tab comes back into view and every 20 s while it's visible,
@@ -47,7 +47,7 @@ export function useMyRequests() {
   const [rows, setRows] = useState<MyRequest[] | null>(null);
   const load = useCallback(() => {
     if (!auth.client || !auth.me) { setRows(null); return; }
-    auth.client.from("plan_requests").select("id,plan_ref,status,party_size,created_at,decided_at").eq("user_id", auth.me.id).order("created_at", { ascending: false })
+    auth.client.from("plan_requests").select("id,plan_ref,status,party_size,created_at,decided_at,paid_at,paid_amount,refund_status").eq("user_id", auth.me.id).order("created_at", { ascending: false })
       .then(({ data }) => setRows((data as MyRequest[]) ?? []));
   }, [auth.client, auth.me]);
   useEffect(load, [load]);
@@ -55,6 +55,10 @@ export function useMyRequests() {
   useSeatStream(load);
   return { rows, reload: load, setRows };
 }
+
+/** An approved seat on a paid plan that hasn't been paid yet (waitlist promotions, older requests). */
+export const needsPayment = (e: { price: number; priceType: string } | undefined, r: { status: string; paid_at?: string | null } | null | undefined) =>
+  !!e && !!r && r.status === "approved" && !r.paid_at && e.priceType !== "free" && e.price > 0;
 
 /** Friendly words for every status, upcoming and past. */
 export const STATUS_UI: Record<string, { label: string; tone: string; past?: string }> = {

@@ -324,3 +324,9 @@ verify_jwt = false   # Meta calls it; protected by the X-Hub-Signature-256 check
 
 [functions.admin-push]
 verify_jwt = false   # only the database calls it, with the X-Push-Secret header
+
+[functions.payments]
+verify_jwt = false   # checks the member token itself (and answers CORS preflight)
+
+[functions.pay-refund]
+verify_jwt = false   # only the database calls it, with the X-Push-Secret header

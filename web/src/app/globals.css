@@ -1419,3 +1419,14 @@ a.host{text-decoration:none;color:inherit;display:block}
 .hw-row img,.hw-row .ph{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--ink);display:grid;place-items:center;background:var(--sun);font-weight:800;flex:0 0 36px}
 .hw-row .grow{flex:1;min-width:0;display:flex;flex-direction:column}
 .hw-row small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- Razorpay payments ---------- */
+.pay-box{margin:10px 14px;padding:12px;border:2px solid #6C4CF5;border-radius:14px;background:#F3EFFF;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pay-box b{font-size:.95rem;line-height:1.3;overflow-wrap:anywhere}
+.pay-box small{color:#5b5470;font-size:.8rem}
+.paid-tag{margin:6px 14px;font-size:.85rem;font-weight:700;color:#127a46;overflow-wrap:anywhere}
+.pay-hint{margin:8px 0 0;font-size:.78rem;line-height:1.4;color:#5b5470;text-align:center}
+.pay-chip{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.75rem;font-weight:700}
+.pay-chip.ok{background:#DDF7E9;color:#127a46}
+.pay-chip.ref{background:#FFF1D6;color:#8a5a00}
+.pay-chip.no{background:#EEE;color:#666}

@@ -8,11 +8,12 @@ import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { type MeetEvent, eventUrl, hostNames, relDay } from "@/lib/events";
 import { Empty, Pager, cityName, fmtDT, usePaged } from "./shared";
+import { rupees } from "@/lib/razorpay";
 
 type R = {
   request_id: number; plan_ref: string; plan_date: string; city_slug: string; display_name: string; full_name: string | null; avatar_url: string | null;
   phone: string | null; instagram_url: string | null; linkedin_url: string | null; occupation: string | null; profile_score: number;
-  phone_verified: boolean; email_verified: boolean; status: string; party_size: number; icebreaker: string | null; requested_at: string; decided_at: string | null;
+  phone_verified: boolean; email_verified: boolean; status: string; party_size: number; icebreaker: string | null; requested_at: string; decided_at: string | null; paid_amount: number | null; paid_at: string | null; refund_status: string | null;
 };
 const DATES = [["upcoming", "Upcoming"], ["today", "Today"], ["tomorrow", "Tomorrow"], ["week", "Next 7 days"], ["past", "Past"], ["all", "Any date"], ["pick", "Pick a date…"]] as const;
 const STATUS = [["", "Any status"], ["pending", "Pending"], ["approved", "Approved"], ["waitlisted", "Waiting list"], ["attended", "Checked in"], ["declined", "Declined"], ["cancelled", "Cancelled"]] as const;
@@ -99,7 +100,7 @@ export function SeatRequests({ cities }: { cities: string[] }) {
       </div>
       {!rows ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>No seat requests match these filters.</Empty> : (
         <div className="tbl-wrap"><table className="sr-table">
-          <thead><tr><th>#</th><th>Member</th>{!event && <th>Event</th>}<th>Requested</th><th>Score</th><th>Contact</th><th>Seats</th><th>Status</th><th /></tr></thead>
+          <thead><tr><th>#</th><th>Member</th>{!event && <th>Event</th>}<th>Requested</th><th>Score</th><th>Contact</th><th>Seats</th><th>Payment</th><th>Status</th><th /></tr></thead>
           <tbody>{pg.items.map((r, i) => {
             const e = evOf(r);
             return (
@@ -113,6 +114,7 @@ export function SeatRequests({ cities }: { cities: string[] }) {
                 <td style={{ whiteSpace: "nowrap" }}>{r.phone ? <a href={`https://wa.me/${r.phone.replace("+", "")}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>{r.phone}</a> : <span className="muted">no phone</span>}<br />
                   {r.instagram_url && <a href={r.instagram_url} target="_blank" rel="noopener noreferrer">Instagram </a>}{r.linkedin_url && <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer">LinkedIn</a>}</td>
                 <td className="num">{r.party_size}</td>
+                <td style={{ whiteSpace: "nowrap" }}>{r.paid_at ? <span className={`pay-chip ${r.refund_status ? "ref" : "ok"}`}>{r.refund_status === "refunded" ? "↩ Refunded" : r.refund_status === "pending" ? "↩ Refunding" : r.refund_status === "failed" ? "⚠️ Refund failed" : "💳 Paid"} {rupees(r.paid_amount)}</span> : <span className="pay-chip no">Not paid</span>}</td>
                 <td><span className={`st ${r.status}`}>{r.status === "waitlisted" ? "waiting list" : r.status === "attended" ? "checked in ✓" : r.status}</span></td>
                 <td><div className="acts">{r.status !== "attended" && r.status !== "cancelled" && (["approved", "waitlisted", "declined"] as const).filter((s) => s !== r.status).map((s) => (
                   <button key={s} onClick={() => setTo(r, s)}>{{ approved: "Approve", waitlisted: "Waitlist", declined: "Decline" }[s]}</button>

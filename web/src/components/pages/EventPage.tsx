@@ -11,11 +11,12 @@ import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
 import { addressDropAt, catOf, eventImages, fmtDay, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
 import { CalendarButton, useLiveRefresh, useSeatStream } from "../plans";
+import { payForSeat, rupees } from "@/lib/razorpay";
 import { PhotoStrip } from "../Photos";
 import { AreaMap } from "../AreaMap";
 import { areaPoint } from "@/lib/geo";
 
-type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended"; party_size: number } | null;
+type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended"; party_size: number; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null } | null;
 
 const STATUS = {
   pending: ["⏳", "Request sent", "The team is reviewing requests. Seats go to the most complete profiles first."],
@@ -72,7 +73,7 @@ export default function EventPage() {
   }, [e, auth.client]);
   const loadMine = useCallback(() => {
     if (!e || !auth.client || !auth.me) { setMyReq(null); return; }
-    auth.client.from("plan_requests").select("id,status,party_size").eq("plan_ref", e.id).eq("user_id", auth.me.id).maybeSingle()
+    auth.client.from("plan_requests").select("id,status,party_size,paid_at,paid_amount,refund_status").eq("plan_ref", e.id).eq("user_id", auth.me.id).maybeSingle()
       .then(({ data }) => setMyReq(data as MyReq));
   }, [e, auth.client, auth.me]);
   useEffect(() => {
@@ -104,6 +105,19 @@ export default function EventPage() {
   const pct = Math.round((1 - left / e.seats) * 100);
   const sameKey = upcoming.filter((x) => x.key === e.key && x.city === e.city && x.id !== e.id).slice(0, 4);
   const others = upcoming.filter((x) => x.city === e.city && x.key !== e.key && x.day <= e.day + 7).filter((x, i, a) => a.findIndex((y) => y.key === x.key) === i).slice(0, 4);
+  const paid = e.priceType !== "free" && e.price > 0;
+  const needsPay = !!myReq && myReq.status === "approved" && !myReq.paid_at && paid;
+  async function payToConfirm(ev: React.MouseEvent<HTMLButtonElement>) {
+    if (!auth.client || !myReq || !e) return;
+    const btn = ev.currentTarget; setBusy(true);
+    try {
+      const seat = await payForSeat(auth.client, { plan_ref: e.id, request_id: myReq.id, price_hint: e.price });
+      setBusy(false);
+      if (!seat) return toast("Payment cancelled. Your seat is held for now, pay soon to keep it.");
+      burstFrom(btn, ["🎉", "🎫", "✨"]); setMyReq({ ...myReq, paid_at: seat.paid_at ?? new Date().toISOString() });
+      toast("Paid ✓ Your seat is confirmed and your door pass is ready");
+    } catch (err) { setBusy(false); toast("⚠️ " + (err as Error).message); }
+  }
   const payNote = e.priceType === "reservation" ? "Food and drinks are ordered separately." : e.priceType === "per person" ? "Covers everything listed in the plan." : e.priceType === "estimate" ? "Final inclusions and price shared before you pay." : "Free — just show up on time.";
   const score = auth.me?.profile_score;
 
@@ -115,6 +129,20 @@ export default function EventPage() {
     if (auth.enabled) {
       if (!auth.requireLogin(`/event/?id=${e.id}`)) return;
       if (!auth.client || !auth.me) return toast("Still loading your account — try again in a second.");
+      // paid plans: pay first (Razorpay); the verified payment creates the seat request. Waiting list stays free.
+      if (paid && !full) {
+        setBusy(true);
+        try {
+          const seat = await payForSeat(auth.client, { plan_ref: e.id, party_size: friend ? 2 : 1, icebreaker: ice.trim() || null, price_hint: e.price });
+          setBusy(false);
+          if (!seat) return toast("Payment cancelled. No seat requested, nothing charged.");
+          addRequest({ id: e.id, name, friend, at: Date.now() });
+          burstFrom(submitBtn, ["🎉", "🥳", "✨", "💖", "💸"]);
+          setMyReq({ id: seat.id, status: seat.status as NonNullable<MyReq>["status"], party_size: seat.party_size, paid_at: seat.paid_at ?? new Date().toISOString() });
+          toast("Paid ✓ Request sent. Refunded automatically if you don't get a seat");
+        } catch (err) { setBusy(false); toast("⚠️ " + (err as Error).message); }
+        return;
+      }
       setBusy(true);
       const row = { plan_ref: e.id, party_size: friend ? 2 : 1, icebreaker: ice.trim() || null, status: full ? "waitlisted" : "pending" };
       // asked before (and cancelled)? re-send that request instead of creating a duplicate
@@ -228,7 +256,7 @@ export default function EventPage() {
         </div>
 
         <aside className="book" id="book">
-          <div className="book-top"><div className="amt">{priceShort(e)}</div><small>{priceLabel(e)}{e.priceType === "reservation" ? " · pay after approval" : ""}</small></div>
+          <div className="book-top"><div className="amt">{priceShort(e)}</div><small>{priceLabel(e)}{e.priceType !== "free" && e.price > 0 ? " · refunded if you don't get a seat" : ""}</small></div>
           <div className="book-body">
             <ul className="facts">
               <li><span className="ic">📅</span><div><small>Date</small><b>{fmtDay(e.date)}</b></div></li>
@@ -250,7 +278,10 @@ export default function EventPage() {
                   <motion.div className="st-ic" initial={{ rotate: -20, scale: 0.5 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }}>{statusText(myReq!.status)[0]}</motion.div>
                   <b>{myReq!.status === "waitlisted" && pos ? `You're #${pos} on the waiting list` : statusText(myReq!.status)[1]}</b>
                   <p>{statusText(myReq!.status)[2]}</p>
-                  {(myReq!.status === "approved" || myReq!.status === "attended") && <>
+                  {needsPay && <div className="pay-box"><b>One step left: pay {priceShort(e)}{myReq!.party_size > 1 ? " × 2" : ""} to confirm</b><small>UPI, QR, cards, netbanking or wallets via Razorpay.</small>
+                    <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun btn-block" type="button" disabled={busy} onClick={payToConfirm}>{busy ? "Opening…" : "Pay & confirm my seat →"}</motion.button></div>}
+                  {myReq!.paid_at && <p className="paid-tag">💳 Paid{myReq!.paid_amount ? " " + rupees(myReq!.paid_amount) : ""}{myReq!.refund_status === "refunded" ? " · refunded ↩" : myReq!.refund_status === "pending" ? " · refund on its way ↩" : ""}</p>}
+                  {!needsPay && (myReq!.status === "approved" || myReq!.status === "attended") && <>
                     <p className="drop-note">{Date.now() >= addressDropAt(e).getTime() ? "📍 Exact spot is on your WhatsApp." : `📍 Exact spot drops ${fmtWhen(addressDropAt(e))}`}</p>
                     <div className="plan-btns" style={{ justifyContent: "center" }}><Link className="btn btn-ink btn-sm" href={`/ticket/?id=${e.id}`}>My door pass 🎫</Link><CalendarButton e={e} /></div>
                   </>}
@@ -261,7 +292,8 @@ export default function EventPage() {
                   <div className="field"><label htmlFor="nm">Your name</label><input id="nm" required autoComplete="given-name" placeholder="First name is fine" value={name} onChange={(x) => setName(x.target.value)} /></div>
                   <div className="field"><label htmlFor="ice">What could someone ask you about that makes you forget the small talk?</label><textarea id="ice" maxLength={300} placeholder="Football, old Hindi songs, startups, cats…" value={ice} onChange={(x) => setIce(x.target.value)} /></div>
                   <label className="check"><input type="checkbox" checked={friend} onChange={(x) => setFriend(x.target.checked)} /> I&apos;m bringing a friend</label>
-                  <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun btn-block" type="submit" disabled={busy || closed}>{closed ? "Requests are closed" : full ? "Join the waiting list" : "Request a seat"}{closed ? "" : " →"}</motion.button>
+                  <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun btn-block" type="submit" disabled={busy || closed}>{closed ? "Requests are closed" : busy ? "Opening payment…" : full ? "Join the waiting list (free)" : paid ? `Pay ${priceShort(e)}${friend ? " × 2" : ""} & request a seat` : "Request a seat"}{closed || busy ? "" : " →"}</motion.button>
+                  {paid && !full && !closed && <p className="pay-hint">🔒 Secure payment by Razorpay: UPI / QR, cards, netbanking, wallets. <b>Full refund</b> if you don&apos;t get a seat.</p>}
                   {auth.enabled && (
                     <div className="priority">
                       <b>Seats go to the most complete profiles first.</b>

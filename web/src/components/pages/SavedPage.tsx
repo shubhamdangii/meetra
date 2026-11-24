@@ -6,17 +6,18 @@ import Link from "next/link";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { useIsHost } from "../host/useIsHost";
-import { CalendarButton, InviteBox, STATUS_UI, useMyRequests, type MyRequest } from "../plans";
+import { CalendarButton, InviteBox, STATUS_UI, needsPayment, useMyRequests, type MyRequest } from "../plans";
+import { payForSeat, rupees } from "@/lib/razorpay";
 import { Empty, EventCard, Poster } from "../ui";
 import { burstFrom, buzz } from "../fx";
 import { useEffect, useState } from "react";
-import { type MeetEvent, addressDropAt, eventUrl, fmtWhen, hostLine, startsAt } from "@/lib/events";
+import { type MeetEvent, addressDropAt, eventUrl, fmtWhen, hostLine, priceShort, startsAt } from "@/lib/events";
 
 export default function SavedPage() {
   const { ready, upcoming, byId, requests, savedIds, toast, confirm } = useApp();
   const auth = useAuth();
   const isHost = useIsHost();
-  const { rows, setRows } = useMyRequests();
+  const { rows, setRows, reload } = useMyRequests();
   const now = Date.now();
 
   // Logged in: the database is the truth. Logged out: requests saved on this device.
@@ -25,7 +26,7 @@ export default function SavedPage() {
     : requests.map((q) => ({ e: byId(q.id)!, r: null })).filter((x) => x.e);
   const live = mine.filter((x) => endTime(x.e) > now).sort((a, b) => a.e.date.getTime() - b.e.date.getTime());
   const past = mine.filter((x) => endTime(x.e) <= now).sort((a, b) => b.e.date.getTime() - a.e.date.getTime());
-  const nextPass = live.find((x) => x.r?.status === "approved" || x.r?.status === "attended");
+  const nextPass = live.find((x) => (x.r?.status === "approved" && !needsPayment(x.e, x.r)) || x.r?.status === "attended");
   const saved = upcoming.filter((e) => savedIds.includes(e.id));
   const find = <Link className="btn btn-sun btn-sm" href="/events/" style={{ marginTop: 16 }}>Find a plan →</Link>;
 
@@ -61,7 +62,7 @@ export default function SavedPage() {
         {!ready || (auth.session && !rows && auth.enabled) ? <div className="skeleton" style={{ minHeight: 140 }} /> : live.length ? (
           <div className="plan-list">
             <AnimatePresence>
-              {live.map(({ e, r }, i) => <PlanRow key={e.id} e={e} r={r} i={i} onCancel={cancel} />)}
+              {live.map(({ e, r }, i) => <PlanRow key={e.id} e={e} r={r} i={i} onCancel={cancel} onPaid={reload} />)}
             </AnimatePresence>
           </div>
         ) : <Empty title="No plans yet.">Request a seat on any plan and it shows up here with its status.<div>{find}</div></Empty>}
@@ -89,9 +90,22 @@ export default function SavedPage() {
 
 const endTime = (e: MeetEvent) => startsAt(e).getTime() + 3 * 36e5;
 
-function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyRequest | null; i: number; past?: boolean; onCancel?: (r: MyRequest) => void }) {
+function PlanRow({ e, r, i, past = false, onCancel, onPaid }: { e: MeetEvent; r: MyRequest | null; i: number; past?: boolean; onCancel?: (r: MyRequest) => void; onPaid?: () => void }) {
+  const auth = useAuth(); const { toast } = useApp();
+  const [paying, setPaying] = useState(false);
   const st = r ? STATUS_UI[r.status] : null;
-  const label = !r ? "Sent on WhatsApp 💬" : past ? st?.past : st?.label;
+  const unpaid = needsPayment(e, r);
+  const label = !r ? "Sent on WhatsApp 💬" : unpaid && !past ? "Seat held · pay to confirm 💳" : past ? st?.past : st?.label;
+  async function pay(ev: React.MouseEvent<HTMLButtonElement>) {
+    if (!auth.client || !r) return;
+    const btn = ev.currentTarget; setPaying(true);
+    try {
+      const seat = await payForSeat(auth.client, { plan_ref: e.id, request_id: r.id, price_hint: e.price });
+      setPaying(false);
+      if (!seat) return toast("Payment cancelled. Your seat is held for now, pay soon to keep it.");
+      burstFrom(btn, ["🎉", "🎫", "✨"]); toast("Paid ✓ Your seat is confirmed and your door pass is ready"); onPaid?.();
+    } catch (err) { setPaying(false); toast("⚠️ " + (err as Error).message); }
+  }
   const tone = !r ? "#E7F9EF" : past ? (r.status === "approved" || r.status === "attended" ? "#C9F5E4" : "#F1EEF6") : st?.tone;
   const drop = addressDropAt(e);
   const dropped = Date.now() >= drop.getTime();
@@ -107,7 +121,12 @@ function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyReque
           <motion.span className="plan-status" style={{ background: tone }} initial={{ scale: 0.6 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 12, delay: 0.2 }}>{label}</motion.span>
         </span>
       </Link>
-      {!past && r?.status === "approved" && (
+      {!past && unpaid && (
+        <div className="pay-box"><b>A seat is yours! Pay {priceShort(e)}{r!.party_size > 1 ? " × 2" : ""} to confirm</b><small>UPI, QR, cards, netbanking or wallets via Razorpay.</small>
+          <button className="btn btn-sun btn-block" disabled={paying} onClick={pay}>{paying ? "Opening…" : "Pay & confirm →"}</button></div>
+      )}
+      {r?.paid_at && !past && <p className="paid-tag">💳 Paid{r.paid_amount ? " " + rupees(r.paid_amount) : ""}{r.refund_status === "refunded" ? " · refunded ↩" : r.refund_status === "pending" ? " · refund on its way ↩" : ""}</p>}
+      {!past && r?.status === "approved" && !unpaid && (
         <div className="plan-acts">
           <span className="drop">{dropped ? "📍 Exact spot sent on WhatsApp" : `📍 Exact spot drops ${fmtWhen(drop)}`}</span>
           <div className="plan-btns">

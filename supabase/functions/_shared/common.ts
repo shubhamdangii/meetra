@@ -10,7 +10,7 @@ export const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSe
 export const anonClient = () => createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
 // Only our website may call the login function from a browser.
-const ALLOWED_ORIGINS = ["https://shubhamdangii.github.io", "http://localhost:3000"];
+const ALLOWED_ORIGINS = ["https://shubhamdangii.github.io", "http://localhost:3000", "http://localhost:3100"];
 export function cors(req: Request): HeadersInit {
   const origin = req.headers.get("origin") ?? "";
   return {

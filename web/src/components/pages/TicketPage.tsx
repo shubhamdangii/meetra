@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
-import { CalendarButton, DoorPass, InviteBox, STATUS_UI, useMyRequests } from "../plans";
+import { CalendarButton, DoorPass, InviteBox, STATUS_UI, needsPayment, useMyRequests } from "../plans";
 import { burst } from "../fx";
 import { CONFIG } from "@/lib/config";
 import { addressDropAt, eventUrl, fmtWhen } from "@/lib/events";
@@ -17,7 +17,8 @@ export default function TicketPage() {
   const { rows } = useMyRequests();
   const e = byId(id);
   const r = rows?.find((x) => x.plan_ref === id);
-  const ok = !!e && (r?.status === "approved" || r?.status === "attended");
+  const unpaid = needsPayment(e, r);
+  const ok = !!e && ((r?.status === "approved" && !unpaid) || r?.status === "attended");
   useEffect(() => { if (ok) { const t = setTimeout(() => burst(innerWidth / 2, innerHeight * 0.35, ["🎫", "🎉", "✨", "💜"], 16), 500); return () => clearTimeout(t); } }, [ok]);
 
   if (!ready || (auth.enabled && auth.session && !rows)) return <div className="wrap" style={{ padding: "60px 20px" }}><div className="skeleton" style={{ minHeight: 480, maxWidth: 420, margin: "0 auto" }} /></div>;
@@ -28,7 +29,7 @@ export default function TicketPage() {
   if (!e || !ok) return (
     <section className="wrap page-hero">
       <h1>No pass <span className="serif">here yet.</span></h1>
-      <p>{r && e ? `Your status for ${e.title}: ${STATUS_UI[r.status]?.label ?? r.status}. The door pass appears once you're in.` : "Door passes appear once the team confirms your seat."}</p>
+      <p>{unpaid && e ? `A seat at ${e.title} is yours. Pay in Your plans to confirm it, then your door pass appears here.` : r && e ? `Your status for ${e.title}: ${STATUS_UI[r.status]?.label ?? r.status}. The door pass appears once you're in.` : "Door passes appear once the team confirms your seat."}</p>
       <div style={{ marginTop: 24, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Link className="btn btn-sun" href="/saved/">Your plans →</Link>{e && <Link className="btn btn-white" href={eventUrl(e)}>See the plan</Link>}
       </div>

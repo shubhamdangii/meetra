@@ -33,12 +33,12 @@ export const viewport: Viewport = { themeColor: "#FFF7EC", width: "device-width"
 const supabase = CONFIG.supabaseUrl.replace(/\/$/, "");
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",            // Next.js inlines its startup data
+  "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com",   // Next.js startup data + Razorpay Checkout
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://tile.openstreetmap.org",
+  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://tile.openstreetmap.org https://*.razorpay.com",
   "font-src 'self'",
-  `connect-src 'self' ${supabase} ${supabase.replace("https://", "wss://")}`,
-  "frame-src 'none'",
+  `connect-src 'self' ${supabase} ${supabase.replace("https://", "wss://")} https://*.razorpay.com`,
+  "frame-src https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com",   // payment window only
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
