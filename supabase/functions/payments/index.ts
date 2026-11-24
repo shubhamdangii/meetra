@@ -96,6 +96,17 @@ Deno.serve(async (req) => {
         await admin.from("payments").update({ status: "failed" }).eq("id", pay.id);
         return json(req, { error: "Payment could not be verified" }, 400);
       }
+      // check with Razorpay itself, and capture now so the money settles (and refunds work right away)
+      const pr = await fetch(`${RZP}/payments/${paymentId}`, { headers: { Authorization: auth } });
+      const pj = await pr.json();
+      if (!pr.ok || pj.order_id !== orderId || Number(pj.amount) !== Number(pay.amount)) return json(req, { error: "Payment could not be verified" }, 400);
+      if (pj.status === "authorized") {
+        const cr = await fetch(`${RZP}/payments/${paymentId}/capture`, {
+          method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: pay.amount, currency: "INR" }),
+        });
+        if (!cr.ok) { const cj = await cr.json().catch(() => ({})); if (cj?.error?.description && !/already been captured/i.test(cj.error.description)) return json(req, { error: cj.error.description }, 502); }
+      } else if (pj.status !== "captured") return json(req, { error: "Payment isn't complete yet" }, 409);
       if (pay.status === "paid" && pay.request_id) {
         const { data: done } = await admin.from("plan_requests").select("id, status, party_size").eq("id", pay.request_id).single();
         return json(req, { request: done });

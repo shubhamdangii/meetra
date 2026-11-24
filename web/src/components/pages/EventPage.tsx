@@ -301,7 +301,9 @@ export default function EventPage() {
                     </div>
                   )}
                   <p className="fine">{!auth.enabled ? "Opens WhatsApp with your request. Your host confirms there, then you pay. Only your host sees your number."
-                    : auth.session ? "Your request is saved. The team confirms on WhatsApp, then you pay. Only your host sees your number."
+                    : auth.session ? (paid && !full ? "You pay now to hold your place. The team confirms your seat, and if you don't get one, the full amount is refunded automatically. Only your host sees your number."
+                      : paid ? "The waiting list is free. If a seat opens, you pay then to confirm it. Only your host sees your number."
+                      : "Your request is saved. The team confirms your seat here and on WhatsApp. Only your host sees your number.")
                     : (CONFIG.loginWithWhatsApp ? "You'll log in with Google or WhatsApp first (takes 10 seconds)." : "You'll log in with Google first (takes 10 seconds).")}</p>
                 </motion.form>
               )}
