@@ -38,7 +38,7 @@ const CSP = [
   "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://tile.openstreetmap.org https://*.razorpay.com",
   "font-src 'self'",
   `connect-src 'self' ${supabase} ${supabase.replace("https://", "wss://")} https://*.razorpay.com`,
-  "frame-src https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com",   // payment window only
+  "frame-src https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://maps.google.com https://www.google.com",   // payment window + exact-location map
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

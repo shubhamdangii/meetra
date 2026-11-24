@@ -1,16 +1,30 @@
 // Builds every dated meetup from the templates in data.ts, plus small helpers.
 // Dates are relative to "today", so this runs in the browser (never at build time).
 import { CONFIG } from "./config";
-import { CATEGORIES, HOSTS, PALETTES, TEMPLATES } from "./data";
+import { CATEGORIES, PALETTES, TEMPLATES } from "./data";
 import manifest from "./image-manifest.json";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-type Manifest = { events: Record<string, string[]>; hosts: Record<string, string> };
+type Manifest = { events: Record<string, string[]> };
 const M = manifest as unknown as Manifest;
-/** Photos the owner dropped in public/images/events/<key>/ (cover.* first). Empty → emoji poster. */
-export const eventImages = (key: string): string[] => (M.events[key] || []).map((f) => `${BASE}/images/events/${key}/${f}`);
-/** Host photo from public/images/hosts/<city>/<id>.jpg, or null. */
-export const hostImage = (id: string): string | null => (M.hosts[id.toLowerCase()] ? `${BASE}/images/${M.hosts[id.toLowerCase()]}` : null);
+/** Every folder in public/images/events is an event type, named exactly like the folder. */
+export const EVENT_TYPES: string[] = Object.keys(M.events);
+/** Site path of a photo in an event-type folder (stored in the database as this path). */
+export const typeImagePath = (type: string, file: string) => `/images/events/${encodeURIComponent(type)}/${encodeURIComponent(file)}`;
+/** Photos in public/images/events/<type>/ (cover.* first), as usable URLs. */
+export const typeImages = (type: string | null | undefined): string[] => (type && M.events[type] ? M.events[type].map((f) => BASE + typeImagePath(type, f)) : []);
+/** A stored image: "/images/…" paths get the site prefix, uploaded https:// links stay as they are. */
+export const imgSrc = (u: string | null | undefined): string | null => (!u ? null : u.startsWith("/") ? BASE + u : u);
+/** The example plans' photo folders. */
+const TEMPLATE_TYPE: Record<string, string> = {
+  "introverts-dinner": "Introverts' Dinner", "board-games-chai": "Boards & Chai", "mafia-night": "Mafia Night", "pickleball-dinner": "Pickleball & Dinner",
+  "run-club": "Run & Coffee", "home-cinema": "Home Cinema", "book-club-lunch": "Books & Bites", "open-mic": "Open Mic", "craft-workshop": "Craft & Chill",
+  "sketch-walk": "Sketch Walk", "food-walk": "Street Food Walk", "sunrise": "Sunrise Trek", "quiz-night": "Quiz Night", "deep-talks": "2AM Deep Talks",
+  "karaoke": "Karaoke Chaos", "bonfire": "Bonfire Jam", "life-lunch": "Life & Lunch", "badminton": "Smash & Chai", "women-brunch": "Sunday Breakfast Club",
+  "salsa": "Salsa Social", "photo-walk": "Photo Walk", "night-sky-trip": "Stargazing Trip",
+};
+/** Photos for an example plan (by its key), from its event-type folder. */
+export const eventImages = (key: string): string[] => typeImages(TEMPLATE_TYPE[key]);
 
 export type MeetEvent = {
   id: string; key: string; city: string; date: Date; day: number; title: string;
@@ -19,6 +33,7 @@ export type MeetEvent = {
   seats: number; left: number; emoji: string; pal: number; pattern: string;
   blurb: string; steps: string[]; tags: string[]; image: string | null;
   hostId?: number; bookingClosesAt?: Date;   // real events from the admin desk only
+  eventType?: string | null;                 // folder name in public/images/events
 };
 
 export const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -37,7 +52,7 @@ export type CustomPlan = {
   id: number; city_slug: string; title: string; category: string; starts_on: string; time_label: string; end_label: string | null;
   area: string; price: number; price_type: MeetEvent["priceType"]; seats: number; emoji: string; blurb: string;
   steps: string[]; tags: string[]; host_name: string | null; status: string;
-  plan_ref: string; host_id: number | null; category_other?: string | null; starts_at: string; ends_at: string; booking_closes_at: string; deleted_at: string | null; cancel_reason: string | null;
+  plan_ref: string; host_id: number | null; category_other?: string | null; event_type?: string | null; image_url?: string | null; starts_at: string; ends_at: string; booking_closes_at: string; deleted_at: string | null; cancel_reason: string | null;
 };
 const PATTERNS = ["dots", "grid", "rings", "stripes", "sun", "waves"];
 export const customPlanId = (c: Pick<CustomPlan, "id" | "city_slug" | "starts_on"> & { plan_ref?: string }) => c.plan_ref || `x${c.id}-${c.city_slug}-${c.starts_on.replace(/-/g, "")}`;
@@ -67,10 +82,10 @@ export function buildEvents(today: Date, custom: CustomPlan[] = []) {
         all.push({
           id, key: t.key, city, date: d, day: diff(d), title,
           cat: t.cat, time: ov.time || t.time, end: ov.end || t.end, area: ov.area,
-          hosts: ov.hosts || ["team"], price: ov.price ?? t.price, priceType: t.priceType,
+          hosts: ["tba"], price: ov.price ?? t.price, priceType: t.priceType,
           seats, left: Math.max(0, seats - taken), emoji: ov.emoji || t.emoji,
           pal: ov.pal ?? t.pal, pattern: t.pattern, blurb: ov.blurb || t.blurb,
-          steps: t.steps, tags: t.tags || [], image: ov.image || t.image || eventImages(t.key)[0] || null,
+          steps: t.steps, tags: t.tags || [], image: ov.image || t.image || eventImages(t.key)[0] || null, eventType: TEMPLATE_TYPE[t.key] ?? null,
         });
       });
     });
@@ -86,7 +101,7 @@ export function buildEvents(today: Date, custom: CustomPlan[] = []) {
       price: c.price, priceType: c.price_type, seats: c.seats, left: c.seats, emoji: c.emoji || "✨",
       pal: hash(id) % 8, pattern: PATTERNS[hash(id) % PATTERNS.length], blurb: c.blurb,
       steps: c.steps?.length ? c.steps : ["Your host starts with an easy game", "Settle in with the group", "Swap numbers only if you want to"],
-      tags: ["New", ...(c.category === "other" && c.category_other ? [c.category_other] : []), ...(c.tags || [])].slice(0, 3), image: null,
+      tags: ["New", ...(c.category === "other" && c.category_other ? [c.category_other] : []), ...(c.tags || [])].slice(0, 3), image: imgSrc(c.image_url) ?? typeImages(c.event_type)[0] ?? null, eventType: c.event_type ?? null,
       hostId: c.host_id ?? undefined, bookingClosesAt: c.booking_closes_at ? new Date(c.booking_closes_at) : undefined,
     });
   });
@@ -100,10 +115,10 @@ export const relDay = (d: Date, today: Date) => {
   const n = Math.round((d.getTime() - today.getTime()) / 864e5);
   return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : fmtDay(d);
 };
-export const hostNames = (e: MeetEvent) => e.hosts.map((h) => (h === "tba" ? "Host TBA" : HOSTS[h]?.name || h)).join(" & ");
+export const hostNames = (e: MeetEvent) => e.hosts.map((h) => (h === "tba" ? "Host TBA" : h)).join(" & ");
 /** True when a real event has no host picked yet. */
 export const hostTba = (e: MeetEvent) => e.hosts.length === 1 && e.hosts[0] === "tba";
-/** "Hosted by Riya" — or "Host announced soon" when the team hasn't picked one yet. */
+/** "Hosted by <host from the database>" — or "Host announced soon" when the team hasn't picked one yet. */
 export const hostLine = (e: MeetEvent) => (hostTba(e) ? "Host announced soon" : `Hosted by ${hostNames(e)}`);
 export const priceShort = (e: MeetEvent) =>
   e.priceType === "free" ? "Free" : e.priceType === "estimate" ? `~₹${e.price.toLocaleString("en-IN")}` : `₹${e.price.toLocaleString("en-IN")}`;
@@ -153,8 +168,8 @@ export function downloadCalendar(e: MeetEvent) {
 
 /** Home "real moments" strip: event photos (captioned) interleaved with the miscellaneous folder. */
 export function momentPhotos(limit = 24): { src: string; caption?: string }[] {
-  const ev = (TEMPLATES as any[]).flatMap((t) => eventImages(t.key).slice(0, 2).map((src) => ({ src, caption: t.title as string })));
-  const misc = eventImages("miscellaneous").map((src) => ({ src }));
+  const ev = EVENT_TYPES.flatMap((t) => typeImages(t).slice(0, 2).map((src) => ({ src, caption: t })));
+  const misc = EVENT_TYPES.flatMap((t) => typeImages(t).slice(2)).map((src) => ({ src }));
   const out: { src: string; caption?: string }[] = [];
   for (let i = 0; out.length < limit && (i < ev.length || i < misc.length); i++) {
     if (ev[i]) out.push(ev[i]);

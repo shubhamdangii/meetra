@@ -5,7 +5,7 @@ import { useApp } from "./AppProvider";
 import { burstFrom, buzz, useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
-import { DOW, MON, type MeetEvent, eventUrl, hostImage, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
+import { DOW, MON, type MeetEvent, eventUrl, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
 
 export const ease = [0.2, 0.8, 0.2, 1] as const;
 
@@ -43,13 +43,12 @@ export function Poster({ e, title = false, badge = true, className = "" }: { e: 
   );
 }
 
-/** Host avatar: real photo from public/images/hosts/<city>/<name>.jpg when present, else coloured initial. */
-export function HostAv({ h, id }: { h: { name: string; color: string }; id?: string }) {
-  const src = hostImage(id || h.name);
+/** Host avatar: photo from the database when there is one, else a coloured initial. */
+export function HostAv({ h }: { h: { name: string; color: string; photo_url?: string | null } }) {
   return (
     <div className="av" style={{ background: h.color }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {src ? <img src={src} alt={h.name} loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : h.name[0]}
+      {h.photo_url ? <img src={h.photo_url} alt={h.name} loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : h.name[0]}
     </div>
   );
 }

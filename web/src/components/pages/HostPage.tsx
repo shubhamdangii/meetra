@@ -11,11 +11,16 @@ import { burstFrom, Gallery } from "../fx";
 import { Reveal, WhatsAppDone } from "../ui";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
-import { whatsappLink } from "@/lib/events";
+import { EVENT_TYPES, whatsappLink } from "@/lib/events";
+import { fmtDT, fromLocalInput, nowLocalInput } from "../admin/shared";
+
+type Unassigned = { id: number; plan_ref: string; title: string; city_slug: string; event_type: string | null; starts_at: string; area: string; status: string };
+type NewEvent = { title: string; category: string; event_type: string; area: string; starts_at: string; ends_at: string };
 
 type App = {
   id: number; city_slug: string; plan_title: string; category: string; pitch: string | null; experience: string | null;
   frequency: string | null; group_size: number | null; availability: string | null; status: string; team_note: string | null; created_at: string;
+  plan_id: number | null; new_event: NewEvent | null;
 };
 const OPEN = ["applied", "shortlisted", "call_scheduled", "trial", "waitlisted"];
 const STEPS = [["applied", "Applied"], ["shortlisted", "Shortlisted"], ["call_scheduled", "Call with us"], ["trial", "Trial plan"], ["approved", "Live 🎉"]] as const;
@@ -44,7 +49,8 @@ const DRAFT_KEY = "mt-host-draft";
 const cats = (CATEGORIES as { id: string; label: string; icon: string }[]).filter((c) => c.id !== "all");
 const liveCities = Object.entries(CONFIG.cities).filter(([, c]) => c.live);
 
-const blank = (city: string) => ({ city_slug: CONFIG.cities[city]?.live ? city : CONFIG.defaultCity, plan_title: "", category: "games", pitch: "", experience: "", frequency: "monthly", group_size: "10", availability: "" });
+const blank = (city: string) => ({ city_slug: CONFIG.cities[city]?.live ? city : CONFIG.defaultCity, plan_title: "", category: "games", pitch: "", experience: "", frequency: "monthly", group_size: "10", availability: "",
+  choice: "new" as "new" | "existing", plan_id: "", event_type: "", area: "", starts: "", ends: "" });
 
 /** /host/: approved hosts get their Host desk; everyone else sees the application. */
 export function HostPage() {
@@ -65,6 +71,20 @@ function HostApply() {
   const [waText, setWaText] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV((x) => ({ ...x, [k]: e.target.value }));
+  // events in this city that still need a host
+  const [free, setFree] = useState<Unassigned[] | null>(null);
+  useEffect(() => {
+    const sb = auth.client; if (!sb) { setFree([]); return; }
+    let alive = true;
+    sb.rpc("unassigned_events", { p_city: v.city_slug }).then(({ data }) => {
+      if (!alive) return;
+      const list = ((data ?? []) as Unassigned[]).filter((x) => x.status === "approved");
+      setFree(list);
+      setV((x) => (x.plan_id && !list.some((l) => String(l.id) === x.plan_id) ? { ...x, plan_id: "" } : x));
+    });
+    return () => { alive = false; };
+  }, [auth.client, v.city_slug]);
+  const picked = (free ?? []).find((x) => String(x.id) === v.plan_id) ?? null;
 
   // Bring back a pitch typed before logging in.
   useEffect(() => {
@@ -92,13 +112,26 @@ function HostApply() {
     }
     if (!auth.session) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(v)); } catch {} auth.requireLogin("/host/"); return; }
     if (!auth.client || !auth.me) return toast("Still loading your account — try again in a second.");
+    // which event will they host?
+    let newEvent: NewEvent | null = null;
+    if (v.choice === "existing") {
+      if (!picked) return toast("Pick the event you'd like to host.");
+    } else {
+      if (v.plan_title.trim().length < 3) return toast("Give your event a title (at least 3 characters).");
+      if (v.area.trim().length < 2) return toast("Add the area for your event (e.g. Prahlad Nagar).");
+      if (!v.starts || !v.ends) return toast("Pick when your event starts and ends.");
+      if (new Date(v.starts).getTime() <= Date.now() + 4 * 3600e3) return toast("Pick a start at least 4 hours from now.");
+      if (new Date(v.ends) <= new Date(v.starts)) return toast("The end must be after the start.");
+      newEvent = { title: v.plan_title.trim(), category: v.category, event_type: v.event_type, area: v.area.trim(), starts_at: fromLocalInput(v.starts), ends_at: fromLocalInput(v.ends) };
+    }
     setBusy(true);
     const { error } = await auth.client.from("host_applications").insert({
-      city_slug: v.city_slug, plan_title: v.plan_title.trim(), category: v.category, pitch: v.pitch.trim() || null,
+      plan_id: picked ? picked.id : null, new_event: newEvent,
+      city_slug: v.city_slug, plan_title: (picked ? picked.title : v.plan_title).trim(), category: v.category, pitch: v.pitch.trim() || null,
       experience: v.experience.trim() || null, frequency: v.frequency, group_size: Number(v.group_size) || null, availability: v.availability.trim() || null,
     });
     setBusy(false);
-    if (error) return toast(/one_open|duplicate|unique/i.test(error.message) ? "You already have an open application." : "Couldn't send it: " + error.message);
+    if (error) return toast(/one_open|duplicate|unique/i.test(error.message) ? "You already have an open application." : /already a meetra host/i.test(error.message) ? "You're already a host. Reload to open your Host desk." : "Couldn't send it: " + error.message);
     burstFrom(btn, ["🎙️", "🎉", "✨", "🙌", "⭐"]);
     toast("You're in the host line ✓");
     load();
@@ -142,7 +175,7 @@ function HostApply() {
                     </div>
                   )}
                   <p>{STATUS_TEXT[app!.status][2]}</p>
-                  <p style={{ fontWeight: 700 }}>“{app!.plan_title}”</p>
+                  <p style={{ fontWeight: 700 }}>{app!.plan_id ? "Hosting: " : "Your event: "}“{app!.plan_title}”{app!.new_event?.starts_at ? <small className="muted" style={{ display: "block", fontWeight: 500 }}>{fmtDT(app!.new_event.starts_at)} · {app!.new_event.area}</small> : null}</p>
                   {app!.team_note && <div className="team-note"><b style={{ fontSize: 13, display: "inline" }}>Note from the team:</b> {app!.team_note}</div>}
                   {app!.status !== "approved" && (
                     <p className="fine" style={{ marginTop: 12 }}>Move up the line: <Link href="/profile/" style={{ textDecoration: "underline" }}>complete your profile</Link> (score {auth.me?.profile_score ?? 0}/100).</p>
@@ -156,11 +189,33 @@ function HostApply() {
                     {app?.status === "rejected" ? "Not this time last round — try a new idea! " : app?.status === "withdrawn" ? "Welcome back. " : ""}
                     Takes 2 minutes. {auth.enabled ? "You'll get your place in the host line straight away." : "We reply on WhatsApp within a day."}
                   </p>
-                  <div className="field"><label htmlFor="hp">What&apos;s the plan?</label><input id="hp" required minLength={3} maxLength={120} placeholder="e.g. Sunday chess + chai at a café" value={v.plan_title} onChange={set("plan_title")} /></div>
-                  <div className="field-row">
-                    <div className="field"><label htmlFor="hc">Kind of plan</label><select id="hc" value={v.category} onChange={set("category")}>{cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}<option value="other">✦ Something else</option></select></div>
-                    <div className="field"><label htmlFor="hcity">City</label><select id="hcity" value={v.city_slug} onChange={set("city_slug")}>{liveCities.map(([slug, c]) => <option key={slug} value={slug}>{c.name}</option>)}</select></div>
-                  </div>
+                  <div className="field"><label htmlFor="hcity">City</label><select id="hcity" value={v.city_slug} onChange={set("city_slug")}>{liveCities.map(([slug, c]) => <option key={slug} value={slug}>{c.name}</option>)}</select></div>
+                  <fieldset className="ev-choice">
+                    <legend>Which event will you host? *</legend>
+                    <div className="seg2" role="radiogroup">
+                      <button type="button" role="radio" aria-checked={v.choice === "existing"} className={v.choice === "existing" ? "on" : ""} onClick={() => setV((x) => ({ ...x, choice: "existing" }))}>Pick an event<small>{free === null ? "…" : `${free.length} need a host`}</small></button>
+                      <button type="button" role="radio" aria-checked={v.choice === "new"} className={v.choice === "new" ? "on" : ""} onClick={() => setV((x) => ({ ...x, choice: "new", plan_id: "" }))}>Create my own<small>a brand new event</small></button>
+                    </div>
+                    {v.choice === "existing" ? (
+                      free === null ? <div className="skeleton" style={{ minHeight: 80 }} />
+                      : !free.length ? <p className="muted" style={{ fontSize: 14 }}>No events in {CONFIG.cities[v.city_slug]?.name} need a host right now. <button type="button" className="linkish" onClick={() => setV((x) => ({ ...x, choice: "new" }))}>Create your own instead →</button></p>
+                      : <div className="pick-list" role="radiogroup" aria-label="Events that need a host">{free.map((x) => (
+                          <button key={x.id} type="button" role="radio" aria-checked={v.plan_id === String(x.id)} className={v.plan_id === String(x.id) ? "on" : ""}
+                            onClick={() => setV((s) => ({ ...s, plan_id: String(x.id) }))}><b>{x.title}</b><small>{fmtDT(x.starts_at)} · {x.area}{x.event_type ? ` · ${x.event_type}` : ""}</small></button>
+                        ))}</div>
+                    ) : <>
+                      <div className="field"><label htmlFor="hp">Event title *</label><input id="hp" minLength={3} maxLength={120} placeholder="e.g. Sunday chess + chai at a café" value={v.plan_title} onChange={set("plan_title")} /></div>
+                      <div className="field-row">
+                        <div className="field"><label htmlFor="ht">Event type</label><select id="ht" value={v.event_type} onChange={set("event_type")}><option value="">Choose…</option>{EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
+                        <div className="field"><label htmlFor="hc">Kind of plan</label><select id="hc" value={v.category} onChange={set("category")}>{cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}<option value="other">✦ Something else</option></select></div>
+                      </div>
+                      <div className="field"><label htmlFor="har">Area *</label><input id="har" maxLength={60} placeholder={v.city_slug === "jaipur" ? "e.g. C-Scheme" : "e.g. Prahlad Nagar"} value={v.area} onChange={set("area")} /></div>
+                      <div className="field-row">
+                        <div className="field"><label htmlFor="hs">Starts *</label><input id="hs" type="datetime-local" min={nowLocalInput()} value={v.starts} onChange={set("starts")} /></div>
+                        <div className="field"><label htmlFor="he2">Ends *</label><input id="he2" type="datetime-local" min={v.starts || nowLocalInput()} value={v.ends} onChange={set("ends")} /></div>
+                      </div>
+                    </>}
+                  </fieldset>
                   <div className="field"><label htmlFor="hw">What happens, and who&apos;s it for?</label><textarea id="hw" required maxLength={1500} placeholder="Walk us through the first 15 minutes. How do strangers end up talking?" value={v.pitch} onChange={set("pitch")} /></div>
                   <div className="field-row">
                     <div className="field"><label htmlFor="hf">How often?</label><select id="hf" value={v.frequency} onChange={set("frequency")}><option value="once">Just once</option><option value="monthly">Monthly</option><option value="fortnightly">Every 2 weeks</option><option value="weekly">Weekly</option></select></div>
@@ -184,7 +239,7 @@ function HostApply() {
               <Gallery label="Plan ideas">
                 {IDEAS.map(([t, c]) => (
                   <motion.button key={t} type="button" className="idea-chip" whileTap={{ scale: 0.92 }}
-                    onClick={() => { setV((x) => ({ ...x, plan_title: t, category: c })); document.getElementById("hp")?.focus(); }}>{t}</motion.button>
+                    onClick={() => { setV((x) => ({ ...x, plan_title: t, category: c, choice: "new", plan_id: "" })); setTimeout(() => document.getElementById("hp")?.focus(), 50); }}>{t}</motion.button>
                 ))}
               </Gallery>
             </div>

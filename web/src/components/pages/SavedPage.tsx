@@ -8,6 +8,7 @@ import { useAuth } from "../AuthProvider";
 import { useIsHost } from "../host/useIsHost";
 import { CalendarButton, InviteBox, STATUS_UI, needsPayment, useMyRequests, type MyRequest } from "../plans";
 import { payForSeat, rupees } from "@/lib/razorpay";
+import { ExactLocation } from "../EventBits";
 import { Empty, EventCard, Poster } from "../ui";
 import { burstFrom, buzz } from "../fx";
 import { useEffect, useState } from "react";
@@ -128,7 +129,8 @@ function PlanRow({ e, r, i, past = false, onCancel, onPaid }: { e: MeetEvent; r:
       {r?.paid_at && !past && <p className="paid-tag">💳 Paid{r.paid_amount ? " " + rupees(r.paid_amount) : ""}{r.refund_status === "refunded" ? " · refunded ↩" : r.refund_status === "pending" ? " · refund on its way ↩" : ""}</p>}
       {!past && r?.status === "approved" && !unpaid && (
         <div className="plan-acts">
-          <span className="drop">{dropped ? "📍 Exact spot sent on WhatsApp" : `📍 Exact spot drops ${fmtWhen(drop)}`}</span>
+          <ExactLocation planRef={e.id} />
+          <span className="drop">{dropped ? "📍 Exact spot shared above and on WhatsApp" : `📍 Host shares the final details by ${fmtWhen(drop)}`}</span>
           <div className="plan-btns">
             <Link className="btn btn-ink btn-sm" href={`/ticket/?id=${e.id}`}>My door pass 🎫</Link>
             <CalendarButton e={e} />

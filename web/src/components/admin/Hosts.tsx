@@ -8,6 +8,7 @@ import { AdminHosts as HostApplications } from "../pages/AdminHosts";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import type { AdminEvent } from "./Events";
+import { ApproveHostDialog, type HostApp } from "./ApproveHost";
 import { CITIES, Chip, Empty, Modal, Stars, cityName, fmtDT, useAsk, useCall, useRpc } from "./shared";
 
 export type HostRow = {
@@ -111,12 +112,10 @@ function HostsList({ goApprovals }: { goApprovals: (req?: string) => void }) {
   const [form, setForm] = useState<{ h?: HostRow; f: ReturnType<typeof blankHost> } | null>(null); const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useState<HostRow | null>(null);
   // verified applicants whose host profile doesn't exist yet (approved before profiles were automatic)
-  const apps = useRpc<{ id: number; status: string; host_id: number | null; pending_req: string | null; display_name: string; full_name: string | null; avatar_url: string | null; city_slug: string; plan_title: string }[]>("admin_host_applications");
+  const apps = useRpc<(HostApp & { status: string; host_id: number | null; pending_req: string | null; avatar_url: string | null })[]>("admin_host_applications");
   const waiting = (apps.data ?? []).filter((a) => a.status === "approved" && !a.host_id);
-  async function makeProfile(a: (typeof waiting)[number]) {
-    const no = await call<string>("admin_approve_host_application", { p_app_id: a.id, p_note: "Create host profile for verified applicant" });
-    if (no) { apps.reload(); goApprovals(no); }
-  }
+  const [approving, setApproving] = useState<HostApp | null>(null);
+  const makeProfile = (a: (typeof waiting)[number]) => setApproving(a);
   const evOfHost = useMemo(() => { const m = new Map<number, AdminEvent[]>(); (ev.data ?? []).forEach((e) => { if (e.host_id) m.set(e.host_id, [...(m.get(e.host_id) ?? []), e]); }); return m; }, [ev.data]);
   const list = useMemo(() => (hs.data ?? []).filter((h) => (!city || h.city_slug === city || h.cities.includes(city)) && (st === "all" || h.status === st)
     && (!event || (ev.data ?? []).find((e) => String(e.id) === event)?.host_id === h.id)
@@ -207,6 +206,7 @@ function HostsList({ goApprovals }: { goApprovals: (req?: string) => void }) {
             <button onClick={() => { const h = view; setView(null); act(h, "delete"); }}>Remove</button></>}
         </div>
         <HostProfile h={view} /></>}</Modal>
+      <ApproveHostDialog app={approving} onClose={() => setApproving(null)} onSent={(no) => { setApproving(null); apps.reload(); goApprovals(no); }} />
       {ui}
     </motion.div>
   );

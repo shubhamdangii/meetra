@@ -1,83 +1,151 @@
 {
  "events": {
-  "board-games-chai": [
-   "IMG_1890.jpg",
-   "IMG_1891.jpg",
-   "IMG_1892.jpg",
-   "IMG_1898.jpg",
-   "IMG_1899.jpg",
-   "IMG_1900.jpg",
-   "IMG_1901.jpg",
-   "IMG_1902.jpg"
-  ],
-  "bonfire": [
-   "IMG_1865.jpg"
-  ],
-  "book-club-lunch": [
-   "IMG_1914.jpg"
-  ],
-  "deep-talks": [
-   "IMG_1883.jpg",
+  "2AM Deep Talks": [
    "IMG_1884.jpg",
    "IMG_1885.jpg"
   ],
-  "food-walk": [
-   "IMG_1910.jpg",
-   "IMG_1911.jpg",
-   "IMG_1912.jpg",
-   "IMG_1913.jpg"
+  "Acoustic Jam": [],
+  "Back-to-Back Draw": [],
+  "Bluff & Deal": [
+   "IMG_1890.jpg",
+   "IMG_1900.jpg"
   ],
-  "home-cinema": [
+  "Boards & Chai": [
+   "IMG_1898.jpg",
+   "IMG_1901.jpg",
+   "IMG_1902.jpg"
+  ],
+  "Bollywood Charades": [],
+  "Bonfire Jam": [],
+  "Book Swap": [],
+  "Books & Bites": [
+   "IMG_1914.jpg"
+  ],
+  "Bowling Bash": [],
+  "Cake Painting": [],
+  "Candle Making": [],
+  "Chai & Poetry": [],
+  "Chugli Club": [
+   "IMG_1886.jpg"
+  ],
+  "City Scavenger Hunt": [],
+  "Coffee Rave": [],
+  "Cooking Club": [],
+  "Craft & Chill": [],
+  "Cycling Club": [],
+  "Escape Room": [],
+  "Fake Shaadi": [],
+  "Find Your Pair": [],
+  "Go-Karting Night": [],
+  "GTA-Goat": [],
+  "Heritage Walk": [],
+  "Home Cinema": [
    "IMG_1887.jpg",
    "IMG_1889.jpg"
   ],
-  "karaoke": [
-   "IMG_1888.jpg"
-  ],
-  "miscellaneous": [
-   "IMG_1874.jpg",
-   "IMG_1875.jpg",
-   "IMG_1876.jpg",
-   "IMG_1877.jpg",
-   "IMG_1886.jpg",
-   "IMG_1894.jpg",
-   "IMG_1895.jpg",
-   "IMG_1897.jpg",
-   "IMG_1903.jpg",
-   "IMG_1904.jpg",
-   "IMG_1905.jpg",
-   "IMG_1906.jpg",
-   "IMG_1907.jpg",
-   "IMG_1908.jpg",
-   "IMG_1915.jpg",
-   "IMG_1917.jpg",
-   "IMG_1918.jpg",
+  "Hoop & Chill": [
    "IMG_1919.jpg",
    "IMG_1920.jpg",
    "IMG_1921.jpg"
   ],
-  "open-mic": [
+  "Hot Seat": [],
+  "Hot Takes Night": [],
+  "Human Bingo": [],
+  "Improv Comedy": [],
+  "Introverts' Dinner": [],
+  "Jenga Questions": [],
+  "Karaoke Chaos": [
+   "IMG_1888.jpg"
+  ],
+  "Laser Tag": [],
+  "Life & Lunch": [
+   "IMG_1875.jpg",
+   "IMG_1876.jpg",
+   "IMG_1894.jpg",
+   "IMG_1895.jpg"
+  ],
+  "Listening Party": [],
+  "Mafia Night": [
+   "IMG_1883.jpg"
+  ],
+  "Most Likely To": [],
+  "Movie Pitch": [],
+  "Murder Mystery": [],
+  "Mystery Dinner": [],
+  "Open Mic": [
    "IMG_1909.jpg"
   ],
-  "photo-walk": [
+  "Origami & Coffee": [],
+  "Photo Walk": [
    "IMG_1893.jpg"
   ],
-  "pickleball-dinner": [
+  "Pickleball & Dinner": [
    "IMG_1878.jpg",
    "IMG_1879.jpg",
    "IMG_1880.jpg",
    "IMG_1881.jpg",
    "IMG_1882.jpg"
   ],
-  "run-club": [
+  "Potluck Picnic": [],
+  "Pottery & Chai": [],
+  "PowerPoint Night": [],
+  "Quiz Night": [
+   "IMG_1908.jpg"
+  ],
+  "Rage Room": [],
+  "Rock Climbing": [],
+  "Run & Coffee": [
    "IMG_1872.jpg",
    "IMG_1873.jpg"
   ],
-  "sketch-walk": [
+  "Salsa Social": [],
+  "Silent Reading": [],
+  "Sip & Paint": [],
+  "Sketch Walk": [
    "IMG_1916.jpg"
-  ]
+  ],
+  "Smash & Chai": [
+   "IMG_1905.jpg",
+   "IMG_1906.jpg",
+   "IMG_1907.jpg"
+  ],
+  "Spyfall": [],
+  "Stargazing Trip": [
+   "IMG_1897.jpg"
+  ],
+  "Street Food Walk": [
+   "IMG_1910.jpg",
+   "IMG_1911.jpg",
+   "IMG_1912.jpg",
+   "IMG_1913.jpg"
+  ],
+  "Sunday Breakfast Club": [],
+  "Sunrise Trek": [],
+  "Supper Club": [
+   "IMG_1874.jpg",
+   "IMG_1877.jpg"
+  ],
+  "Techies Unwind": [
+   "IMG_1903.jpg",
+   "IMG_1904.jpg"
+  ],
+  "Tote Painting": [],
+  "Turf Showdown": [
+   "IMG_1917.jpg",
+   "IMG_1918.jpg"
+  ],
+  "Two Truths, Lie": [],
+  "Undercover": [],
+  "UNO Chaos": [
+   "IMG_1865.jpg",
+   "IMG_1891.jpg",
+   "IMG_1892.jpg",
+   "IMG_1899.jpg"
+  ],
+  "Volunteer Drive": [],
+  "Wavelength": [],
+  "Whose Story": []
  },
- "hosts": {},
  "hero": [],
  "gallery": []
 }

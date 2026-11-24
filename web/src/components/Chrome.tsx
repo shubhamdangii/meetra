@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { InstallMenuItem } from "./InstallApp";
 import { NotificationsSheet, useNotifications } from "./Notifications";
-import { useIsHost } from "./host/useIsHost";
+import { NotHost, useHostStatus, useIsHost } from "./host/useIsHost";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { CONFIG } from "@/lib/config";
@@ -170,7 +170,7 @@ function TabBar({ active }: { active: string }) {
 /** Phone menu (☰): everything that isn't in the tab bar. */
 function MobileMenu() {
   const [open, setOpen] = useState(false);
-  const isHost = useIsHost();
+  const hostSt = useHostStatus(); const isHost = hostSt === "active";
   const [mounted, setMounted] = useState(false);
   const path = usePathname();
   useEffect(() => { setMounted(true); }, []);
@@ -179,7 +179,7 @@ function MobileMenu() {
   const items = [
     ["🔥", "Discover", "Swipe through plans", "/swipe/"], ["🎲", "Party games", "Decks, Mafia, Undercover…", "/games/"],
     ["📸", "Past nights", "Photos and stories", "/past/"],
-    isHost ? ["＋", "Add a plan", "Propose your next event", "/host/?new=1"] : ["✨", "Host a meetup", "Join the host waiting list", "/host/"],
+    isHost ? ["＋", "Add a plan", "Propose your next event", "/host/?new=1"] : hostSt === "none" ? ["✨", "Host a meetup", "Join the host waiting list", "/host/"] : ["🎙️", "Host desk", "Your events", "/host/"],
     ["💬", "How it works", "Safety, payments, rules", "/about/"], ["🤝", "Brands & venues", "Partner with us", "/partners/"],
   ];
   return (
@@ -209,6 +209,7 @@ function MobileMenu() {
 export function Header() {
   const path = usePathname();
   const active = activeKey(path);
+  const hostSt = useHostStatus();
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const f = () => setScrolled(window.scrollY > 8);
@@ -224,7 +225,7 @@ export function Header() {
             {LINKS.map((l) => (
               <Link key={l.key} href={l.href} className={active === l.key ? "active" : ""} style={{ position: "relative" }}>
                 {active === l.key && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
-                <span style={{ position: "relative" }}>{l.label}</span>
+                <span style={{ position: "relative" }}>{l.key === "host" && hostSt && hostSt !== "none" ? "Host desk" : l.label}</span>
               </Link>
             ))}
           </nav>
@@ -245,7 +246,7 @@ export function Footer() {
         <div className="foot-grid">
           <div><Link className="logo" href="/" style={{ color: "#fff" }}>{CONFIG.brand}<i>.</i></Link><p>{CONFIG.tagline} Now in {live}.</p></div>
           <div><h5>Explore</h5><Link href="/events/">Find a meetup</Link><Link href="/events/?when=weekend">This weekend</Link><Link href="/swipe/">Discover</Link><Link href="/past/">Past nights</Link><Link href="/games/">Party games</Link></div>
-          <div><h5>{CONFIG.brand}</h5><Link href="/about/">How it works</Link><Link href="/about/#safety">Help &amp; safety</Link><Link href="/host/">Host a meetup</Link><Link href="/partners/">For brands &amp; venues</Link></div>
+          <div><h5>{CONFIG.brand}</h5><Link href="/about/">How it works</Link><Link href="/about/#safety">Help &amp; safety</Link><NotHost><Link href="/host/">Host a meetup</Link></NotHost><Link href="/partners/">For brands &amp; venues</Link></div>
           <div><h5>Say hi</h5><a href={CONFIG.instagram} target="_blank" rel="noopener noreferrer">Instagram</a><a href={CONFIG.whatsappCommunity} target="_blank" rel="noopener noreferrer">WhatsApp community</a><a href={`mailto:${CONFIG.email}`}>{CONFIG.email}</a></div>
         </div>
         <motion.div className="wordmark" aria-hidden="true" initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.9 }}>

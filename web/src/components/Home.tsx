@@ -7,7 +7,8 @@ import { useApp } from "./AppProvider";
 import { Chips, Empty, EventCard, HostAv, Poster, Reveal, ease } from "./ui";
 import { buzz, CountUp, Gallery, Wavy } from "./fx";
 import { CONFIG } from "@/lib/config";
-import { HOSTS, REVIEWS } from "@/lib/data";
+import { REVIEWS } from "@/lib/data";
+import { NotHost } from "./host/useIsHost";
 import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostLine, hostNames, momentPhotos, relDay } from "@/lib/events";
 import { PhotoStrip } from "./Photos";
 import { atLeast, isReal, useFeaturedReviews, useHostCount, usePublicHosts, type PublicHost } from "@/lib/publicData";
@@ -243,7 +244,7 @@ export function Hosts() {
   const { city } = useApp();
   const { data: list, loaded } = usePublicHosts(city, 10);
   if (!loaded) return <div className="skeleton" style={{ minHeight: 220, opacity: 0.25 }} />;
-  if (!list.length) return <div className="hosts-empty"><b>Our first {cityName(city)} hosts are joining now.</b><span>Love bringing people together? You could be one of them.</span></div>;
+  if (!list.length) return <div className="hosts-empty"><b>Our first {cityName(city)} hosts are joining now.</b><NotHost><span>Love bringing people together? You could be one of them.</span></NotHost></div>;
   return (
     <Gallery label="Hosts" className="on-dark">
       {list.map((h, i) => (

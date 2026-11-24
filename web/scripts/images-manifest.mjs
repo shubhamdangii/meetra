@@ -1,14 +1,16 @@
-// Scans public/images and writes src/lib/image-manifest.json  { events: {key:[files]}, hosts: {name:file} }
+// Scans public/images and writes src/lib/image-manifest.json  { events: {"<Event type folder>": [files]}, hero: [], gallery: [] }
+// Every folder in public/images/events is an event type (its exact name is shown to hosts and admins), even if it has no photos yet.
 import fs from "node:fs"; import path from "node:path";
 const root = path.resolve("public/images");
 const ok = /\.(jpe?g|png|webp)$/i;
-const list = (d) => fs.existsSync(d) ? fs.readdirSync(d).filter((f) => ok.test(f)).sort() : [];
-const m = { events: {}, hosts: {}, hero: [], gallery: [] };
-for (const k of fs.existsSync(path.join(root, "events")) ? fs.readdirSync(path.join(root, "events")) : []) {
-  const files = list(path.join(root, "events", k));
+const list = (d) => fs.existsSync(d) ? fs.readdirSync(d).filter((f) => ok.test(f) && fs.statSync(path.join(d, f)).isFile()).sort() : [];
+const m = { events: {}, hero: [], gallery: [] };
+const evDir = path.join(root, "events");
+for (const k of fs.existsSync(evDir) ? fs.readdirSync(evDir).sort((a, b) => a.localeCompare(b)) : []) {
+  if (!fs.statSync(path.join(evDir, k)).isDirectory()) continue;
+  const files = list(path.join(evDir, k));
   files.sort((a, b) => (/^cover\./i.test(b) ? 1 : 0) - (/^cover\./i.test(a) ? 1 : 0));
-  if (files.length) m.events[k] = files;
+  m.events[k] = files;
 }
-for (const c of ["jaipur", "ahmedabad"]) for (const f of list(path.join(root, "hosts", c))) m.hosts[path.parse(f).name.toLowerCase()] = `hosts/${c}/${f}`;
 m.hero = list(path.join(root, "hero")); m.gallery = list(path.join(root, "gallery"));
 fs.writeFileSync(path.resolve("src/lib/image-manifest.json"), JSON.stringify(m, null, 1));

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExplorePreview, Faces, HeroCount, HeroStack, Hosts, Marquee, Moments, Stats, Steps, Wall } from "@/components/Home";
 import { Magnetic, WordReveal, Wavy } from "@/components/fx";
 import { Reveal } from "@/components/ui";
+import { NotHost } from "@/components/host/useIsHost";
 
 const FAQ = [
   ["Will it be safe?", "Every plan happens at a public, checked venue with a verified host there from start to finish. You can report anything, any time — we act the same day."],
@@ -54,7 +55,7 @@ export default function HomePage() {
         <Reveal className="band">
           <div className="sec-head">
             <div><span className="eyebrow" style={{ color: "var(--sun)" }}>The people behind every plan</span><h2 className="h2"><Wavy text="Meet your" /> <span className="serif"><Wavy text="hosts." /></span></h2><p>Real people, verified by our team, who love bringing strangers together.</p></div>
-            <Magnetic><Link className="btn btn-sun" href="/host/">Become a host →</Link></Magnetic>
+            <NotHost><Magnetic><Link className="btn btn-sun" href="/host/">Become a host →</Link></Magnetic></NotHost>
           </div>
           <Hosts />
         </Reveal>
@@ -77,7 +78,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="wrap sec" style={{ paddingTop: 0 }}>
+      <NotHost><section className="wrap sec" style={{ paddingTop: 0 }}>
         <Reveal className="cta-band">
           <div>
             <h2><Wavy text="Got a plan people would" /> <span className="serif"><Wavy text="love?" /></span></h2>
@@ -86,7 +87,7 @@ export default function HomePage() {
           </div>
           <div className="big-em" aria-hidden="true">🎙️</div>
         </Reveal>
-      </section>
+      </section></NotHost>
     </>
   );
 }

@@ -6,28 +6,47 @@ import { useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { CATS, CITIES, Chip, Empty, Modal, cityName, fmtDT, fromLocalInput, nowLocalInput, toLocalInput, useAsk, useCall, useRpc } from "./shared";
 import { CATEGORIES } from "@/lib/data";
+import { EventTypePicker } from "../EventBits";
+import { MAPS_HINT, isMapsUrl } from "@/lib/eventMedia";
+import { useAuth } from "../AuthProvider";
+import { useEffect } from "react";
+
+/** Type, photo and exact location live outside the public event lists: load them for the events the caller manages. */
+export type EventExtras = { id: number; event_type: string | null; image_url: string | null; maps_url: string | null };
+export function useEventExtras(ids: number[] | null) {
+  const auth = useAuth();
+  const [map, setMap] = useState<Map<number, EventExtras>>(new Map());
+  const key = ids ? ids.join(",") : "";
+  useEffect(() => {
+    if (!auth.client || !ids || !ids.length) return;
+    auth.client.rpc("event_extras", { p_ids: ids }).then(({ data }) => setMap(new Map(((data ?? []) as EventExtras[]).map((x) => [x.id, x]))));
+  }, [auth.client, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return map;
+}
 
 export type AdminEvent = {
   id: number; plan_ref: string; title: string; city_slug: string; category: string; host_id: number | null; host_name: string | null;
   starts_at: string; ends_at: string; booking_closes_at: string; area: string; price: number; price_type: string; seats: number;
   emoji: string; blurb: string; steps: string[]; tags: string[]; status: string; display_status: string;
   confirmed: number; pending: number; waitlisted: number; pending_req: string | null; cancel_reason: string | null; created_by_name: string | null; updated_at: string;
-  category_other?: string | null;
+  category_other?: string | null; event_type?: string | null; image_url?: string | null; maps_url?: string | null;
 };
 export type AdminHost = { id: number; name: string; city_slug: string; status: string };
 
 export type EventFormValue = {
   title: string; city_slug: string; category: string; other: string; host_id: string; starts: string; ends: string; closes: string; area: string;
   price: string; price_type: string; seats: string; emoji: string; blurb: string; steps: string; tags: string;
+  event_type: string; image_url: string; maps_url: string;
 };
 const H4 = 4 * 3600e3;   // bookings close at least 4 hours before the start
 export const blankEvent = (city = "jaipur"): EventFormValue => ({ title: "", city_slug: city, category: "food", other: "", host_id: "", starts: "", ends: "", closes: "", area: "",
-  price: "99", price_type: "reservation", seats: "12", emoji: "✨", blurb: "", steps: "", tags: "" });
+  price: "99", price_type: "reservation", seats: "12", emoji: "✨", blurb: "", steps: "", tags: "", event_type: "", image_url: "", maps_url: "" });
 export const eventToForm = (e: Partial<AdminEvent> & Record<string, unknown>): EventFormValue => ({
   title: String(e.title ?? ""), city_slug: String(e.city_slug ?? "jaipur"), category: String(e.category ?? "food"), other: String(e.category_other ?? ""), host_id: e.host_id != null ? String(e.host_id) : "",
   starts: toLocalInput(e.starts_at as string), ends: toLocalInput(e.ends_at as string), closes: toLocalInput(e.booking_closes_at as string), area: String(e.area ?? ""),
   price: String(e.price ?? 0), price_type: String(e.price_type ?? "reservation"), seats: String(e.seats ?? 12), emoji: String(e.emoji ?? "✨"),
   blurb: String(e.blurb ?? ""), steps: ((e.steps as string[]) ?? []).join("\n"), tags: ((e.tags as string[]) ?? []).join(", "),
+  event_type: String(e.event_type ?? ""), image_url: String(e.image_url ?? ""), maps_url: String(e.maps_url ?? ""),
 });
 export const formToPayload = (f: EventFormValue) => ({
   title: f.title.trim(), city_slug: f.city_slug, category: f.category, category_other: f.category === "other" ? f.other.trim() : null,
@@ -36,6 +55,7 @@ export const formToPayload = (f: EventFormValue) => ({
   area: f.area.trim(), price: f.price_type === "free" ? 0 : Number(f.price) || 0, price_type: f.price_type, seats: Number(f.seats) || 12, emoji: f.emoji.trim() || "✨",
   blurb: f.blurb.trim(), steps: f.steps.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 6),
   tags: f.tags.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 4),
+  event_type: f.event_type.trim() || null, image_url: f.image_url.trim() || null, maps_url: f.maps_url.trim() || null,
 });
 
 /** Same date rules as the database, so mistakes show up before saving. */
@@ -43,6 +63,7 @@ export function validateEvent(f: EventFormValue, opts: { allowPastStart?: boolea
   if (f.title.trim().length < 3) return "Title needs at least 3 characters.";
   if (f.category === "other" && f.other.trim().length < 2) return "Write your category (for example: Poetry).";
   if (f.area.trim().length < 2) return "Add the area (for example: Prahlad Nagar).";
+  if (f.maps_url.trim() && !isMapsUrl(f.maps_url)) return "Exact location must be a Google Maps link (google.com/maps, maps.app.goo.gl or goo.gl/maps).";
   if (!f.starts || !f.ends) return "Pick the start and end date & time.";
   const s = new Date(f.starts).getTime(), e = new Date(f.ends).getTime(), c = f.closes ? new Date(f.closes).getTime() : s - H4;
   if (!opts.allowPastStart && s <= Date.now()) return "The start can't be in the past.";
@@ -71,7 +92,10 @@ export function EventForm({ value, onChange, hosts, lockCity, hideHost }: { valu
       {!hideHost && <div className="field"><label>Host</label><select value={value.host_id} onChange={(e) => set("host_id", e.target.value)}>
         <option value="">Not decided yet (shows "Host announced soon")</option>{cityHosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
         {!cityHosts.length && <small className="muted">No active hosts in {cityName(value.city_slug)} yet. Add one in the Hosts tab.</small>}</div>}
+      <EventTypePicker type={value.event_type} image={value.image_url} onChange={(x) => onChange({ ...value, ...x })} />
       <div className="field"><label>Area *</label><input value={value.area} maxLength={60} onChange={(e) => set("area", e.target.value)} placeholder={value.city_slug === "jaipur" ? "e.g. C-Scheme" : "e.g. Prahlad Nagar"} /></div>
+      <div className="field"><label>Exact location (Google Maps link)</label><input type="url" inputMode="url" value={value.maps_url} maxLength={500} placeholder="https://maps.app.goo.gl/…" onChange={(e) => set("maps_url", e.target.value)} aria-invalid={!!value.maps_url.trim() && !isMapsUrl(value.maps_url)} />
+        <small className="muted">{value.maps_url.trim() && !isMapsUrl(value.maps_url) ? "⚠️ " + MAPS_HINT : "Optional. Only confirmed guests who have paid see it, in Your plans."}</small></div>
       <div className="field"><label>Starts *</label><input type="datetime-local" min={min} value={value.starts} onChange={(e) => { const v = e.target.value; onChange({ ...value, starts: v, ...(value.ends && value.ends <= v ? { ends: "" } : {}), ...(value.closes && v && new Date(v).getTime() - new Date(value.closes).getTime() < H4 ? { closes: "" } : {}) }); }} /></div>
       <div className="field"><label>Ends *</label><input type="datetime-local" min={value.starts || min} value={value.ends} onChange={(e) => set("ends", e.target.value)} /></div>
       <div className="field"><label>Booking closes</label><input type="datetime-local" min={min} max={closesMax} value={value.closes} onChange={(e) => set("closes", e.target.value)} />
@@ -101,6 +125,8 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
   const [openEv, setOpen] = useState<AdminEvent | null>(null);
   const openNow = openEv ? (ev.data ?? []).find((x) => x.id === openEv.id) ?? null : null;
   const hosts = hs.data ?? [];
+  const extras = useEventExtras(ev.data ? ev.data.map((x) => x.id) : null);
+  const withX = (e: AdminEvent): AdminEvent => ({ ...e, ...(extras.get(e.id) ?? {}) });
 
   const list = useMemo(() => (ev.data ?? []).filter((e) => (!city || e.city_slug === city) && (!host || String(e.host_id ?? "team") === host)
     && (st === "all" || e.display_status === st) && (!qq || (e.title + " " + e.area + " " + (e.host_name ?? "")).toLowerCase().includes(qq.toLowerCase()))), [ev.data, city, host, st, qq]);
@@ -134,7 +160,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
   async function act(e: AdminEvent, what: "submit" | "cancel" | "delete" | "discard") {
     if (what === "discard") { if (await call("admin_discard_draft", { p_id: e.id }, "Draft discarded")) refresh(); return; }
     if (what === "submit") {
-      const problem = validateEvent(eventToForm(e)); if (problem) return setErr(problem), setEdit({ mode: "draft", ev: e, f: eventToForm(e) });
+      const problem = validateEvent(eventToForm(e)); if (problem) return setErr(problem), setEdit({ mode: "draft", ev: withX(e), f: eventToForm(withX(e)) });
       const note = await ask("Send for approval", "Note for the other admin", { ok: "Send for approval" }); if (note === null) return;
       const no = await call<string>("admin_submit_request", { p_entity: "event", p_action: "create", p_target: e.id, p_payload: null, p_note: note });
       if (no) { refresh(); goApprovals(no); } return;
@@ -193,9 +219,9 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
                 {e.cancel_reason && e.status === "cancelled" && <p className="muted" style={{ fontSize: 13 }}>Cancelled: {e.cancel_reason}</p>}
                 {e.pending_req && <button className="adm-req-link" onClick={() => goApprovals(e.pending_req!)}>⏳ {e.pending_req} waiting for approval →</button>}
                 <div className="acts">
-                  {e.status === "draft" && <><button onClick={() => { setErr(null); setOpen(null); setEdit({ mode: "draft", ev: e, f: eventToForm(e) }); }}>Edit</button>
+                  {e.status === "draft" && <><button onClick={() => { setErr(null); setOpen(null); setEdit({ mode: "draft", ev: withX(e), f: eventToForm(withX(e)) }); }}>Edit</button>
                     <button onClick={() => { setOpen(null); act(e, "submit"); }}>Send for approval</button><button onClick={() => { setOpen(null); act(e, "discard"); }}>Discard</button></>}
-                  {e.display_status === "active" && !e.pending_req && <><button onClick={() => { setErr(null); setOpen(null); setEdit({ mode: "change", ev: e, f: eventToForm(e) }); }}>Request change</button>
+                  {e.display_status === "active" && !e.pending_req && <><button onClick={() => { setErr(null); setOpen(null); setEdit({ mode: "change", ev: withX(e), f: eventToForm(withX(e)) }); }}>Request change</button>
                     <button onClick={() => { setOpen(null); act(e, "cancel"); }}>Request cancel</button></>}
                   {["active", "completed", "cancelled"].includes(e.display_status) && !e.pending_req && <button onClick={() => { setOpen(null); act(e, "delete"); }}>Request removal</button>}
                   {e.status !== "draft" && e.status !== "pending" && <Link href={`/event/?id=${e.plan_ref}`}>View on site</Link>}

@@ -7,6 +7,7 @@ import { useApp } from "../AppProvider";
 import { Chips, Empty, EventCard } from "../ui";
 import { CATEGORIES } from "@/lib/data";
 import { DOW, PRICE_BANDS, type MeetEvent, addDays, cityName, fmtDay, hostNames, priceOk, relDay } from "@/lib/events";
+import { NotHost } from "../host/useIsHost";
 import { atLeast, isReal } from "@/lib/publicData";
 
 const WHENS = ["all", "today", "tomorrow", "weekend", "week", "next", "later"];
@@ -96,7 +97,7 @@ export default function EventsPage() {
           ))}
         </AnimatePresence>
       ) : (
-        <Empty title="No plans match those filters.">Try a different day or category — or <Link href="/host/" style={{ textDecoration: "underline" }}>host this one yourself</Link>.</Empty>
+        <Empty title="No plans match those filters.">Try a different day or category<NotHost> — or <Link href="/host/" style={{ textDecoration: "underline" }}>host this one yourself</Link></NotHost>.</Empty>
       )}
       {ready && !date && days.length > shownDays && (
         <div className="more-row"><motion.button whileTap={{ scale: 0.95 }} className="btn btn-sun" onClick={() => setShownDays((n) => n + 7)}>Show more days ({days.length - shownDays} left) ↓</motion.button></div>

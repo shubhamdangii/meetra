@@ -130,10 +130,15 @@ const FIELD_LABEL: Record<string, string> = {
   booking_closes_at: "Booking closes", area: "Area", price: "Price ₹", price_type: "Price type", seats: "Seats", emoji: "Emoji",
   blurb: "Description", steps: "How it unfolds", tags: "Tags", reason: "Reason", name: "Name", bio: "Bio", photo_url: "Photo",
   phone: "Phone", email: "Email", instagram: "Instagram", status: "Status", city: "City", user_id: "Member", gallery: "Gallery",
+  event_type: "Event type", image_url: "Event photo", maps_url: "Exact location", category_other: "Category (own words)",
+  event_choice: "Event", assign_event: "Assigned event", new_event: "New event (goes live on approval)",
 };
 const show = (k: string, v: unknown) => {
   if (v == null || v === "") return "–";
   if (k === "gallery" && Array.isArray(v)) return `${v.length} photo${v.length === 1 ? "" : "s"}`;
+  if (k === "event_choice") return ({ existing: "Assign an existing event", new: "Create a new event", none: "No event for now" } as Record<string, string>)[String(v)] ?? String(v);
+  if (k === "new_event" && typeof v === "object") { const n = v as Record<string, string>; return `${n.title ?? "?"} · ${n.starts_at ? fmtDT(n.starts_at) : "?"} · ${n.area ?? ""}${n.price_type === "free" ? " · free" : n.price ? ` · ₹${n.price}` : ""}`; }
+  if (k === "image_url" && typeof v === "string") return "photo ✓ (" + decodeURIComponent(v.split("/").slice(-2).join("/")).slice(0, 40) + ")";
   if (k === "photo_url" && typeof v === "string") return "photo ✓ (" + v.split("/").pop()!.slice(0, 18) + ")";
   if (/_at$/.test(k) && typeof v === "string") return fmtDT(v);
   if (k === "city_slug" || k === "city") return cityName(String(v));
@@ -142,7 +147,7 @@ const show = (k: string, v: unknown) => {
 };
 /** Old value vs new value table. */
 export function Diff({ oldV, newV, hostNames }: { oldV: Record<string, unknown> | null; newV: Record<string, unknown> | null; hostNames?: Map<number, string> }) {
-  const keys = [...new Set([...Object.keys(newV ?? {}), ...Object.keys(oldV ?? {})])].filter((k) => (k !== "host_name" || !newV?.host_id) && k !== "user_id" && k !== "application_id");
+  const keys = [...new Set([...Object.keys(newV ?? {}), ...Object.keys(oldV ?? {})])].filter((k) => (k !== "host_name" || !newV?.host_id) && k !== "user_id" && k !== "application_id" && k !== "assign_plan_id");
   const linked = !!(newV?.user_id || oldV?.user_id);
   if (!keys.length) return null;
   const val = (k: string, o: Record<string, unknown> | null) => k === "host_id" && o?.[k] != null ? (hostNames?.get(Number(o[k])) ?? (o.host_name as string) ?? `#${o[k]}`) : show(k, o?.[k]);

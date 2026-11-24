@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { burstFrom } from "../fx";
-import { EventForm, type EventFormValue, blankEvent, eventToForm, formToPayload, validateEvent } from "../admin/Events";
+import { EventForm, type EventFormValue, blankEvent, eventToForm, formToPayload, useEventExtras, validateEvent } from "../admin/Events";
+import { WhoComing } from "../EventBits";
 import { Modal, fmtDT, statusLabel } from "../admin/shared";
 import { AdminCheckIn } from "../pages/AdminTeam";
 import { HostPhoto } from "../Home";
@@ -47,6 +48,8 @@ export function HostDesk({ host }: { host: MyHost }) {
     setEvents(data as HE[]);
   }, [auth.client, toast]);
   useEffect(() => { load(); }, [load]);
+  const extras = useEventExtras(events ? events.map((x) => x.id) : null);
+  const formOf = (e: HE) => eventToForm({ ...e, ...(extras.get(e.id) ?? {}) });
   // "＋ Add a plan" from the menus lands here with ?new=1
   useEffect(() => {
     const u = new URL(window.location.href);
@@ -76,7 +79,7 @@ export function HostDesk({ host }: { host: MyHost }) {
     if (id) { setForm(null); load(); }
   }
   async function send(e: HE) {
-    const p = validateEvent(eventToForm(e)); if (p) { setErr(p); setForm({ id: e.id, f: eventToForm(e) }); return; }
+    const p = validateEvent(formOf(e)); if (p) { setErr(p); setForm({ id: e.id, f: formOf(e) }); return; }
     const no = await call<string>("host_submit_event", { p_id: e.id, p_note: null });
     if (no) { toast(`Sent to the team ✓ (${no})`); load(); }
   }
@@ -145,8 +148,9 @@ export function HostDesk({ host }: { host: MyHost }) {
                   <div className="adm-occ"><div><i style={{ width: `${pct}%` }} /></div>
                     <small><b>{e.confirmed}/{e.seats}</b> confirmed{e.attended ? ` · ${e.attended} came` : ""}{e.pending ? ` · ${e.pending} waiting for the team` : ""}</small></div>
                 )}
+                {(e.display_status === "active" || e.display_status === "completed") && <div className="hd-who"><span>Who&apos;s coming</span><WhoComing planRef={e.plan_ref} seats={e.seats} /></div>}
                 <div className="acts">
-                  {e.status === "draft" && <><button onClick={() => { setErr(""); setForm({ id: e.id, f: eventToForm(e) }); }}>Edit</button>
+                  {e.status === "draft" && <><button onClick={() => { setErr(""); setForm({ id: e.id, f: formOf(e) }); }}>Edit</button>
                     <button className="ok" onClick={() => send(e)}>{rejected ? "Send again" : "Send to the team"}</button>
                     <button onClick={() => discard(e)}>Delete</button></>}
                   {e.status === "pending" && <button onClick={() => withdraw(e)}>Withdraw</button>}

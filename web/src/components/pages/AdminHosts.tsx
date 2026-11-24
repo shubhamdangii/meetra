@@ -5,11 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { CONFIG } from "@/lib/config";
+import { ApproveHostDialog, type HostApp } from "../admin/ApproveHost";
 
 type H = { id: number; created_at: string; city_slug: string; plan_title: string; category: string; pitch: string | null; experience: string | null;
   frequency: string | null; group_size: number | null; availability: string | null; status: string; team_note: string | null;
   display_name: string; full_name: string | null; avatar_url: string | null; phone: string | null; instagram_url: string | null; linkedin_url: string | null; profile_score: number;
-  host_id: number | null; pending_req: string | null };
+  host_id: number | null; pending_req: string | null; plan_id: number | null; plan_event: string | null; new_event: HostApp["new_event"] };
 
 const NEXT: Record<string, [string, string][]> = {
   applied: [["shortlisted", "Shortlist"], ["waitlisted", "Waitlist"], ["rejected", "Reject"]],
@@ -25,12 +26,8 @@ export function AdminHosts() {
   const auth = useAuth();
   const { city, toast, confirm } = useApp();
   const isMain = !!auth.team?.is_super;
-  const approveHost = async (r: H) => {
-    if (!(await confirm({ title: `Make ${r.full_name || r.display_name} a host?`, body: "Their host profile is built from their own profile. The other main admin confirms it in Approvals, then their Host desk opens.", ok: "Send for approval", icon: "🎙️" }))) return;
-    const { data, error } = await auth.client!.rpc("admin_approve_host_application", { p_app_id: r.id, p_note: null });
-    if (error) return toast("⚠️ " + error.message);
-    toast(`${data} sent ✓ The other admin approves it`); load();
-  };
+  const [approving, setApproving] = useState<H | null>(null);
+  const approveHost = (r: H) => setApproving(r);
   const [rows, setRows] = useState<H[] | null>(null);
   const [showClosed, setShowClosed] = useState(false);
   const [notes, setNotes] = useState<Record<number, string>>({});
@@ -93,6 +90,7 @@ export function AdminHosts() {
           ))}
         </tbody>
       </table></div>
+      <ApproveHostDialog app={approving} onClose={() => setApproving(null)} onSent={() => { setApproving(null); load(); }} />
     </motion.section>
   );
 }

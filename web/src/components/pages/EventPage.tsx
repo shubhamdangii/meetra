@@ -8,13 +8,14 @@ import { useAuth } from "../AuthProvider";
 import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
 import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
-import { HOSTS } from "@/lib/data";
-import { addressDropAt, catOf, eventImages, fmtDay, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
+import { addressDropAt, catOf, fmtDay, typeImages, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
 import { CalendarButton, useLiveRefresh, useSeatStream } from "../plans";
 import { payForSeat, rupees } from "@/lib/razorpay";
 import { PhotoStrip } from "../Photos";
 import { AreaMap } from "../AreaMap";
 import { areaPoint } from "@/lib/geo";
+import { ExactLocation, WhoComing } from "../EventBits";
+import { useTypeUploads } from "@/lib/eventMedia";
 
 type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended"; party_size: number; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null } | null;
 
@@ -52,6 +53,7 @@ export default function EventPage() {
     return () => clearTimeout(id);
   }, [e]);
 
+  const uploads = useTypeUploads();
   const [counts, setCounts] = useState<{ approved_seats: number; waitlisted: number; interested: number } | null>(null);
   const [myReq, setMyReq] = useState<MyReq>(null);
   const [pos, setPos] = useState<number | null>(null);
@@ -97,7 +99,8 @@ export default function EventPage() {
   const city = CONFIG.cities[e.city].name;
   const pt = areaPoint(e.area, e.city);
   const cat = catOf(e.cat);
-  const hosts = e.hosts.map((h) => (HOSTS as any)[h] ?? { name: h, color: "#FFC93C", bio: `Verified ${CONFIG.brand} host.` });
+  const hosts = e.hosts.map((h) => ({ name: h, color: "#FFC93C", bio: `Verified ${CONFIG.brand} host.` }));
+  const gallery = e.eventType ? [...(uploads[e.eventType] ?? []), ...typeImages(e.eventType)] : [];
   const left = counts ? Math.max(0, e.seats - counts.approved_seats) : e.left;
   const full = left === 0;
   // real events close for requests at their booking deadline; sample plans once their day has passed
@@ -206,13 +209,13 @@ export default function EventPage() {
         <div>
           <motion.div className="ev-hero" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}><Poster e={e} title /></motion.div>
           <p className="lede">{e.blurb}</p>
-          <div className="anchor-links"><a href="#unfolds">How it unfolds</a><a href="#host">Your host</a><a href="#where">Location</a><a href="#before">Before you go</a></div>
+          <div className="anchor-links"><a href="#unfolds">How it unfolds</a><a href="#going">Who&apos;s coming</a><a href="#host">Your host</a><a href="#where">Location</a><a href="#before">Before you go</a></div>
 
-          {eventImages(e.key).length > 1 && (
+          {gallery.length > 1 && (
             <section className="ev-sec" id="photos">
               <h2>From past <span className="serif" style={{ color: "var(--pink)" }}>meetups</span></h2>
               <p className="muted" style={{ marginBottom: 6 }}>Real photos from this plan. Tap to open.</p>
-              <PhotoStrip photos={eventImages(e.key).map((src) => ({ src }))} label={`Photos from ${e.title}`} />
+              <PhotoStrip photos={gallery.map((src) => ({ src }))} label={`Photos from ${e.title}`} />
             </section>
           )}
 
@@ -225,6 +228,11 @@ export default function EventPage() {
                 </motion.li>
               ))}
             </ol>
+          </section>
+
+          <section className="ev-sec" id="going">
+            <h2>Who&apos;s <span className="serif" style={{ color: "var(--pink)" }}>coming</span></h2>
+            <WhoComing planRef={e.id} seats={e.seats} />
           </section>
 
           <section className="ev-sec" id="host">
@@ -240,7 +248,8 @@ export default function EventPage() {
 
           <section className="ev-sec" id="where">
             <h2>Where we&apos;ll <span className="serif" style={{ color: "var(--violet)" }}>meet</span></h2>
-            <p className="muted" style={{ marginBottom: 12 }}>{e.area}, {city}. The circle shows the area, not the venue. Exact directions go to confirmed guests on WhatsApp.</p>
+            <p className="muted" style={{ marginBottom: 12 }}>{e.area}, {city}. The circle shows the area, not the venue. The exact spot unlocks in Your plans once your seat is confirmed and paid.</p>
+            {(myReq?.status === "approved" || myReq?.status === "attended") && <ExactLocation planRef={e.id} />}
             <AreaMap center={[pt.lat, pt.lon]} zoom={pt.exact ? 14 : 12} radius={pt.exact ? 650 : 2500} height={240} />
             <a className="linkish" style={{ display: "inline-block", marginTop: 10 }} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.area}, ${city}`)}`} target="_blank" rel="noopener noreferrer">Explore the area ↗</a>
           </section>
@@ -248,7 +257,7 @@ export default function EventPage() {
           <section className="ev-sec" id="before" style={{ border: 0 }}>
             <h2>Before <span className="serif" style={{ color: "var(--violet)" }}>you go</span></h2>
             <details className="acc" open><summary>Price &amp; what it covers</summary><div className="acc-body"><b>{priceShort(e)} {priceLabel(e)}.</b> {payNote} {e.priceType === "reservation" ? `The ${priceShort(e)} reservation is non-refundable once confirmed.` : ""}</div></details>
-            <details className="acc"><summary>Where to meet</summary><div className="acc-body">{e.area}, {city}. The exact spot is shared on WhatsApp after your seat is confirmed.</div></details>
+            <details className="acc"><summary>Where to meet</summary><div className="acc-body">{e.area}, {city}. The exact spot (with a Google Maps link) shows in Your plans after your seat is confirmed and paid.</div></details>
             <details className="acc"><summary>Who can come</summary><div className="acc-body">{e.tags.includes("Women only") ? "This plan is for women only." : "Open to everyone 18+."} Most people come alone — that&apos;s the point.</div></details>
             <details className="acc"><summary>Cancellations</summary><div className="acc-body">If you can&apos;t make it, cancel here as early as you can so someone on the waiting list gets your seat. If we cancel, you get a full refund.</div></details>
             <details className="acc"><summary>Help at the meetup</summary><div className="acc-body">Your host is there from start to finish. You can also message us on WhatsApp any time.</div></details>
