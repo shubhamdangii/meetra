@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
+import { MAX_ORIGINAL_MB, compressImage } from "./imageCompress";
 
 /* ---------- uploaded photos per event type ---------- */
 type Uploads = Record<string, string[]>;
@@ -36,18 +37,16 @@ export function useTypeUploads(): Uploads {
   return u;
 }
 
-export const MAX_PHOTO_MB = 5;
-const OK_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+/** Originals up to this size are accepted; every photo is resized to max 1600 px and ~350 KB before upload. */
+export const MAX_PHOTO_MB = MAX_ORIGINAL_MB;
 
 /** Checks, uploads and registers one photo for an event type. Returns its public URL. */
 export async function uploadEventImage(client: SupabaseClient, eventType: string, file: File): Promise<string> {
   if (!eventType) throw new Error("Pick the event type first");
-  const ext = OK_TYPES[file.type];
-  if (!ext) throw new Error(`"${file.name}" isn't a JPG, PNG or WebP photo`);
-  if (file.size > MAX_PHOTO_MB * 1024 * 1024) throw new Error(`"${file.name}" is over ${MAX_PHOTO_MB} MB. Use a smaller photo.`);
+  const small = await compressImage(file, "event");
   const slug = eventType.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "event";
-  const path = `${slug}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const up = await client.storage.from("event-media").upload(path, file, { contentType: file.type, cacheControl: "31536000" });
+  const path = `${slug}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${small.ext}`;
+  const up = await client.storage.from("event-media").upload(path, small.blob, { contentType: small.type, cacheControl: "31536000" });
   if (up.error) throw new Error(up.error.message);
   const url = client.storage.from("event-media").getPublicUrl(path).data.publicUrl;
   const { error } = await client.rpc("add_event_image", { p_type: eventType, p_url: url });

@@ -9,6 +9,7 @@ import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import type { AdminEvent } from "./Events";
 import { ApproveHostDialog, type HostApp } from "./ApproveHost";
+import { compressImage } from "@/lib/imageCompress";
 import { CITIES, Chip, Empty, Modal, Stars, cityName, fmtDT, useAsk, useCall, useRpc } from "./shared";
 
 export type HostRow = {
@@ -26,12 +27,10 @@ export const hostPayload = (f: HostFormValue) => ({ name: f.name.trim(), city_sl
   gallery: f.gallery });
 
 /** Upload one photo to the host-media bucket (main admins only) and return its public URL. */
-async function uploadHostPhoto(client: SupabaseClient, file: File): Promise<string> {
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Use a JPG, PNG or WebP photo");
-  if (file.size > 3 * 1024 * 1024) throw new Error("Photo must be under 3 MB");
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const up = await client.storage.from("host-media").upload(path, file, { contentType: file.type });
+async function uploadHostPhoto(client: SupabaseClient, file: File, kind: "host" | "gallery"): Promise<string> {
+  const small = await compressImage(file, kind);   // resized + compressed in the browser first
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${small.ext}`;
+  const up = await client.storage.from("host-media").upload(path, small.blob, { contentType: small.type, cacheControl: "31536000" });
   if (up.error) throw up.error;
   return client.storage.from("host-media").getPublicUrl(path).data.publicUrl;
 }
@@ -51,10 +50,10 @@ export function HostForm({ value, onChange }: { value: HostFormValue; onChange: 
     if (!files?.length || !auth.client) return;
     setBusy(kind);
     try {
-      if (kind === "photo") onChange({ ...value, photo_url: await uploadHostPhoto(auth.client, files[0]) });
+      if (kind === "photo") onChange({ ...value, photo_url: await uploadHostPhoto(auth.client, files[0], "host") });
       else {
         const room = 12 - value.gallery.length; const urls: string[] = [];
-        for (const f of Array.from(files).slice(0, room)) urls.push(await uploadHostPhoto(auth.client, f));
+        for (const f of Array.from(files).slice(0, room)) urls.push(await uploadHostPhoto(auth.client, f, "gallery"));
         onChange({ ...value, gallery: [...value.gallery, ...urls] });
         toast(files.length > room ? `Only 12 gallery photos allowed. Added ${urls.length}.` : `${urls.length} photo${urls.length > 1 ? "s" : ""} added ✓`);
       }

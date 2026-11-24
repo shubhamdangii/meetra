@@ -100,9 +100,9 @@ export function EventTypePicker({ type, image, onChange }: { type: string; image
           </div>
         )}
         <div className="img-add">
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => add(e.target.files)} />
+          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => add(e.target.files)} />
           <button type="button" className="btn btn-white btn-sm" disabled={busy || !auth.client} onClick={() => fileRef.current?.click()}>{busy ? "Uploading…" : "＋ Upload photos"}</button>
-          <small className="muted">JPG, PNG or WebP, up to {MAX_PHOTO_MB} MB each. Saved to “{type}” for everyone.</small>
+          <small className="muted">JPG, PNG or WebP (up to {MAX_PHOTO_MB} MB). Resized automatically to a light, sharp photo. Saved to “{type}” for everyone.</small>
         </div>
       </>}
     </div>

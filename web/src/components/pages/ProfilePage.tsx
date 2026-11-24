@@ -1,4 +1,5 @@
 "use client";
+import { compressImage } from "@/lib/imageCompress";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,20 +42,7 @@ function scoreParts(f: Form, avatar: string | null, phoneVerified: boolean, emai
   ];
 }
 
-function resize(file: File, size = 640): Promise<Blob> {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => {
-      const s = Math.min(img.width, img.height), c = document.createElement("canvas");
-      c.width = c.height = Math.min(size, s);
-      c.getContext("2d")!.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, c.width, c.height);
-      c.toBlob((b) => (b ? res(b) : rej(new Error("Couldn't read that image"))), "image/jpeg", 0.86);
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = () => rej(new Error("That file isn't an image we can read"));
-    img.src = URL.createObjectURL(file);
-  });
-}
+
 
 export default function ProfilePage() {
   const auth = useAuth();
@@ -113,9 +101,9 @@ export default function ProfilePage() {
     if (!auth.client || !auth.session || !me) { setAvatar(URL.createObjectURL(file)); return; }
     setPhotoMsg("Uploading…");
     try {
-      const blob = await resize(file);
-      const path = `${auth.session.user.id}/photo-${Date.now()}.jpg`;
-      const up = await auth.client.storage.from("avatars").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      const small = await compressImage(file, "avatar");
+      const path = `${auth.session.user.id}/photo-${Date.now()}.${small.ext}`;
+      const up = await auth.client.storage.from("avatars").upload(path, small.blob, { contentType: small.type, upsert: true });
       if (up.error) throw up.error;
       const url = auth.client.storage.from("avatars").getPublicUrl(path).data.publicUrl;
       const r = await auth.client.from("users").update({ avatar_url: url }).eq("id", me.id);
