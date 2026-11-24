@@ -15,16 +15,19 @@ import { PhotoStrip } from "../Photos";
 import { AreaMap } from "../AreaMap";
 import { areaPoint } from "@/lib/geo";
 
-type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled"; party_size: number } | null;
+type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended"; party_size: number } | null;
 
 const STATUS = {
   pending: ["⏳", "Request sent", "The team is reviewing requests. Seats go to the most complete profiles first."],
   approved: ["🎉", "You're in!", "Your door pass is ready. Show its QR code at the door."],
   waitlisted: ["🕒", "You're on the waiting list", "If a seat opens up, the highest-priority person on the list gets it. Complete your profile to move up."],
   declined: ["🙏", "Not this time", "This plan is full. Try another date — there's something on every day."],
+  attended: ["✅", "You're checked in!", "Have the best time. You can rate your host 30 minutes after the plan starts, in Your plans."],
 } as const;
+// any status we don't know yet shows a neutral card instead of crashing the page
+const statusText = (s: string) => (STATUS as Record<string, readonly [string, string, string]>)[s] ?? ["📌", "Your request", "Check Your plans for the latest status."];
 
-const MOBILE_STATUS: Record<string, string> = { pending: "⏳ Requested", approved: "✅ You're in", waitlisted: "🕒 On waiting list", declined: "Not this time" };
+const MOBILE_STATUS: Record<string, string> = { pending: "⏳ Requested", approved: "✅ You're in", waitlisted: "🕒 On waiting list", declined: "Not this time", attended: "✅ Checked in" };
 
 export default function EventPage() {
   const params = useSearchParams();
@@ -244,14 +247,14 @@ export default function EventPage() {
                 <WhatsAppDone key="wa" text={waText} heading={`Almost there, ${name}!`} link={whatsappLink(waText)} />
               ) : showStatus ? (
                 <motion.div key="status" className={`status-card s-${myReq!.status}`} initial={{ opacity: 0, scale: 0.92, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
-                  <motion.div className="st-ic" initial={{ rotate: -20, scale: 0.5 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }}>{STATUS[myReq!.status as keyof typeof STATUS][0]}</motion.div>
-                  <b>{myReq!.status === "waitlisted" && pos ? `You're #${pos} on the waiting list` : STATUS[myReq!.status as keyof typeof STATUS][1]}</b>
-                  <p>{STATUS[myReq!.status as keyof typeof STATUS][2]}</p>
-                  {myReq!.status === "approved" && <>
+                  <motion.div className="st-ic" initial={{ rotate: -20, scale: 0.5 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }}>{statusText(myReq!.status)[0]}</motion.div>
+                  <b>{myReq!.status === "waitlisted" && pos ? `You're #${pos} on the waiting list` : statusText(myReq!.status)[1]}</b>
+                  <p>{statusText(myReq!.status)[2]}</p>
+                  {(myReq!.status === "approved" || myReq!.status === "attended") && <>
                     <p className="drop-note">{Date.now() >= addressDropAt(e).getTime() ? "📍 Exact spot is on your WhatsApp." : `📍 Exact spot drops ${fmtWhen(addressDropAt(e))}`}</p>
                     <div className="plan-btns" style={{ justifyContent: "center" }}><Link className="btn btn-ink btn-sm" href={`/ticket/?id=${e.id}`}>My door pass 🎫</Link><CalendarButton e={e} /></div>
                   </>}
-                  {myReq!.status !== "declined" && <button className="linkish" type="button" onClick={cancel}>{myReq!.status === "approved" ? "I can't make it" : "Cancel my request"}</button>}
+                  {myReq!.status !== "declined" && myReq!.status !== "attended" && <button className="linkish" type="button" onClick={cancel}>{myReq!.status === "approved" ? "I can't make it" : "Cancel my request"}</button>}
                 </motion.div>
               ) : (
                 <motion.form key="form" onSubmit={request} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
