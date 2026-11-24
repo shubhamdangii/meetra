@@ -5,7 +5,7 @@ import { useApp } from "./AppProvider";
 import { burstFrom, buzz, useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
-import { DOW, MON, type MeetEvent, eventUrl, hostImage, hostNames, palette, priceLabel, priceShort } from "@/lib/events";
+import { DOW, MON, type MeetEvent, eventUrl, hostImage, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
 
 export const ease = [0.2, 0.8, 0.2, 1] as const;
 
@@ -86,7 +86,7 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
         {extra}
         <span className="when">{e.time} · {e.area}{city === "all" ? " · " + CONFIG.cities[e.city].name : ""}</span>
         <h3>{e.title}</h3>
-        <span className="by">Hosted by {hostNames(e)}</span>
+        <span className={`by ${hostTba(e) ? "tba" : ""}`}>{hostTba(e) ? "🎙️ " : ""}{hostLine(e)}</span>
         <div className="price">
           <span><b>{priceShort(e)}</b> {priceLabel(e)}</span>
           <span className={`seats-left ${low ? "" : "ok"}`}>{e.left === 0 ? "Waitlist" : low ? `${e.left} left` : `${e.seats} seats`}</span>

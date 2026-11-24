@@ -4,7 +4,7 @@
 // the calendar button and the bring-a-friend invite.
 import { motion } from "framer-motion";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { burstFrom, buzz } from "./fx";
@@ -28,6 +28,20 @@ export function useLiveRefresh(load: () => void, everyMs = 20000) {
   }, [load, everyMs]);
 }
 
+/** Re-run `load` the moment one of my seat requests changes (approved, checked in…). */
+export function useSeatStream(load: () => void) {
+  const auth = useAuth();
+  const uid = auth.me?.id;
+  const cb = useRef(load); cb.current = load;
+  useEffect(() => {
+    if (!auth.client || !uid) return;
+    const ch = auth.client.channel(`seats-${uid}-${Math.random().toString(36).slice(2, 7)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "plan_requests", filter: `user_id=eq.${uid}` }, () => cb.current())
+      .subscribe();
+    return () => { auth.client?.removeChannel(ch); };
+  }, [auth.client, uid]);
+}
+
 export function useMyRequests() {
   const auth = useAuth();
   const [rows, setRows] = useState<MyRequest[] | null>(null);
@@ -37,7 +51,8 @@ export function useMyRequests() {
       .then(({ data }) => setRows((data as MyRequest[]) ?? []));
   }, [auth.client, auth.me]);
   useEffect(load, [load]);
-  useLiveRefresh(load);
+  useLiveRefresh(load, 60000);
+  useSeatStream(load);
   return { rows, reload: load, setRows };
 }
 

@@ -16,14 +16,12 @@ import { AdminEvents } from "../admin/Events";
 import { AdminHostsDesk } from "../admin/Hosts";
 import { AdminActivity, AdminTeamDesk } from "../admin/TeamActivity";
 import { SeatRequests } from "../admin/SeatRequests";
+import { AdminInterest } from "../admin/Interest";
 import { AdminBrands } from "../admin/Brands";
 import { CONFIG } from "@/lib/config";
 import { type MeetEvent, eventUrl, relDay } from "@/lib/events";
 
-type Sum = { plan_ref: string; interested: number; skipped: number; requests: number; approved_seats: number; waitlisted: number };
-type Row = Sum & { e: MeetEvent; title: string; day: number; swipes: number; rate: number };
 
-const ZERO = { interested: 0, skipped: 0, requests: 0, approved_seats: 0, waitlisted: 0 };
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -37,10 +35,6 @@ export default function AdminPage() {
     setTabState(t); setFocusReq(req);
     try { const u = new URL(window.location.href); u.searchParams.set("tab", t); if (req) u.searchParams.set("req", req); else u.searchParams.delete("req"); window.history.replaceState(null, "", u.toString()); } catch {}
   }, []);
-  const [sum, setSum] = useState<Sum[] | null>(null);
-  const [upcomingOnly, setUpcomingOnly] = useState(true);
-  const [sortKey, setSortKey] = useState<keyof Row>("interested");
-  const [dir, setDir] = useState(-1);
   const team = auth.team;
   const isAdmin = !!team;
   const mine = useCallback((e: MeetEvent) => !!team && team.cities.includes(e.city), [team]);
@@ -83,22 +77,7 @@ export default function AdminPage() {
     try { const u = new URL(link, window.location.origin); const t = u.searchParams.get("tab") as Tab | null; if (t) setTab(t, u.searchParams.get("req") ?? undefined); } catch {}
   }, [setTab]);
 
-  const loadSum = useCallback(async () => {
-    if (!auth.client) return;
-    const { data, error } = await auth.client.rpc("admin_interest_summary");
-    if (error) return toast("Couldn't load: " + error.message);
-    setSum(data as Sum[]);
-  }, [auth.client, toast]);
-  useEffect(() => { if (isAdmin) loadSum(); }, [isAdmin, loadSum]);
 
-  const rows: Row[] = useMemo(() => {
-    const by = new Map((sum ?? []).map((s) => [s.plan_ref, s]));
-    return all.filter((e) => inCity(e) && mine(e) && (!upcomingOnly || e.day >= 0)).map((e) => {
-      const s = by.get(e.id) ?? { plan_ref: e.id, ...ZERO };
-      const swipes = s.interested + s.skipped;
-      return { ...s, e, title: e.title, day: e.day, swipes, rate: swipes ? s.interested / swipes : 0 };
-    }).sort((a, b) => dir * ((a[sortKey] as number) > (b[sortKey] as number) ? 1 : (a[sortKey] as number) < (b[sortKey] as number) ? -1 : 0) || a.day - b.day);
-  }, [all, inCity, mine, sum, upcomingOnly, sortKey, dir]);
 
 
 
@@ -115,8 +94,6 @@ export default function AdminPage() {
   if (!auth.ready || (auth.session && !auth.me) || !ready) return <div className="wrap">{head}<div className="skeleton" style={{ marginTop: 20 }} /></div>;
   if (!isAdmin) return <div className="wrap">{head}<div className="setup-note" style={{ marginTop: 20 }}>This page is for the {CONFIG.brand} team only.</div></div>;
 
-  const tot = (k: keyof Sum) => rows.reduce((s, r) => s + (r[k] as number), 0);
-  const cols: [keyof Row, string][] = [["title", "Plan"], ["day", "Date"], ["interested", "♥"], ["skipped", "✕"], ["rate", "Interest %"], ["requests", "Requests"], ["approved_seats", "Seats filled"], ["waitlisted", "Waiting"]];
 
   return (
     <div className="wrap adm-root" ref={rootRef} style={{ paddingBottom: 60 }}>
@@ -135,34 +112,8 @@ export default function AdminPage() {
         : tab === "team" && isMain ? <AdminTeamDesk goApprovals={(r) => setTab("approvals", r)} />
         : tab === "activity" && isMain ? <AdminActivity />
         : tab === "brands" && isMain ? <AdminBrands />
-        : tab === "door" ? <AdminCheckIn plans={all.filter((e) => mine(e) && e.day >= -1 && e.day <= 1)} /> : tab === "interest" ? (
-        <motion.section key="i" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="kpis">
-            {([["interested", "♥ interested"], ["skipped", "✕ skipped"], ["requests", "seat requests"], ["waitlisted", "on waiting lists"]] as [keyof Sum, string][]).map(([k, l], i) => (
-              <motion.div key={k} className="kpi" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}><b>{tot(k)}</b><span>{l}</span></motion.div>
-            ))}
-          </div>
-          <div className="toolbar2">
-            <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={upcomingOnly} onChange={(e) => setUpcomingOnly(e.target.checked)} /> Upcoming only</label>
-            <span className="muted" style={{ fontSize: 13 }}>City follows the picker at the top. Click a column to sort.</span>
-          </div>
-          <div className="tbl-wrap"><table>
-            <thead><tr>{cols.map(([k, l]) => <th key={k} onClick={() => { setDir(sortKey === k ? -dir : -1); setSortKey(k); }}>{l}{sortKey === k ? (dir < 0 ? " ↓" : " ↑") : ""}</th>)}</tr></thead>
-            <tbody>{rows.map((r) => (
-              <tr key={r.e.id}>
-                <td><Link href={eventUrl(r.e)} style={{ fontWeight: 700 }}>{r.e.emoji} {r.e.title}</Link><br /><small className="muted">{r.e.area}, {CONFIG.cities[r.e.city].name}</small></td>
-                <td style={{ whiteSpace: "nowrap" }}>{relDay(r.e.date, today)}<br /><small className="muted">{r.e.time}</small></td>
-                <td className={`num ${r.interested >= 10 ? "hot" : ""}`}>{r.interested}</td>
-                <td className="num">{r.skipped}</td>
-                <td>{r.swipes ? Math.round(r.rate * 100) + "%" : "–"}<div className="bar-mini"><motion.i initial={{ width: 0 }} animate={{ width: `${Math.round(r.rate * 100)}%` }} /></div></td>
-                <td className="num">{r.requests}</td>
-                <td className="num">{r.approved_seats}/{r.e.seats}</td>
-                <td className="num">{r.waitlisted}</td>
-              </tr>
-            ))}</tbody>
-          </table></div>
-        </motion.section>
-      ) : <SeatRequests cities={team!.cities} />}
+        : tab === "door" ? <AdminCheckIn plans={all.filter((e) => mine(e) && e.day >= -1 && e.day <= 1)} /> : tab === "interest" ? <AdminInterest cities={team!.cities} />
+        : <SeatRequests cities={team!.cities} />}
     </div>
   );
 }

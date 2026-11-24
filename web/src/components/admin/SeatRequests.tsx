@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { type MeetEvent, eventUrl, hostNames, relDay } from "@/lib/events";
-import { Empty, cityName } from "./shared";
+import { Empty, Pager, cityName, fmtDT, usePaged } from "./shared";
 
 type R = {
   request_id: number; plan_ref: string; plan_date: string; city_slug: string; display_name: string; full_name: string | null; avatar_url: string | null;
@@ -52,7 +52,10 @@ export function SeatRequests({ cities }: { cities: string[] }) {
   }, [scoped, evOf, today]);
   const hosts = useMemo(() => [...new Set((rows ?? []).filter((r) => cities.includes(r.city_slug)).map(hostOf))].filter((h) => h !== "–").sort(), [rows, cities, hostOf]);
   useEffect(() => { if (event && !events.some((e) => e.ref === event)) setEvent(""); }, [events, event]);
-  const list = scoped.filter((r) => (!event || r.plan_ref === event) && (!status || r.status === status));
+  // newest request first; serial numbers count down so #1 is always the oldest
+  const list = useMemo(() => scoped.filter((r) => (!event || r.plan_ref === event) && (!status || r.status === status))
+    .sort((a, b) => b.requested_at.localeCompare(a.requested_at)), [scoped, event, status]);
+  const pg = usePaged(list, 10);
   const sel = event ? byId(event) : undefined;
   const count = (s: string) => list.filter((r) => r.status === s).length;
 
@@ -96,14 +99,16 @@ export function SeatRequests({ cities }: { cities: string[] }) {
       </div>
       {!rows ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>No seat requests match these filters.</Empty> : (
         <div className="tbl-wrap"><table className="sr-table">
-          <thead><tr><th>Member</th>{!event && <th>Event</th>}<th>Score</th><th>Contact</th><th>Seats</th><th>Status</th><th /></tr></thead>
-          <tbody>{list.map((r) => {
+          <thead><tr><th>#</th><th>Member</th>{!event && <th>Event</th>}<th>Requested</th><th>Score</th><th>Contact</th><th>Seats</th><th>Status</th><th /></tr></thead>
+          <tbody>{pg.items.map((r, i) => {
             const e = evOf(r);
             return (
               <tr key={r.request_id}>
+                <td className="sr-no">{list.length - (pg.from - 1 + i)}</td>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <td><div className="who">{r.avatar_url ? <img src={r.avatar_url} alt="" /> : <span className="ph">{(r.display_name || "?")[0]}</span>}<div><b>{r.full_name || r.display_name}</b><br /><small className="muted">{r.occupation}{r.icebreaker ? ` · “${r.icebreaker.slice(0, 40)}”` : ""}</small></div></div></td>
                 {!event && <td><button className="linkish" style={{ textAlign: "left" }} onClick={() => setEvent(r.plan_ref)}>{e ? e.title : r.plan_ref}</button><br /><small className="muted">{e ? `${relDay(e.date, today)} · ${e.time}` : r.plan_date} · {cityName(r.city_slug)} · {hostOf(r)}</small></td>}
+                <td style={{ whiteSpace: "nowrap" }}>{fmtDT(r.requested_at)}</td>
                 <td><span className="score-pill">{r.profile_score}</span><br /><small className="muted">{r.phone_verified ? "WA ✓ " : ""}{r.email_verified ? "Email ✓" : ""}</small></td>
                 <td style={{ whiteSpace: "nowrap" }}>{r.phone ? <a href={`https://wa.me/${r.phone.replace("+", "")}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>{r.phone}</a> : <span className="muted">no phone</span>}<br />
                   {r.instagram_url && <a href={r.instagram_url} target="_blank" rel="noopener noreferrer">Instagram </a>}{r.linkedin_url && <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer">LinkedIn</a>}</td>
@@ -117,6 +122,7 @@ export function SeatRequests({ cities }: { cities: string[] }) {
           })}</tbody>
         </table></div>
       )}
+      <Pager pg={pg} />
     </motion.section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { CITIES, Empty, cityName, fmtDT, useAsk, useCall, useRpc } from "./shared";
+import { CITIES, Empty, Pager, cityName, fmtDT, useAsk, useCall, usePaged, useRpc } from "./shared";
 
 type Member = { user_id: string | null; display_name: string | null; email: string | null; avatar_url: string | null; is_super: boolean; cities: string[] | null; invited?: boolean };
 
@@ -54,8 +54,16 @@ export function AdminTeamDesk({ goApprovals }: { goApprovals: (req?: string) => 
             <li>See other cities, the Dashboard, Team or Activity log</li>
             <li>Add or remove other admins</li></ul></div>
         </div>
-        <p className="muted" style={{ fontSize: 13 }}><b>How to add one:</b> type their email and city → <i>Request add</i> → the other main admin approves it in Approvals.
-          If they&apos;ve never logged in, they become a sub-admin automatically the first time they log in with that email. They then open <b>Admin</b> from the menu.</p>
+        <div className="adm-steps">
+          <b>How a sub-admin gets in (no separate password):</b>
+          <ol>
+            <li>Type their <b>Google email</b> and city below → <i>Request add</i>.</li>
+            <li>The other main admin approves it in <b>Approvals</b>.</li>
+            <li>The sub-admin opens the website and taps <b>Log in → Continue with Google</b> with that same email.</li>
+            <li>Their account menu (tap their photo, top right) now shows <b>City desk</b>. That&apos;s their admin page.</li>
+          </ol>
+          <p className="muted" style={{ fontSize: 12.5 }}>Already logged in when you approved? It switches on the next time they open the site or come back to the tab. No new password, no app to install.</p>
+        </div>
       </details>
       <form className="adm-bar" onSubmit={add}>
         <input className="adm-search" type="email" placeholder="Their login email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -79,28 +87,60 @@ export function AdminTeamDesk({ goApprovals }: { goApprovals: (req?: string) => 
 }
 
 type Log = { id: number; at: string; who: string | null; action: string; entity: string; entity_id: string | null; summary: string; details: Record<string, unknown> };
-const ENT = [["", "Everything"], ["request", "Approvals"], ["event", "Events"], ["host", "Hosts"], ["seat_request", "Seat decisions"], ["team", "Team"], ["review", "Reviews"]] as const;
+const ENT = [["", "All"], ["request", "Approvals"], ["event", "Events"], ["host", "Hosts"], ["seat_request", "Seats"], ["partner", "Brands"], ["team", "Team"], ["review", "Reviews"]] as const;
+const ICON: Record<string, string> = { request: "🛂", event: "🚀", host: "🎙️", seat_request: "🎟", partner: "🤝", team: "👥", review: "⭐" };
+const TONE: Record<string, string> = { approved: "ok", attended: "ok", active: "ok", created: "new", submitted: "wait", resubmitted: "wait", pending: "wait", waitlisted: "wait",
+  rejected: "bad", declined: "bad", cancelled: "bad", deleted: "bad", inactive: "bad", withdrawn: "muted", hidden: "muted", updated: "new" };
+const SKIP = new Set(["updated_at", "created_at", "time_label", "end_label", "starts_on", "host_name", "approved_at", "plan_ref", "id", "created_by"]);
+const dayKey = (s: string) => new Date(s).toDateString();
+const dayLabel = (s: string) => { const d = new Date(s), t = new Date(); const y = new Date(Date.now() - 864e5);
+  return d.toDateString() === t.toDateString() ? "Today" : d.toDateString() === y.toDateString() ? "Yesterday" : d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }); };
+const val = (k: string, v: unknown) => v == null || v === "" ? "–" : /_at$/.test(k) && typeof v === "string" ? fmtDT(v) : Array.isArray(v) ? (v.length ? v.join(", ") : "–") : typeof v === "object" ? "…" : String(v);
 
-/** Read-only audit log of every admin action. */
+/** What changed, in words: "Seats: 10 → 20". */
+function Changes({ d }: { d: Record<string, unknown> }) {
+  const pairs: [string, unknown, unknown][] = [];
+  const src = (d.old || d.new) ? null : d;   // event/host updates store { field: { old, new } }
+  if (src) for (const [k, v] of Object.entries(src)) { if (SKIP.has(k) || !v || typeof v !== "object" || !("new" in (v as object))) continue; pairs.push([k, (v as { old: unknown }).old, (v as { new: unknown }).new]); }
+  else if (d.new && typeof d.new === "object") for (const [k, v] of Object.entries(d.new as object)) { if (SKIP.has(k)) continue; pairs.push([k, (d.old as Record<string, unknown> | null)?.[k], v]); }
+  const extra = [d.remark && `Remark: “${d.remark}”`, d.member && `Member: ${d.member}`, d.maker && `Requested by ${d.maker}`, d.note && `Note: ${d.note}`].filter(Boolean) as string[];
+  if (!pairs.length && !extra.length) return <p className="muted" style={{ fontSize: 13 }}>No extra details.</p>;
+  return (
+    <div className="act-chg">
+      {pairs.slice(0, 12).map(([k, o, n]) => <div key={k}><b>{k.replace(/_/g, " ")}</b><span>{o !== undefined ? <><s>{val(k, o)}</s> → </> : null}{val(k, n)}</span></div>)}
+      {extra.map((x) => <p key={x}>{x}</p>)}
+    </div>
+  );
+}
+
+/** Read-only audit log of every admin action, grouped by day. */
 export function AdminActivity() {
   const [ent, setEnt] = useState(""); const [q, setQ] = useState(""); const [open, setOpen] = useState<number | null>(null);
-  const a = useRpc<Log[]>("admin_activity", { p_entity: ent || null, p_limit: 400 });
+  const a = useRpc<Log[]>("admin_activity", { p_entity: ent || null, p_limit: 500 });
   const list = useMemo(() => (a.data ?? []).filter((x) => !q || (x.summary + " " + (x.who ?? "")).toLowerCase().includes(q.toLowerCase())), [a.data, q]);
+  const pg = usePaged(list, 10);
+  let last = "";
   return (
     <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <p className="adm-note">Every admin action is recorded here and can&apos;t be edited or deleted.</p>
-      <div className="adm-bar"><input className="adm-search" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="select" value={ent} onChange={(e) => setEnt(e.target.value)}>{ENT.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-        <button className="btn btn-white btn-sm" onClick={a.reload}>↻</button></div>
+      <p className="adm-note">Every admin action is recorded here and can&apos;t be edited or deleted. Tap an entry to see what changed.</p>
+      <div className="adm-seg">{ENT.map(([k, l]) => <button key={k} className={ent === k ? "on" : ""} onClick={() => setEnt(k)}>{k ? ICON[k] + " " : ""}{l}</button>)}</div>
+      <div className="adm-bar"><input className="adm-search" placeholder="Search who or what…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button className="btn btn-white btn-sm" onClick={a.reload} aria-label="Refresh">↻</button></div>
       {!a.data ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>Nothing recorded yet.</Empty> : (
-        <ol className="adm-timeline log">{list.map((x) => (
-          <li key={x.id}><span className={`dot a-${x.action}`} /><div>
-            <button className="linkish" style={{ textAlign: "left", textDecoration: "none" }} onClick={() => setOpen(open === x.id ? null : x.id)}><b>{x.summary}</b></button>
-            <small>{fmtDT(x.at)} · {x.who ?? "system"} · {x.entity}</small>
-            {open === x.id && <pre className="adm-pre">{JSON.stringify(x.details, null, 1)}</pre>}
-          </div></li>
-        ))}</ol>
+        <div className="act-list">{pg.items.map((x) => {
+          const head = dayKey(x.at) !== last ? (last = dayKey(x.at), <h4 key={"d" + x.id} className="act-day">{dayLabel(x.at)}</h4>) : null;
+          return [head,
+            <button key={x.id} type="button" className={`act-item ${open === x.id ? "open" : ""}`} onClick={() => setOpen(open === x.id ? null : x.id)} aria-expanded={open === x.id}>
+              <span className="act-ic" aria-hidden="true">{ICON[x.entity] ?? "•"}</span>
+              <span className="act-main">
+                <span className="act-top"><span className={`act-pill t-${TONE[x.action] ?? "new"}`}>{x.action}</span><small>{new Date(x.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })} · {x.who ?? "system"}</small></span>
+                <b>{x.summary}</b>
+                {open === x.id && <Changes d={x.details} />}
+              </span>
+            </button>];
+        })}</div>
       )}
+      <Pager pg={pg} />
     </motion.section>
   );
 }

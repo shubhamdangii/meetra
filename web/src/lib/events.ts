@@ -37,7 +37,7 @@ export type CustomPlan = {
   id: number; city_slug: string; title: string; category: string; starts_on: string; time_label: string; end_label: string | null;
   area: string; price: number; price_type: MeetEvent["priceType"]; seats: number; emoji: string; blurb: string;
   steps: string[]; tags: string[]; host_name: string | null; status: string;
-  plan_ref: string; host_id: number | null; starts_at: string; ends_at: string; booking_closes_at: string; deleted_at: string | null; cancel_reason: string | null;
+  plan_ref: string; host_id: number | null; category_other?: string | null; starts_at: string; ends_at: string; booking_closes_at: string; deleted_at: string | null; cancel_reason: string | null;
 };
 const PATTERNS = ["dots", "grid", "rings", "stripes", "sun", "waves"];
 export const customPlanId = (c: Pick<CustomPlan, "id" | "city_slug" | "starts_on"> & { plan_ref?: string }) => c.plan_ref || `x${c.id}-${c.city_slug}-${c.starts_on.replace(/-/g, "")}`;
@@ -82,11 +82,11 @@ export function buildEvents(today: Date, custom: CustomPlan[] = []) {
     const id = customPlanId(c);
     all.push({
       id, key: `x${c.id}`, city: c.city_slug, date: d, day: diff(d), title: c.title, cat: c.category,
-      time: c.time_label, end: c.end_label || "", area: c.area, hosts: [c.host_name || "team"],
+      time: c.time_label, end: c.end_label || "", area: c.area, hosts: [c.host_name || "tba"],
       price: c.price, priceType: c.price_type, seats: c.seats, left: c.seats, emoji: c.emoji || "✨",
       pal: hash(id) % 8, pattern: PATTERNS[hash(id) % PATTERNS.length], blurb: c.blurb,
       steps: c.steps?.length ? c.steps : ["Your host starts with an easy game", "Settle in with the group", "Swap numbers only if you want to"],
-      tags: ["New", ...(c.tags || [])].slice(0, 3), image: null,
+      tags: ["New", ...(c.category === "other" && c.category_other ? [c.category_other] : []), ...(c.tags || [])].slice(0, 3), image: null,
       hostId: c.host_id ?? undefined, bookingClosesAt: c.booking_closes_at ? new Date(c.booking_closes_at) : undefined,
     });
   });
@@ -100,12 +100,16 @@ export const relDay = (d: Date, today: Date) => {
   const n = Math.round((d.getTime() - today.getTime()) / 864e5);
   return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : fmtDay(d);
 };
-export const hostNames = (e: MeetEvent) => e.hosts.map((h) => HOSTS[h]?.name || h).join(" & ");
+export const hostNames = (e: MeetEvent) => e.hosts.map((h) => (h === "tba" ? "Host TBA" : HOSTS[h]?.name || h)).join(" & ");
+/** True when a real event has no host picked yet. */
+export const hostTba = (e: MeetEvent) => e.hosts.length === 1 && e.hosts[0] === "tba";
+/** "Hosted by Riya" — or "Host announced soon" when the team hasn't picked one yet. */
+export const hostLine = (e: MeetEvent) => (hostTba(e) ? "Host announced soon" : `Hosted by ${hostNames(e)}`);
 export const priceShort = (e: MeetEvent) =>
   e.priceType === "free" ? "Free" : e.priceType === "estimate" ? `~₹${e.price.toLocaleString("en-IN")}` : `₹${e.price.toLocaleString("en-IN")}`;
 export const priceLabel = (e: MeetEvent) =>
   ({ free: "no charge", reservation: "seat reservation", "per person": "per person", estimate: "estimated total" })[e.priceType];
-export const catOf = (id: string) => CATEGORIES.find((c: any) => c.id === id) || CATEGORIES[0];
+export const catOf = (id: string) => CATEGORIES.find((c: any) => c.id === id) || (id === "other" ? { id: "other", label: "Something new", icon: "✦" } : CATEGORIES[0]);
 export const eventUrl = (e: MeetEvent | string) => `/event/?id=${encodeURIComponent(typeof e === "string" ? e : e.id)}`;
 export const palette = (i: number): [string, string] => PALETTES[i % PALETTES.length];
 export const cityName = (c: string) => (c === "all" ? "All cities" : CONFIG.cities[c]?.name ?? c);

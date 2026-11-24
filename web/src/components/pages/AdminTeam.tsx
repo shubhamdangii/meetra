@@ -59,6 +59,12 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
     checkIn(Number(m[1]));
   }, [checkIn]);
 
+  // keep the chosen plan's chip in view (arrows, scans, taps)
+  const chipsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = chipsRef.current; const el = row?.querySelector<HTMLElement>(`[data-id="${CSS.escape(plan)}"]`);
+    if (row && el) row.scrollTo({ left: el.offsetLeft - row.offsetLeft - 16, behavior: "smooth" });
+  }, [plan]);
   const guests = lists[plan] ?? null;
   const tally = (ref: string) => { const g = lists[ref] ?? []; return [g.filter((x) => x.status === "attended").reduce((s, x) => s + x.party_size, 0), g.reduce((s, x) => s + x.party_size, 0)]; };
   const [inCount, total] = tally(plan);
@@ -87,9 +93,17 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
           <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="Or type the pass number, e.g. 00123" aria-label="Pass number" />
           <button className="btn btn-ink btn-sm" type="submit">Check in</button>
         </form>
-        <div className="ci-plans" role="tablist" aria-label="Plans at the door">
+        <div className="ci-plans-head">
+          <b>{sorted.length} plan{sorted.length === 1 ? "" : "s"} at the door</b>
+          {sorted.length > 1 && <span className="ci-arrows">
+            <button type="button" aria-label="Previous plan" onClick={() => { const i = sorted.findIndex((p) => p.id === plan); setPlan(sorted[(i - 1 + sorted.length) % sorted.length].id); }}>‹</button>
+            <small>{sorted.findIndex((p) => p.id === plan) + 1}/{sorted.length}</small>
+            <button type="button" aria-label="Next plan" onClick={() => { const i = sorted.findIndex((p) => p.id === plan); setPlan(sorted[(i + 1) % sorted.length].id); }}>›</button>
+          </span>}
+        </div>
+        <div className="ci-plans" role="tablist" aria-label="Plans at the door" ref={chipsRef}>
           {sorted.map((p) => { const [a, b] = tally(p.id); return (
-            <button key={p.id} role="tab" aria-selected={p.id === plan} className={p.id === plan ? "on" : ""} onClick={() => setPlan(p.id)}>
+            <button key={p.id} data-id={p.id} role="tab" aria-selected={p.id === plan} className={p.id === plan ? "on" : ""} onClick={() => setPlan(p.id)}>
               <b>{p.title.split(" · ")[0]}</b><small>{relDay(p.date, today)} · {p.time} · {cityName(p.city)}</small>
               <span className="n">{lists[p.id] ? `${a}/${b} in` : "…"}</span>
             </button>); })}

@@ -5,15 +5,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
+import { useIsHost } from "../host/useIsHost";
 import { CalendarButton, InviteBox, STATUS_UI, useMyRequests, type MyRequest } from "../plans";
 import { Empty, EventCard, Poster } from "../ui";
 import { burstFrom, buzz } from "../fx";
 import { useEffect, useState } from "react";
-import { type MeetEvent, addressDropAt, eventUrl, fmtWhen, startsAt } from "@/lib/events";
+import { type MeetEvent, addressDropAt, eventUrl, fmtWhen, hostLine, startsAt } from "@/lib/events";
 
 export default function SavedPage() {
   const { ready, upcoming, byId, requests, savedIds, toast, confirm } = useApp();
   const auth = useAuth();
+  const isHost = useIsHost();
   const { rows, setRows } = useMyRequests();
   const now = Date.now();
 
@@ -51,6 +53,9 @@ export default function SavedPage() {
         )}
       </section>
 
+      {isHost && (
+        <Link href="/host/?new=1" className="add-plan-cta"><span aria-hidden="true">＋</span><div><b>Add a plan</b><small>You&apos;re a host. Propose your next event.</small></div><i aria-hidden="true">→</i></Link>
+      )}
       <div className="group">
         <div className="group-head"><h3>Coming up</h3><span>{live.length ? `${live.length} plan${live.length > 1 ? "s" : ""}` : ""}</span></div>
         {!ready || (auth.session && !rows && auth.enabled) ? <div className="skeleton" style={{ minHeight: 140 }} /> : live.length ? (
@@ -98,7 +103,7 @@ function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyReque
         <span className="plan-txt">
           <small>{fmtWhen(startsAt(e))}</small>
           <b>{e.title}</b>
-          <small>{e.area}</small>
+          <small>{e.area} · {hostLine(e)}</small>
           <motion.span className="plan-status" style={{ background: tone }} initial={{ scale: 0.6 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 12, delay: 0.2 }}>{label}</motion.span>
         </span>
       </Link>
@@ -114,7 +119,8 @@ function PlanRow({ e, r, i, past = false, onCancel }: { e: MeetEvent; r: MyReque
       {!past && r?.status === "waitlisted" && <p className="plan-note">We&apos;ll WhatsApp you the moment a seat opens up.</p>}
       {!past && r?.status === "pending" && <p className="plan-note">The team is building the table. You&apos;ll hear back on WhatsApp.</p>}
       {!past && r?.status === "attended" && <p className="plan-note">You&apos;re checked in. Have the best time 💜</p>}
-      {r?.status === "attended" && <RateBox planRef={e.id} />}
+      {r?.status === "attended" && Date.now() >= startsAt(e).getTime() + 30 * 60e3 && <RateBox planRef={e.id} />}
+      {r?.status === "attended" && Date.now() < startsAt(e).getTime() + 30 * 60e3 && <p className="plan-note">⭐ You can rate your host 30 minutes after the plan starts.</p>}
       {!past && r && r.status !== "declined" && r.status !== "attended" && onCancel && <button className="linkish plan-cancel" onClick={() => onCancel(r)}>{r.status === "approved" ? "I can't make it" : "Cancel my spot"}</button>}
     </motion.article>
   );

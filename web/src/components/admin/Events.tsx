@@ -12,25 +12,28 @@ export type AdminEvent = {
   starts_at: string; ends_at: string; booking_closes_at: string; area: string; price: number; price_type: string; seats: number;
   emoji: string; blurb: string; steps: string[]; tags: string[]; status: string; display_status: string;
   confirmed: number; pending: number; waitlisted: number; pending_req: string | null; cancel_reason: string | null; created_by_name: string | null; updated_at: string;
+  category_other?: string | null;
 };
 export type AdminHost = { id: number; name: string; city_slug: string; status: string };
 
 export type EventFormValue = {
-  title: string; city_slug: string; category: string; host_id: string; starts: string; ends: string; closes: string; area: string;
+  title: string; city_slug: string; category: string; other: string; host_id: string; starts: string; ends: string; closes: string; area: string;
   price: string; price_type: string; seats: string; emoji: string; blurb: string; steps: string; tags: string;
 };
-export const blankEvent = (city = "jaipur"): EventFormValue => ({ title: "", city_slug: city, category: "food", host_id: "", starts: "", ends: "", closes: "", area: "",
+const H4 = 4 * 3600e3;   // bookings close at least 4 hours before the start
+export const blankEvent = (city = "jaipur"): EventFormValue => ({ title: "", city_slug: city, category: "food", other: "", host_id: "", starts: "", ends: "", closes: "", area: "",
   price: "99", price_type: "reservation", seats: "12", emoji: "✨", blurb: "", steps: "", tags: "" });
 export const eventToForm = (e: Partial<AdminEvent> & Record<string, unknown>): EventFormValue => ({
-  title: String(e.title ?? ""), city_slug: String(e.city_slug ?? "jaipur"), category: String(e.category ?? "food"), host_id: e.host_id != null ? String(e.host_id) : "",
+  title: String(e.title ?? ""), city_slug: String(e.city_slug ?? "jaipur"), category: String(e.category ?? "food"), other: String(e.category_other ?? ""), host_id: e.host_id != null ? String(e.host_id) : "",
   starts: toLocalInput(e.starts_at as string), ends: toLocalInput(e.ends_at as string), closes: toLocalInput(e.booking_closes_at as string), area: String(e.area ?? ""),
   price: String(e.price ?? 0), price_type: String(e.price_type ?? "reservation"), seats: String(e.seats ?? 12), emoji: String(e.emoji ?? "✨"),
   blurb: String(e.blurb ?? ""), steps: ((e.steps as string[]) ?? []).join("\n"), tags: ((e.tags as string[]) ?? []).join(", "),
 });
 export const formToPayload = (f: EventFormValue) => ({
-  title: f.title.trim(), city_slug: f.city_slug, category: f.category, host_id: f.host_id ? Number(f.host_id) : null,
+  title: f.title.trim(), city_slug: f.city_slug, category: f.category, category_other: f.category === "other" ? f.other.trim() : null,
+  host_id: f.host_id ? Number(f.host_id) : null,
   starts_at: fromLocalInput(f.starts), ends_at: fromLocalInput(f.ends), booking_closes_at: f.closes ? fromLocalInput(f.closes) : null,
-  area: f.area.trim(), price: Number(f.price) || 0, price_type: f.price_type, seats: Number(f.seats) || 12, emoji: f.emoji.trim() || "✨",
+  area: f.area.trim(), price: f.price_type === "free" ? 0 : Number(f.price) || 0, price_type: f.price_type, seats: Number(f.seats) || 12, emoji: f.emoji.trim() || "✨",
   blurb: f.blurb.trim(), steps: f.steps.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 6),
   tags: f.tags.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 4),
 });
@@ -38,16 +41,18 @@ export const formToPayload = (f: EventFormValue) => ({
 /** Same date rules as the database, so mistakes show up before saving. */
 export function validateEvent(f: EventFormValue, opts: { allowPastStart?: boolean } = {}): string | null {
   if (f.title.trim().length < 3) return "Title needs at least 3 characters.";
-  if (f.area.trim().length < 2) return "Add the area (for example: C-Scheme).";
+  if (f.category === "other" && f.other.trim().length < 2) return "Write your category (for example: Poetry).";
+  if (f.area.trim().length < 2) return "Add the area (for example: Prahlad Nagar).";
   if (!f.starts || !f.ends) return "Pick the start and end date & time.";
-  const s = new Date(f.starts).getTime(), e = new Date(f.ends).getTime(), c = f.closes ? new Date(f.closes).getTime() : s - 2 * 3600e3;
+  const s = new Date(f.starts).getTime(), e = new Date(f.ends).getTime(), c = f.closes ? new Date(f.closes).getTime() : s - H4;
   if (!opts.allowPastStart && s <= Date.now()) return "The start can't be in the past.";
   if (e <= s) return "The end must be after the start.";
   if (e - s > 7 * 864e5) return "An event can last at most 7 days.";
   if (c >= s) return "Booking deadline must be before the event starts.";
+  if (f.closes && s - c < H4) return "Bookings must close at least 4 hours before the start.";
   if (!opts.allowPastStart && c <= Date.now()) return "The booking deadline is already past.";
   const seats = Number(f.seats); if (!(seats >= 2 && seats <= 500)) return "Seats must be 2 to 500.";
-  const price = Number(f.price); if (!(price >= 0 && price <= 100000)) return "Price must be 0 to 1,00,000.";
+  const price = Number(f.price); if (f.price_type !== "free" && !(price >= 0 && price <= 100000)) return "Price must be 0 to 1,00,000.";
   return null;
 }
 
@@ -55,23 +60,26 @@ export function EventForm({ value, onChange, hosts, lockCity, hideHost }: { valu
   const set = (k: keyof EventFormValue, v: string) => onChange({ ...value, [k]: v, ...(k === "city_slug" ? { host_id: "" } : {}) });
   const cityHosts = hosts.filter((h) => h.city_slug === value.city_slug && h.status === "active");
   const min = nowLocalInput();
+  const closesMax = value.starts ? toLocalInput(new Date(new Date(value.starts).getTime() - H4).toISOString()) : undefined;
+  const cats = CATEGORIES as { id: string; label: string; icon: string }[];
   return (
     <div className="adm-form">
       <div className="field span2"><label>Title *</label><input value={value.title} maxLength={100} onChange={(e) => set("title", e.target.value)} placeholder="Sunday Board Games Brunch" /></div>
       <div className="field"><label>City *</label><select value={value.city_slug} disabled={lockCity} onChange={(e) => set("city_slug", e.target.value)}>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select></div>
-      <div className="field"><label>Category *</label><select value={value.category} onChange={(e) => set("category", e.target.value)}>{CATS.map((c) => { const k = (CATEGORIES as { id: string; label: string; icon: string }[]).find((x) => x.id === c); return <option key={c} value={c}>{k ? `${k.icon} ${k.label}` : c}</option>; })}</select></div>
+      <div className="field"><label>Category *</label><select value={value.category} onChange={(e) => set("category", e.target.value)}>{CATS.map((c) => { const k = cats.find((x) => x.id === c); return <option key={c} value={c}>{k ? `${k.icon} ${k.label}` : c}</option>; })}<option value="other">✦ Other (write your own)</option></select></div>
+      {value.category === "other" && <div className="field"><label>Your category *</label><input value={value.other} maxLength={40} placeholder="e.g. Poetry, Chess, Gardening" onChange={(e) => set("other", e.target.value)} autoFocus /></div>}
       {!hideHost && <div className="field"><label>Host</label><select value={value.host_id} onChange={(e) => set("host_id", e.target.value)}>
-        <option value="">the meetra team</option>{cityHosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
+        <option value="">Not decided yet (shows "Host announced soon")</option>{cityHosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
         {!cityHosts.length && <small className="muted">No active hosts in {cityName(value.city_slug)} yet. Add one in the Hosts tab.</small>}</div>}
       <div className="field"><label>Area *</label><input value={value.area} maxLength={60} onChange={(e) => set("area", e.target.value)} placeholder={value.city_slug === "jaipur" ? "e.g. C-Scheme" : "e.g. Prahlad Nagar"} /></div>
-      <div className="field"><label>Starts *</label><input type="datetime-local" min={min} value={value.starts} onChange={(e) => set("starts", e.target.value)} /></div>
+      <div className="field"><label>Starts *</label><input type="datetime-local" min={min} value={value.starts} onChange={(e) => { const v = e.target.value; onChange({ ...value, starts: v, ...(value.ends && value.ends <= v ? { ends: "" } : {}), ...(value.closes && v && new Date(v).getTime() - new Date(value.closes).getTime() < H4 ? { closes: "" } : {}) }); }} /></div>
       <div className="field"><label>Ends *</label><input type="datetime-local" min={value.starts || min} value={value.ends} onChange={(e) => set("ends", e.target.value)} /></div>
-      <div className="field"><label>Booking closes</label><input type="datetime-local" min={min} max={value.starts || undefined} value={value.closes} onChange={(e) => set("closes", e.target.value)} />
-        <small className="muted">Empty = 2 hours before the start.</small></div>
+      <div className="field"><label>Booking closes</label><input type="datetime-local" min={min} max={closesMax} value={value.closes} onChange={(e) => set("closes", e.target.value)} />
+        <small className="muted">At least 4 hours before the start. Empty = exactly 4 hours before.</small></div>
       <div className="field"><label>Seats *</label><input type="number" min={2} max={500} value={value.seats} onChange={(e) => set("seats", e.target.value)} /></div>
-      <div className="field"><label>Price ₹</label><input type="number" min={0} max={100000} value={value.price} onChange={(e) => set("price", e.target.value)} /></div>
       <div className="field"><label>Price type</label><select value={value.price_type} onChange={(e) => set("price_type", e.target.value)}>
-        {["reservation", "per person", "free", "estimate"].map((p) => <option key={p}>{p}</option>)}</select></div>
+        {[["reservation", "Seat reservation"], ["per person", "Per person"], ["free", "Free"], ["estimate", "Estimate"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+      {value.price_type !== "free" && <div className="field"><label>Price ₹</label><input type="number" inputMode="numeric" min={0} max={100000} value={value.price} onChange={(e) => set("price", e.target.value)} /></div>}
       <div className="field"><label>Emoji</label><input value={value.emoji} maxLength={4} onChange={(e) => set("emoji", e.target.value)} /></div>
       <div className="field span2"><label>Description</label><textarea rows={3} maxLength={600} value={value.blurb} onChange={(e) => set("blurb", e.target.value)} /></div>
       <div className="field span2"><label>How it unfolds (one step per line, max 6)</label><textarea rows={3} value={value.steps} onChange={(e) => set("steps", e.target.value)} /></div>
@@ -147,7 +155,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
         <button className="btn btn-sun btn-sm" onClick={() => { setErr(null); setEdit({ mode: "new", f: blankEvent(city || "jaipur") }); }}>＋ New event</button>
         <input className="adm-search" placeholder="Search title, area, host…" value={qq} onChange={(e) => setQ(e.target.value)} />
         <select className="select" value={city} onChange={(e) => { setCity(e.target.value); setHost(""); }} aria-label="City"><option value="">All cities</option>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select>
-        <select className="select" value={host} onChange={(e) => setHost(e.target.value)} aria-label="Host"><option value="">All hosts</option><option value="team">the meetra team</option>
+        <select className="select" value={host} onChange={(e) => setHost(e.target.value)} aria-label="Host"><option value="">All hosts</option><option value="team">Host not decided yet</option>
           {hosts.filter((h) => !city || h.city_slug === city).map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
         <button className="btn btn-white btn-sm" onClick={refresh}>↻</button>
       </div>
@@ -161,7 +169,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
             return (
               <tr key={e.id}>
                 <td><button className="adm-link" onClick={() => setOpen(e)}>{e.emoji} {e.title}</button>{e.pending_req && <><br /><button className="adm-link small" onClick={() => goApprovals(e.pending_req!)}>⏳ {e.pending_req}</button></>}</td>
-                <td>{cityName(e.city_slug)}<br /><small className="muted">{e.host_name ?? "the meetra team"}</small></td>
+                <td>{cityName(e.city_slug)}<br /><small className="muted">{e.host_name ?? "Host TBA"}</small></td>
                 <td style={{ whiteSpace: "nowrap" }}>{fmtDT(e.starts_at)}</td>
                 <td><Chip s={e.display_status} /></td>
                 <td style={{ minWidth: 110 }}><div className="adm-occ"><div><i style={{ width: `${pct}%` }} /></div><small><b>{e.confirmed}/{e.seats}</b> · {e.pending} pending</small></div></td>
@@ -176,7 +184,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
         {openNow && (() => { const e = openNow; const pct = Math.min(100, Math.round((e.confirmed / Math.max(1, e.seats)) * 100)); return (
           <div className="adm-card" style={{ boxShadow: "none" }}>
                 <div className="adm-card-top"><span className="adm-em" aria-hidden="true">{e.emoji}</span>
-                  <div className="grow"><b>{e.title}</b><small>{cityName(e.city_slug)} · {e.area} · {e.host_name ?? "the meetra team"}</small></div>
+                  <div className="grow"><b>{e.title}</b><small>{cityName(e.city_slug)} · {e.area} · {e.host_name ?? "Host TBA"}</small></div>
                   <Chip s={e.display_status} /></div>
                 <div className="adm-meta"><span>🗓 {fmtDT(e.starts_at)} → {fmtDT(e.ends_at)}</span><span>⏱ Booking closes {fmtDT(e.booking_closes_at)}</span>
                   <span>💸 ₹{e.price} {e.price_type}</span></div>

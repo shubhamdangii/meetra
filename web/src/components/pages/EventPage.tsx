@@ -9,8 +9,8 @@ import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../
 import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS } from "@/lib/data";
-import { addressDropAt, catOf, eventImages, fmtDay, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
-import { CalendarButton, useLiveRefresh } from "../plans";
+import { addressDropAt, catOf, eventImages, fmtDay, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
+import { CalendarButton, useLiveRefresh, useSeatStream } from "../plans";
 import { PhotoStrip } from "../Photos";
 import { AreaMap } from "../AreaMap";
 import { areaPoint } from "@/lib/geo";
@@ -76,7 +76,8 @@ export default function EventPage() {
     loadMine();
     if (auth.me?.display_name && auth.me.display_name !== "New member") setName((n) => n || auth.me!.display_name);
   }, [loadMine, auth.me]);
-  useLiveRefresh(loadMine);
+  useLiveRefresh(loadMine, 60000);
+  useSeatStream(loadMine);
   useEffect(() => {
     if (myReq?.status === "waitlisted" && auth.client && e) auth.client.rpc("my_waitlist_position", { p_plan_ref: e.id }).then(({ data }) => setPos(data ?? null));
   }, [myReq, auth.client, e]);
@@ -162,8 +163,9 @@ export default function EventPage() {
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>{e.title}</motion.h1>
           <div className="meta"><span>{fmtDay(e.date)}</span>·<span>{e.time} – {e.end}</span>·<span>{e.area}, {city}</span>{e.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>
           <div className="meta" style={{ marginTop: 8 }}>
+            {hostTba(e) ? <span className="host-tba">🎙️ Host announced soon</span> : <>
             <span className="faces" style={{ display: "inline-flex" }}>{hosts.map((h: any) => <span key={h.name} style={{ background: h.color, width: 28, height: 28, fontSize: 12 }}>{h.name[0]}</span>)}</span>
-            hosted by <b>{hostNames(e)}</b><span className="verified">✓</span>
+            hosted by {e.hostId ? <Link href={`/host-profile/?id=${e.hostId}`} style={{ fontWeight: 800, textDecoration: "underline" }}>{hostNames(e)}</Link> : <b>{hostNames(e)}</b>}<span className="verified">✓</span></>}
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}><SaveButton id={e.id} label /><button className="btn btn-white btn-sm" onClick={share}>↗ Share</button></div>
@@ -196,7 +198,8 @@ export default function EventPage() {
 
           <section className="ev-sec" id="host">
             <h2>Your <span className="serif" style={{ color: "var(--violet)" }}>host</span></h2>
-            {e.hostId ? <RealHost id={e.hostId} planRef={e.id} /> : hosts.map((h: any) => (
+            {hostTba(e) ? <div className="host-row"><div className="av" style={{ background: "#16122B" }}>?</div><div><span className="eyebrow">{CONFIG.brand} host</span><h3>Announced soon</h3><p className="muted">The team is picking the perfect host for this plan. You&apos;ll see who it is here before the day.</p></div></div>
+            : e.hostId ? <RealHost id={e.hostId} planRef={e.id} /> : hosts.map((h: any) => (
               <Reveal key={h.name} className="host-row" style={{ marginBottom: 14 }}>
                 <HostAv h={h} />
                 <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3>{h.name} <span className="verified">✓</span></h3><p className="muted">{h.bio}</p></div>

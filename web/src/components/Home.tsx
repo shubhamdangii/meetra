@@ -8,7 +8,7 @@ import { Chips, Empty, EventCard, HostAv, Poster, Reveal, ease } from "./ui";
 import { buzz, CountUp, Gallery, Wavy } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { HOSTS, REVIEWS } from "@/lib/data";
-import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostNames, momentPhotos, relDay } from "@/lib/events";
+import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostLine, hostNames, momentPhotos, relDay } from "@/lib/events";
 import { PhotoStrip } from "./Photos";
 import { atLeast, isReal, useFeaturedReviews, useHostCount, usePublicHosts, type PublicHost } from "@/lib/publicData";
 import { CITY_CENTER, areaPoint, kmBetween } from "@/lib/geo";
@@ -62,7 +62,7 @@ export function HeroStack() {
             whileDrag={{ scale: 1.05, rotate: 0, cursor: "grabbing" }}>
             <Link href={eventUrl(e)} style={{ display: "block" }} draggable={false} onClickCapture={(ev) => { if (dragged.current) { ev.preventDefault(); ev.stopPropagation(); } }}>
               <Poster e={e} />
-              <div className="sc-body"><div className="meta">{relDay(e.date, today)} · {e.time} · {e.area}</div><h3>{e.title}</h3></div>
+              <div className="sc-body"><div className="meta">{relDay(e.date, today)} · {e.time} · {e.area}</div><h3>{e.title}</h3><div className="meta by-line">{hostLine(e)}</div></div>
             </Link>
           </motion.div>
         );

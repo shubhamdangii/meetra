@@ -7,7 +7,7 @@ import { useApp } from "../AppProvider";
 import { deviceId, useAuth } from "../AuthProvider";
 import { Poster } from "../ui";
 import { burst, buzz } from "../fx";
-import { type MeetEvent, eventUrl, hostNames, priceLabel, priceShort, relDay } from "@/lib/events";
+import { type MeetEvent, eventUrl, hostLine, hostNames, priceLabel, priceShort, relDay } from "@/lib/events";
 import { store } from "@/lib/store";
 
 type Reaction = "interested" | "skip";
@@ -41,7 +41,7 @@ function SwipeCard({ e, top, depth, onDecide, onOpen, today }: {
         <span className="when">{relDay(e.date, today)} · {e.time} · {e.area}</span>
         <h2>{e.title}</h2>
         <p>{e.blurb}</p>
-        <div className="row"><span><b>{priceShort(e)}</b> {priceLabel(e)}</span><span className="muted">Hosted by {hostNames(e)}</span></div>
+        <div className="row"><span><b>{priceShort(e)}</b> {priceLabel(e)}</span><span className="muted">{hostLine(e)}</span></div>
       </div>
     </motion.article>
   );

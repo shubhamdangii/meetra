@@ -47,6 +47,14 @@ export function HostDesk({ host }: { host: MyHost }) {
     setEvents(data as HE[]);
   }, [auth.client, toast]);
   useEffect(() => { load(); }, [load]);
+  // "＋ Add a plan" from the menus lands here with ?new=1
+  useEffect(() => {
+    const u = new URL(window.location.href);
+    if (u.searchParams.get("new") === "1") {
+      setForm({ id: null, f: blankEvent(host.city_slug) });
+      u.searchParams.delete("new"); window.history.replaceState(null, "", u.toString());
+    }
+  }, [host.city_slug]);
 
   const call = async <T,>(fn: string, args: Record<string, unknown>): Promise<T | undefined> => {
     const { data, error } = await auth.client!.rpc(fn, args);

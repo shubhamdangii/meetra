@@ -1,6 +1,7 @@
 "use client";
 // Real meetup photos: polaroid strip + tap-to-open lightbox. Files come from public/images (see image-manifest).
 import { AnimatePresence, motion } from "framer-motion";
+import { lockScroll } from "@/lib/scrollLock";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Gallery } from "./fx";
@@ -40,9 +41,9 @@ function Lightbox({ photos, index, onIndex }: { photos: Photo[]; index: number |
       if (e.key === "ArrowRight") onIndex((index + 1) % photos.length);
       if (e.key === "ArrowLeft") onIndex((index - 1 + photos.length) % photos.length);
     };
-    const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
+    const unlock = lockScroll();
     window.addEventListener("keydown", k);
-    return () => { window.removeEventListener("keydown", k); document.body.style.overflow = prev; };
+    return () => { window.removeEventListener("keydown", k); unlock(); };
   }, [index, photos.length, onIndex]);
   if (!mounted) return null;
   const p = index === null ? null : photos[index];

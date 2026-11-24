@@ -75,7 +75,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }, 0);
     });
-    return () => { alive = false; sub.subscription.unsubscribe(); };
+    // a member who was just made a sub-admin (or host) gets the new menu when they come back to the tab
+    let lastCheck = Date.now();
+    const onBack = async () => {
+      if (document.hidden || Date.now() - lastCheck < 30000) return;
+      lastCheck = Date.now();
+      const { data } = await c.auth.getSession();
+      if (data.session) loadMe(c, data.session, true);
+    };
+    document.addEventListener("visibilitychange", onBack); window.addEventListener("focus", onBack);
+    return () => { alive = false; sub.subscription.unsubscribe(); document.removeEventListener("visibilitychange", onBack); window.removeEventListener("focus", onBack); };
   }, [loadMe]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rememberNext = (url: string) => { try { sessionStorage.setItem(NEXT_KEY, url); } catch {} };

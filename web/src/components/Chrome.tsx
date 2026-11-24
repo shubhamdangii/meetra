@@ -1,11 +1,14 @@
 "use client";
 // Site header (nav, city picker, account menu), mobile tab bar, profile nudge and footer.
 import { AnimatePresence, motion } from "framer-motion";
+import { lockScroll } from "@/lib/scrollLock";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { InstallMenuItem } from "./InstallApp";
+import { NotificationsSheet, useNotifications } from "./Notifications";
+import { useIsHost } from "./host/useIsHost";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { CONFIG } from "@/lib/config";
@@ -88,6 +91,9 @@ function AccountSlot() {
   const { enabled, session, me, logout, team } = useAuth();
   const { toast } = useApp();
   const [open, setOpen] = useState(false);
+  const notes = useNotifications();
+  const [sheet, setSheet] = useState(false);
+  const isHost = useIsHost();
   const ref = useOutsideClose(open, () => setOpen(false));
   if (!enabled) return null;
   if (!session) return <Link className="btn btn-ink btn-sm login-btn" href="/login/">Log in</Link>;
@@ -97,11 +103,14 @@ function AccountSlot() {
       <motion.button whileTap={{ scale: 0.92 }} className={`avatar-btn ${me && me.profile_score < 70 ? "todo" : ""}`} aria-haspopup="menu" aria-expanded={open} aria-label="Your account" onClick={() => setOpen((o) => !o)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : name[0]}
+        {notes.unread > 0 && <span className="avatar-badge" aria-label={`${notes.unread} new notifications`}>{notes.unread > 9 ? "9+" : notes.unread}</span>}
       </motion.button>
       <AnimatePresence>
         {open && (
           <motion.div className="city-menu account-menu open" role="menu" {...menuMotion}>
             <div className="acct-head"><b>{name}</b><small>Profile score {me?.profile_score ?? 0}/100{me?.profile_complete ? " · complete ✓" : ""}</small></div>
+            <button role="menuitem" onClick={() => { setOpen(false); setSheet(true); }}><span>🔔 Notifications</span>{notes.unread > 0 && <small className="nt-count">{notes.unread} new</small>}</button>
+            {isHost && <Link href="/host/?new=1" role="menuitem" onClick={() => setOpen(false)}><span>＋ Add a plan</span><small>host desk</small></Link>}
             <Link href="/profile/" role="menuitem" onClick={() => setOpen(false)}><span>My profile</span>{me && !me.profile_complete && <small className="dot">●</small>}</Link>
             <Link href="/saved/" role="menuitem" onClick={() => setOpen(false)}><span>Your plans &amp; passes</span></Link>
             <Link href="/games/" role="menuitem" onClick={() => setOpen(false)}><span>Party games</span></Link>
@@ -111,6 +120,7 @@ function AccountSlot() {
           </motion.div>
         )}
       </AnimatePresence>
+      <NotificationsSheet open={sheet} onClose={() => setSheet(false)} n={notes} />
     </div>
   );
 }
@@ -160,14 +170,16 @@ function TabBar({ active }: { active: string }) {
 /** Phone menu (☰): everything that isn't in the tab bar. */
 function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const isHost = useIsHost();
   const [mounted, setMounted] = useState(false);
   const path = usePathname();
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { setOpen(false); }, [path]);
-  useEffect(() => { document.documentElement.style.overflow = open ? "hidden" : ""; return () => { document.documentElement.style.overflow = ""; }; }, [open]);
+  useEffect(() => { if (!open) return; return lockScroll(); }, [open]);
   const items = [
     ["🔥", "Discover", "Swipe through plans", "/swipe/"], ["🎲", "Party games", "Decks, Mafia, Undercover…", "/games/"],
-    ["📸", "Past nights", "Photos and stories", "/past/"], ["✨", "Host a meetup", "Join the host waiting list", "/host/"],
+    ["📸", "Past nights", "Photos and stories", "/past/"],
+    isHost ? ["＋", "Add a plan", "Propose your next event", "/host/?new=1"] : ["✨", "Host a meetup", "Join the host waiting list", "/host/"],
     ["💬", "How it works", "Safety, payments, rules", "/about/"], ["🤝", "Brands & venues", "Partner with us", "/partners/"],
   ];
   return (

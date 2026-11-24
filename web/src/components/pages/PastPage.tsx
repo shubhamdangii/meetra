@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useApp } from "../AppProvider";
 import { Chips, Empty, Poster, ease } from "../ui";
 import { CONFIG } from "@/lib/config";
-import { eventUrl, hash, hostNames, relDay } from "@/lib/events";
+import { eventUrl, hash, hostLine, hostNames, relDay } from "@/lib/events";
 
 const EXTRAS = ["📸", "🥂", "😂", "🎉", "🤝", "☕", "🌟", "🫶"];
 
@@ -36,7 +36,7 @@ export default function PastPage() {
               <Link className="story" href={eventUrl(e)} style={{ display: "block" }}>
                 <div className="collage"><Poster e={e} /><Poster e={a} badge={false} /><Poster e={b} badge={false} /></div>
                 <div className="sb"><span className="eyebrow">{relDay(e.date, today)} · {e.area}</span><h3>{e.title}</h3>
-                  <span className="muted" style={{ fontSize: 14 }}>{e.seats - (h % 4)} strangers · hosted by {hostNames(e)}</span></div>
+                  <span className="muted" style={{ fontSize: 14 }}>{e.seats - (h % 4)} strangers · {hostLine(e).replace(/^Hosted/, "hosted")}</span></div>
               </Link>
             </motion.div>
           );

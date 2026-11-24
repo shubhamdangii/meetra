@@ -1,6 +1,7 @@
 "use client";
 // Small building blocks shared by the admin desk.
 import { AnimatePresence, motion } from "framer-motion";
+import { lockScroll } from "@/lib/scrollLock";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../AuthProvider";
@@ -63,9 +64,9 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    const prev = document.documentElement.style.overflow; document.documentElement.style.overflow = "hidden";
+    const unlock = lockScroll();
     window.addEventListener("keydown", k);
-    return () => { window.removeEventListener("keydown", k); document.documentElement.style.overflow = prev; };
+    return () => { window.removeEventListener("keydown", k); unlock(); };
   }, [open, onClose]);
   if (!mounted) return null;
   return createPortal(
@@ -156,4 +157,24 @@ export function Diff({ oldV, newV, hostNames }: { oldV: Record<string, unknown> 
 
 export function Empty({ children }: { children: React.ReactNode }) {
   return <div className="adm-empty">{children}</div>;
+}
+
+/** 10-per-page paging that resets to page 1 when the list changes size (filters). */
+export function usePaged<T>(list: T[], size = 10) {
+  const [page, setPage] = useState(1);
+  const pages = Math.max(1, Math.ceil(list.length / size));
+  useEffect(() => { setPage(1); }, [list.length]);
+  const p = Math.min(page, pages);
+  return { page: p, pages, setPage, items: list.slice((p - 1) * size, p * size), from: list.length ? (p - 1) * size + 1 : 0, to: Math.min(p * size, list.length), total: list.length };
+}
+export function Pager({ pg }: { pg: ReturnType<typeof usePaged<unknown>> }) {
+  if (pg.total <= 10) return pg.total ? <p className="pager-sum">Showing all {pg.total}</p> : null;
+  const go = (n: number) => { pg.setPage(n); setTimeout(() => window.scrollTo({ top: Math.max(0, (document.querySelector(".adm-tabs")?.getBoundingClientRect().top ?? 0) + window.scrollY - 70), behavior: "smooth" }), 0); };
+  return (
+    <nav className="pager" aria-label="Pages">
+      <button disabled={pg.page <= 1} onClick={() => go(pg.page - 1)} aria-label="Previous page">‹ Prev</button>
+      <span><b>{pg.from}–{pg.to}</b> of {pg.total}</span>
+      <button disabled={pg.page >= pg.pages} onClick={() => go(pg.page + 1)} aria-label="Next page">Next ›</button>
+    </nav>
+  );
 }
