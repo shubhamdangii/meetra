@@ -110,6 +110,13 @@ function HostsList({ goApprovals }: { goApprovals: (req?: string) => void }) {
   const [city, setCity] = useState(""); const [event, setEvent] = useState(""); const [st, setSt] = useState("all"); const [qq, setQ] = useState("");
   const [form, setForm] = useState<{ h?: HostRow; f: ReturnType<typeof blankHost> } | null>(null); const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useState<HostRow | null>(null);
+  // verified applicants whose host profile doesn't exist yet (approved before profiles were automatic)
+  const apps = useRpc<{ id: number; status: string; host_id: number | null; pending_req: string | null; display_name: string; full_name: string | null; avatar_url: string | null; city_slug: string; plan_title: string }[]>("admin_host_applications");
+  const waiting = (apps.data ?? []).filter((a) => a.status === "approved" && !a.host_id);
+  async function makeProfile(a: (typeof waiting)[number]) {
+    const no = await call<string>("admin_approve_host_application", { p_app_id: a.id, p_note: "Create host profile for verified applicant" });
+    if (no) { apps.reload(); goApprovals(no); }
+  }
   const evOfHost = useMemo(() => { const m = new Map<number, AdminEvent[]>(); (ev.data ?? []).forEach((e) => { if (e.host_id) m.set(e.host_id, [...(m.get(e.host_id) ?? []), e]); }); return m; }, [ev.data]);
   const list = useMemo(() => (hs.data ?? []).filter((h) => (!city || h.city_slug === city || h.cities.includes(city)) && (st === "all" || h.status === st)
     && (!event || (ev.data ?? []).find((e) => String(e.id) === event)?.host_id === h.id)
@@ -148,6 +155,21 @@ function HostsList({ goApprovals }: { goApprovals: (req?: string) => void }) {
           {(ev.data ?? []).filter((e) => e.host_id && (!city || e.city_slug === city)).map((e) => <option key={e.id} value={e.id}>{e.title} · {fmtDT(e.starts_at)}</option>)}</select>
         <select className="select" value={st} onChange={(e) => setSt(e.target.value)} aria-label="Status"><option value="all">Any status</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
       </div>
+      {waiting.length > 0 && (
+        <div className="hosts-waiting">
+          <b>✅ Verified but no host profile yet ({waiting.length})</b>
+          <p className="muted" style={{ fontSize: 13 }}>Approved as hosts, but their profile wasn&apos;t created. Create it so they show up here and get their Host desk.</p>
+          {waiting.map((a) => (
+            <div key={a.id} className="hw-row">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {a.avatar_url ? <img src={a.avatar_url} alt="" /> : <span className="ph">{(a.display_name || "?")[0]}</span>}
+              <div className="grow"><b>{a.full_name || a.display_name}</b><small>{cityName(a.city_slug)} · “{a.plan_title}”</small></div>
+              {a.pending_req ? <button className="adm-cta" onClick={() => goApprovals(a.pending_req!)}>⏳ {a.pending_req}</button>
+                : <button className="adm-cta" onClick={() => makeProfile(a)}>Create profile</button>}
+            </div>
+          ))}
+        </div>
+      )}
       {hs.error && <p className="form-msg err">{hs.error}</p>}
       {!hs.data ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>No hosts match. Tap <b>＋ Add host</b>.</Empty> : (
         <div className="tbl-wrap"><table className="adm-tbl">

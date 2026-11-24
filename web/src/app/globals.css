@@ -1414,3 +1414,8 @@ a.host{text-decoration:none;color:inherit;display:block}
 .act-chg p{color:var(--ink-2)}
 .adm-steps{background:#F6F3FB;border-radius:12px;padding:10px 12px;margin-top:8px;font-size:13.5px}
 .adm-steps ol{padding-left:20px;display:grid;gap:4px;margin:6px 0}
+.hosts-waiting{background:#FFF8DD;border:2px solid var(--ink);border-radius:16px;padding:12px;margin-bottom:14px;display:grid;gap:8px}
+.hw-row{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:8px 10px}
+.hw-row img,.hw-row .ph{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--ink);display:grid;place-items:center;background:var(--sun);font-weight:800;flex:0 0 36px}
+.hw-row .grow{flex:1;min-width:0;display:flex;flex-direction:column}
+.hw-row small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
