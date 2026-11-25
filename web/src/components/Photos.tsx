@@ -31,7 +31,7 @@ export function PhotoStrip({ photos, label, auto = 0 }: { photos: Photo[]; label
   );
 }
 
-function Lightbox({ photos, index, onIndex }: { photos: Photo[]; index: number | null; onIndex: (i: number | null) => void }) {
+export function Lightbox({ photos, index, onIndex }: { photos: Photo[]; index: number | null; onIndex: (i: number | null) => void }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useEffect(() => {

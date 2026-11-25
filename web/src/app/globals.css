@@ -1548,3 +1548,28 @@ html{scroll-padding-top:130px}
 .inv-stats b{font-size:22px;color:var(--sun)}
 .inv-acts{display:flex;flex-wrap:wrap;gap:8px}
 .who-words{display:block;font-size:11px;font-weight:700;color:var(--violet)}
+
+/* ---------- photo diaries ---------- */
+.diaries{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.diary-card{position:relative;display:block;border-radius:18px;overflow:hidden;border:2px solid var(--ink);aspect-ratio:4/3;background:#222;box-shadow:4px 4px 0 var(--ink)}
+.diary-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
+.diary-card:hover img{transform:scale(1.04)}
+.diary-card>div{position:absolute;inset:auto 0 0 0;padding:28px 14px 12px;background:linear-gradient(transparent,rgba(0,0,0,.75));color:#fff;display:grid;gap:2px}
+.diary-card>div small{opacity:.85;font-size:12px;font-weight:600}
+.diary-card>div b{font-size:18px;letter-spacing:-.02em;line-height:1.15}
+.dc-n{position:absolute;top:10px;left:10px;background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800}
+.diary{display:grid;gap:8px;padding:20px 0 40px}
+.diary h1{font-size:clamp(32px,7vw,56px);letter-spacing:-.04em;line-height:1}
+.moments{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:22px;border-left:3px solid #E7E0F2;padding-left:16px}
+.moments>li{position:relative;display:grid;gap:8px}
+.moments>li::before{content:"";position:absolute;left:-24px;top:4px;width:13px;height:13px;border-radius:50%;background:var(--violet);border:3px solid var(--cream)}
+.m-time{display:flex;gap:8px;align-items:baseline}
+.m-time small{color:var(--muted)}
+.m-grid{display:grid;gap:8px;grid-template-columns:1fr}
+.m-grid.n2,.m-grid.n3{grid-template-columns:1fr 1fr}
+.m-grid figure{margin:0;display:grid;gap:4px;min-width:0}
+.m-grid figure>button{padding:0;border:0;border-radius:14px;overflow:hidden;background:#eee;cursor:zoom-in}
+.m-grid img{width:100%;max-height:520px;object-fit:cover;display:block}
+.m-grid figcaption{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.m-edit{margin-left:6px}
+.m-edit button{border:0;background:none;cursor:pointer;padding:0 3px}

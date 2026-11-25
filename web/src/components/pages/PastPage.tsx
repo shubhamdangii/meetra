@@ -2,6 +2,8 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { DiaryCards, DiaryView, useDiaries } from "../Diary";
 import { useApp } from "../AppProvider";
 import { Chips, Empty, Poster, ease } from "../ui";
 import { CONFIG } from "@/lib/config";
@@ -10,7 +12,15 @@ import { eventUrl, hash, hostLine, hostNames, relDay } from "@/lib/events";
 const EXTRAS = ["📸", "🥂", "😂", "🎉", "🤝", "☕", "🌟", "🫶"];
 
 export default function PastPage() {
-  const { ready, past, inCity, today } = useApp();
+  // /past/?diary=<plan> opens one photo diary
+  const diary = useSearchParams().get("diary");
+  if (diary) return <div className="wrap"><DiaryView key={diary} planRef={diary} /></div>;
+  return <PastList />;
+}
+
+function PastList() {
+  const { ready, past, inCity, today, city } = useApp();
+  const diaries = useDiaries(city);
   const [cat, setCat] = useState("all");
   const [limit, setLimit] = useState(9);
   const list = past.filter((e) => inCity(e) && (cat === "all" || e.cat === cat));
@@ -22,6 +32,10 @@ export default function PastPage() {
         <p>From the first awkward hello to the group photo at the end. A look inside the plans that already happened.</p>
         {CONFIG.showSampleNotice && <div style={{ marginTop: 16 }}><span className="notice">📷 Add real photos by setting <b>image</b> on a plan in src/lib/data.ts</span></div>}
       </section>
+      {diaries && diaries.length > 0 && <section style={{ marginBottom: 28 }}>
+        <div className="group-head"><h3>📸 Photo diaries</h3><span>{diaries.length} plan{diaries.length > 1 ? "s" : ""}</span></div>
+        <DiaryCards rows={diaries} />
+      </section>}
       <Chips value={cat} onChange={(c) => { setCat(c); setLimit(9); }} />
       <div className="stories">
         {!ready && [0, 1, 2].map((i) => <div key={i} className="skeleton" />)}

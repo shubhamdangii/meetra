@@ -7,6 +7,7 @@ import { useApp } from "../AppProvider";
 import { CATS, CITIES, Chip, Empty, Modal, cityName, fmtDT, fromLocalInput, nowLocalInput, toLocalInput, useAsk, useCall, useRpc } from "./shared";
 import { CATEGORIES } from "@/lib/data";
 import { EventTypePicker } from "../EventBits";
+import { DiaryUploader } from "../Diary";
 import { MAPS_HINT, isMapsUrl } from "@/lib/eventMedia";
 import { useAuth } from "../AuthProvider";
 import { useEffect } from "react";
@@ -225,6 +226,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
                     <button onClick={() => { setOpen(null); act(e, "cancel"); }}>Request cancel</button></>}
                   {["active", "completed", "cancelled"].includes(e.display_status) && !e.pending_req && <button onClick={() => { setOpen(null); act(e, "delete"); }}>Request removal</button>}
                   {e.status !== "draft" && e.status !== "pending" && <Link href={`/event/?id=${e.plan_ref}`}>View on site</Link>}
+                  {["active", "completed"].includes(e.display_status) && new Date(e.starts_at).getTime() - Date.now() < 3600e3 && <><DiaryUploader planRef={e.plan_ref} /><Link href={`/past/?diary=${e.plan_ref}`}>Photo diary</Link></>}
                   <button onClick={() => { setOpen(null); setHist(e); }}>History</button>
                 </div>
           </div>); })()}

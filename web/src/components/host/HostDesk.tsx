@@ -9,6 +9,7 @@ import { useAuth } from "../AuthProvider";
 import { burstFrom } from "../fx";
 import { EventForm, type EventFormValue, blankEvent, eventToForm, formToPayload, useEventExtras, validateEvent } from "../admin/Events";
 import { WhoComing } from "../EventBits";
+import { DiaryUploader } from "../Diary";
 import { usePlanCount } from "@/lib/eventMedia";
 
 function WaitCount({ planRef }: { planRef: string }) {
@@ -161,6 +162,8 @@ export function HostDesk({ host }: { host: MyHost }) {
                     <button onClick={() => discard(e)}>Delete</button></>}
                   {e.status === "pending" && <button onClick={() => withdraw(e)}>Withdraw</button>}
                   {e.status === "approved" && <Link href={`/event/?id=${e.plan_ref}`}>View live page</Link>}
+                  {e.status === "approved" && new Date(e.starts_at).getTime() - now < 3600e3 && <DiaryUploader planRef={e.plan_ref} />}
+                  {e.status === "approved" && new Date(e.starts_at).getTime() < now && <Link href={`/past/?diary=${e.plan_ref}`}>Photo diary</Link>}
                   {e.display_status === "active" && new Date(e.starts_at).getTime() - now < 36 * 3600e3 && <button onClick={() => setDoor(true)}>📷 Door</button>}
                 </div>
               </motion.article>
