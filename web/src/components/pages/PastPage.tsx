@@ -30,7 +30,6 @@ function PastList() {
         <span className="eyebrow">Past nights</span>
         <h1>Been there, <span className="serif">together.</span></h1>
         <p>From the first awkward hello to the group photo at the end. A look inside the plans that already happened.</p>
-        {CONFIG.showSampleNotice && <div style={{ marginTop: 16 }}><span className="notice">📷 Add real photos by setting <b>image</b> on a plan in src/lib/data.ts</span></div>}
       </section>
       {diaries && diaries.length > 0 && <section style={{ marginBottom: 28 }}>
         <div className="group-head"><h3>📸 Photo diaries</h3><span>{diaries.length} plan{diaries.length > 1 ? "s" : ""}</span></div>

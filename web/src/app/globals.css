@@ -1573,3 +1573,4 @@ html{scroll-padding-top:130px}
 .m-grid figcaption{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .m-edit{margin-left:6px}
 .m-edit button{border:0;background:none;cursor:pointer;padding:0 3px}
+.card-stats.low b{color:#B3134B}

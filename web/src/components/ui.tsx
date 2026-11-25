@@ -92,9 +92,9 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
         <span className={`by ${hostTba(e) ? "tba" : ""}`}>{hostTba(e) ? "🎙️ " : ""}{hostLine(e)}</span>
         <div className="price">
           <span><b>{priceShort(e)}</b> {priceLabel(e)}</span>
-          <span className={`seats-left ${low ? "" : "ok"}`}>{left === 0 ? "Waitlist" : low ? `${left} left` : `${e.seats} seats`}</span>
+          {left === 0 && <span className="seats-left">Waitlist</span>}
         </div>
-        <p className="card-stats"><b>{left === 0 ? "Full" : `${left} of ${e.seats} seats left`}</b>
+        <p className={`card-stats${low ? " low" : ""}`}><b>{left === 0 ? "Full · join the waitlist" : `${left} of ${e.seats} seats left`}</b>
           {cnt && cnt.approved_seats > 0 && <> · {cnt.approved_seats} accepted</>}
           {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</p>
       </div>
