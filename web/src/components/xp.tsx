@@ -23,9 +23,9 @@ export function noteGamePlayed(id: string) {
 }
 export function noteInvite() { store.set("mt-invited", 1); }
 
-type Input = { score: number; hasPhoto: boolean; bio: number; phoneVerified: boolean };
+type Input = { score: number; hasPhoto: boolean; bio: number; phoneVerified: boolean; words?: boolean; prompt?: boolean; friends?: number; friendsCame?: number };
 
-export function XpCard({ score, hasPhoto, bio, phoneVerified }: Input) {
+export function XpCard({ score, hasPhoto, bio, phoneVerified, words = false, prompt = false, friends = 0, friendsCame = 0 }: Input) {
   const { savedIds } = useApp();
   const { rows } = useMyRequests();
   const [local, setLocal] = useState({ right: 0, games: [] as string[], invited: false });
@@ -40,7 +40,8 @@ export function XpCard({ score, hasPhoto, bio, phoneVerified }: Input) {
   const decks = local.games.filter((g) => DECKS.some((d) => d.id === g)).length;
 
   const xp = score + Math.min(asked, 5) * 10 + inn * 25 + went * 50 + Math.min(local.right, 20) * 2
-    + Math.min(local.games.length, 12) * 5 + (local.invited ? 15 : 0) + Math.min(savedIds.length, 10) * 2;
+    + Math.min(local.games.length, 12) * 5 + (local.invited ? 15 : 0) + Math.min(savedIds.length, 10) * 2
+    + (words ? 10 : 0) + (prompt ? 10 : 0) + Math.min(friends, 10) * 10 + Math.min(friendsCame, 10) * 20;
   const li = LEVELS.reduce((a, l, i) => (xp >= l[0] ? i : a), 0);
   const [lvMin, lvName, lvEm] = LEVELS[li];
   const next = LEVELS[li + 1];
@@ -59,8 +60,12 @@ export function XpCard({ score, hasPhoto, bio, phoneVerified }: Input) {
     { id: "regular", em: "🏆", name: "Regular", how: "Come to 3 plans", ok: went >= 3, href: "/events/" },
     { id: "games", em: "🎲", name: "Game night", how: "Play 3 games from the Games page", ok: local.games.length >= 3, href: "/games/" },
     { id: "decks", em: "🃏", name: "Deck master", how: `Play all ${DECKS.length} card decks`, ok: decks >= DECKS.length, href: "/games/" },
-    { id: "connector", em: "🤝", name: "Connector", how: "Invite a friend from your plans", ok: local.invited, href: "/saved/" },
-  ], [hasPhoto, bio, phoneVerified, score, local, savedIds.length, asked, inn, went, decks]);
+    { id: "connector", em: "🤝", name: "Connector", how: "Invite a friend from your plans", ok: local.invited || friends > 0, href: "#invite" },
+    { id: "self", em: "🪞", name: "Self-aware", how: "Pick your three words", ok: words, href: "#quests" },
+    { id: "words", em: "💬", name: "Wordsmith", how: "Answer a prompt", ok: prompt, href: "#quests" },
+    { id: "magnet", em: "🧲", name: "Friend magnet", how: "A friend joins with your link", ok: friends > 0, href: "#invite" },
+    { id: "crew", em: "👯", name: "Brought the crew", how: "A friend comes to a plan", ok: friendsCame > 0, href: "#invite" },
+  ], [hasPhoto, bio, phoneVerified, score, local, savedIds.length, asked, inn, went, decks, words, prompt, friends, friendsCame]);
   const got = badges.filter((b) => b.ok).length;
   const quests = badges.filter((b) => !b.ok).slice(0, 3);
 

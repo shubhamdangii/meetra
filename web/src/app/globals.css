@@ -1519,3 +1519,32 @@ html,body{max-width:100%;overflow-x:clip}
 html{scroll-padding-top:130px}
 .leaflet-container{isolation:isolate;z-index:0}
 .imin.done{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#DDF7E9;color:#127a46;font-weight:800;font-size:14px}
+
+/* ---------- profile quests + invites ---------- */
+.quests{display:grid;gap:12px;margin:18px 0}
+.q-head{display:grid;gap:2px}
+.q-head b{font-size:20px;letter-spacing:-.02em}
+.q-head small{color:var(--muted)}
+.q-card{background:#fff;border:2px solid var(--ink);border-radius:18px;padding:16px;display:grid;gap:10px;min-width:0}
+.q-card.done{border-color:#B9E8CF;background:#F4FCF7}
+.q-card h3{font-size:19px;letter-spacing:-.02em;margin:0}
+.q-tag{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--violet)}
+.q-chips{display:flex;flex-wrap:wrap;gap:7px}
+.q-chips button{border:1.5px solid #D9D2E9;background:#fff;border-radius:999px;padding:7px 12px;font-weight:600;font-size:14px;cursor:pointer}
+.q-chips button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.q-chips button:disabled{opacity:.4;cursor:default}
+.q-words{display:flex;flex-wrap:wrap;gap:6px}
+.q-words span{background:var(--ink);color:#fff;border-radius:999px;padding:5px 12px;font-weight:700;font-size:14px}
+.q-done{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.q-done blockquote{margin:0;display:grid;gap:4px;font-weight:700;flex:1;min-width:0;overflow-wrap:anywhere}
+.q-done blockquote small{font-weight:600;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.06em}
+.q-row{display:flex;gap:8px;align-items:center;min-width:0}
+.q-row select{flex:1;min-width:0;border:2px solid var(--ink);border-radius:12px;padding:10px;background:#fff}
+.q-card textarea{border:2px solid var(--ink);border-radius:12px;padding:10px 12px;width:100%;resize:vertical}
+.invite-card{background:var(--ink);color:#fff;border-radius:20px;padding:18px;display:grid;gap:10px;margin:0 0 18px}
+.invite-card h3{font-size:22px;letter-spacing:-.03em;margin:0}
+.invite-card .muted{color:#BDB8D0;font-size:13px}
+.inv-stats{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+.inv-stats b{font-size:22px;color:var(--sun)}
+.inv-acts{display:flex;flex-wrap:wrap;gap:8px}
+.who-words{display:block;font-size:11px;font-weight:700;color:var(--violet)}

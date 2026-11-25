@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { InstallMenuItem } from "./InstallApp";
 import { NotificationsSheet, useNotifications } from "./Notifications";
 import { NotHost, useHostStatus, useIsHost } from "./host/useIsHost";
+import { InviteClaimer } from "./Quests";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { CONFIG } from "@/lib/config";
@@ -251,6 +252,7 @@ export function Header() {
       </header>
       <ProfileNudge />
       <TabBar active={active} />
+      <InviteClaimer />
     </>
   );
 }

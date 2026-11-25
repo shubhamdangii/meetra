@@ -25,11 +25,21 @@ export function SeatRequests({ cities }: { cities: string[] }) {
   const [event, setEvent] = useState(""); const [host, setHost] = useState(""); const [date, setDate] = useState<(typeof DATES)[number][0]>("upcoming");
   const [day, setDay] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false);
 
+  const [about, setAbout] = useState<Map<number, { three_words: string[]; prompt_a: string | null }>>(new Map());
   const load = useCallback(async () => {
     if (!auth.client) return;
     const { data, error } = await auth.client.rpc("admin_all_requests", { p_from: null, p_to: null });
     if (error) { toast("Couldn't load: " + error.message); setRows([]); return; }
     setRows(data as R[]);
+    // what members said about themselves (profile quests), for the team deciding seats
+    const ids = (data as R[]).map((r) => r.request_id);
+    if (ids.length) {
+      const pr = await auth.client.from("plan_requests").select("id,user_id").in("id", ids.slice(0, 500));
+      const uids = [...new Set(((pr.data ?? []) as { id: number; user_id: string }[]).map((x) => x.user_id))];
+      const us = uids.length ? await auth.client.from("users").select("id,three_words,prompt_a").in("id", uids) : { data: [] };
+      const byU = new Map(((us.data ?? []) as { id: string; three_words: string[]; prompt_a: string | null }[]).map((u) => [u.id, u]));
+      setAbout(new Map(((pr.data ?? []) as { id: number; user_id: string }[]).map((x) => [x.id, byU.get(x.user_id)]).filter((x) => x[1]) as [number, { three_words: string[]; prompt_a: string | null }][]));
+    }
   }, [auth.client, toast]);
   useEffect(() => { load(); }, [load]);
 
@@ -107,7 +117,7 @@ export function SeatRequests({ cities }: { cities: string[] }) {
               <tr key={r.request_id}>
                 <td className="sr-no">{list.length - (pg.from - 1 + i)}</td>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <td><div className="who">{r.avatar_url ? <img src={r.avatar_url} alt="" /> : <span className="ph">{(r.display_name || "?")[0]}</span>}<div><b>{r.full_name || r.display_name}</b><br /><small className="muted">{r.occupation}{r.icebreaker ? ` · “${r.icebreaker.slice(0, 40)}”` : ""}</small></div></div></td>
+                <td><div className="who">{r.avatar_url ? <img src={r.avatar_url} alt="" /> : <span className="ph">{(r.display_name || "?")[0]}</span>}<div><b>{r.full_name || r.display_name}</b><br /><small className="muted">{r.occupation}{r.icebreaker ? ` · “${r.icebreaker.slice(0, 40)}”` : ""}</small>{about.get(r.request_id)?.three_words?.length ? <small className="who-words">{about.get(r.request_id)!.three_words.join(" · ")}</small> : null}</div></div></td>
                 {!event && <td><button className="linkish" style={{ textAlign: "left" }} onClick={() => setEvent(r.plan_ref)}>{e ? e.title : r.plan_ref}</button><br /><small className="muted">{e ? `${relDay(e.date, today)} · ${e.time}` : r.plan_date} · {cityName(r.city_slug)} · {hostOf(r)}</small></td>}
                 <td style={{ whiteSpace: "nowrap" }}>{fmtDT(r.requested_at)}</td>
                 <td><span className="score-pill">{r.profile_score}</span><br /><small className="muted">{r.phone_verified ? "WA ✓ " : ""}{r.email_verified ? "Email ✓" : ""}</small></td>

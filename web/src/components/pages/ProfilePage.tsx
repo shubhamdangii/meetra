@@ -10,6 +10,7 @@ import { useAuth } from "../AuthProvider";
 import { Reveal } from "../ui";
 import { burst } from "../fx";
 import { XpCard } from "../xp";
+import { InviteCard, Quests, useInvites, useQuestData } from "../Quests";
 import { CONFIG } from "@/lib/config";
 
 type Form = {
@@ -99,6 +100,8 @@ export default function ProfilePage() {
   const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })();
 
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const quest = useQuestData();
+  const invites = useInvites();
   async function upload(file: File) {
     if (!auth.client || !auth.session || !me) { setAvatar(URL.createObjectURL(file)); return; }
     setPhotoMsg("Uploading…");
@@ -180,7 +183,10 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {auth.session && loaded && <Reveal><XpCard score={me?.profile_score ?? score} hasPhoto={!!avatar} bio={f.bio.trim().length} phoneVerified={!!me?.phone_verified} /></Reveal>}
+      {auth.session && loaded && <Reveal><XpCard score={me?.profile_score ?? score} hasPhoto={!!avatar} bio={f.bio.trim().length} phoneVerified={!!me?.phone_verified}
+        words={(quest.data?.three_words?.length ?? 0) === 3} prompt={!!quest.data?.prompt_a?.trim()} friends={invites?.joined ?? 0} friendsCame={invites?.came ?? 0} /></Reveal>}
+      {auth.session && loaded && <Reveal><Quests q={quest} /></Reveal>}
+      {auth.session && loaded && <Reveal><div id="invite"><InviteCard inv={invites} /></div></Reveal>}
 
       <form onSubmit={save} noValidate>
         <Reveal className="pcard">
