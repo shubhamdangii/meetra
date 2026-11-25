@@ -43,7 +43,8 @@ export function PhotoCropper({ file, onCancel, onDone }: { file: File | null; on
   };
 
   function down(e: React.PointerEvent) {
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* keep dragging without capture */ }
+    e.preventDefault();
     pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.current.size === 2) {
       const [a, b] = [...pts.current.values()];
