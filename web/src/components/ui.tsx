@@ -6,6 +6,7 @@ import { burstFrom, buzz, useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
 import { DOW, MON, type MeetEvent, eventUrl, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
+import { usePlanCount } from "@/lib/eventMedia";
 
 export const ease = [0.2, 0.8, 0.2, 1] as const;
 
@@ -70,7 +71,10 @@ export function SaveButton({ id, label = false, className = "" }: { id: string; 
 
 export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: number; extra?: React.ReactNode }) {
   const { city } = useApp();
-  const low = e.left <= 4;
+  const real = e.key.startsWith("x");
+  const cnt = usePlanCount(e.id, real);
+  const left = cnt ? Math.max(0, e.seats - cnt.approved_seats) : e.left;
+  const low = left <= 4;
   const tilt = useTilt(6);
   return (
     <motion.article className="card" style={{ ...tilt.style, ["--gx" as string]: tilt.glareX }} {...tilt.handlers}
@@ -88,8 +92,11 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
         <span className={`by ${hostTba(e) ? "tba" : ""}`}>{hostTba(e) ? "🎙️ " : ""}{hostLine(e)}</span>
         <div className="price">
           <span><b>{priceShort(e)}</b> {priceLabel(e)}</span>
-          <span className={`seats-left ${low ? "" : "ok"}`}>{e.left === 0 ? "Waitlist" : low ? `${e.left} left` : `${e.seats} seats`}</span>
+          <span className={`seats-left ${low ? "" : "ok"}`}>{left === 0 ? "Waitlist" : low ? `${left} left` : `${e.seats} seats`}</span>
         </div>
+        {cnt && (cnt.approved_seats > 0 || cnt.waitlisted > 0) && (
+          <p className="card-stats"><b>{left} of {e.seats} seats left</b>{cnt.approved_seats ? ` · ${cnt.approved_seats} accepted` : ""}{cnt.waitlisted ? ` · ${cnt.waitlisted} on the waitlist` : ""}</p>
+        )}
       </div>
       <Link className="card-link" href={eventUrl(e)} aria-label={e.title} />
     </motion.article>

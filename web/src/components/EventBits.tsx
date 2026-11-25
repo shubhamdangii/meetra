@@ -6,7 +6,7 @@ import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { EVENT_TYPES, imgSrc, typeImagePath, typeImages } from "@/lib/events";
 import manifest from "@/lib/image-manifest.json";
-import { MAX_PHOTO_MB, mapsEmbed, uploadEventImage, useAttendees, useEventLocation, useTypeUploads, type Attendees } from "@/lib/eventMedia";
+import { MAX_PHOTO_MB, crowdLine, mapsEmbed, uploadEventImage, useAttendees, useEventLocation, useTypeUploads, type Attendees } from "@/lib/eventMedia";
 
 /* ---------- who's coming ---------- */
 export function Faces({ a, max = 8, size = 34 }: { a: Attendees; max?: number; size?: number }) {
@@ -31,6 +31,7 @@ export function WhoComing({ planRef, seats, compact = false }: { planRef: string
       {attendees.count > 0 ? <>
         <Faces a={attendees} max={10} />
         <p><b>{attendees.count} {attendees.count === 1 ? "person is" : "people are"} going</b>{seats ? <small> · {Math.max(0, seats - attendees.count)} seats left</small> : null}</p>
+        {crowdLine(attendees) && <p className="crowd-line">{crowdLine(attendees)}</p>}
       </> : <p className="muted">Nobody confirmed yet. Be one of the first!</p>}
       <small className="muted">Only profile photos are shown, never names.</small>
     </div>

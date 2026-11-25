@@ -1493,3 +1493,27 @@ html,body{max-width:100%;overflow-x:clip}
 .crop-zoom{display:flex;align-items:center;gap:10px;width:100%;font-weight:800}
 .crop-zoom input{flex:1;accent-color:var(--violet)}
 .crop-acts{display:flex;gap:8px;justify-content:flex-end;width:100%}
+
+/* ---------- ideas from the market (Nov 26) ---------- */
+.card-stats{margin:6px 0 0;font-size:12px;line-height:1.35;color:var(--muted)}
+.card-stats b{color:var(--ink);font-weight:700}
+.crowd-line{font-size:13px;color:var(--muted);margin:0}
+.rv-tags{display:flex;flex-wrap:wrap;gap:6px}
+.rv-tags button{border:1.5px solid #D9D2E9;background:#fff;border-radius:999px;padding:6px 11px;font-size:13px;font-weight:600;cursor:pointer}
+.rv-tags button.on{background:var(--violet);border-color:var(--violet);color:#fff}
+.host-tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.host-tags span{background:#F3EFFF;color:var(--violet);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
+
+/* sticky section bar on event pages */
+.sec-nav{position:sticky;top:var(--stick,64px);z-index:30;display:flex;align-items:center;gap:12px;margin:0 -8px 10px;padding:8px;background:color-mix(in srgb,var(--cream) 94%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:0 0 14px 14px;transition:box-shadow .2s}
+.sec-nav.stuck{box-shadow:0 8px 18px -12px rgba(22,18,43,.35);border-bottom:1.5px solid #E7E0F2}
+.sec-nav nav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.sec-nav nav::-webkit-scrollbar{display:none}
+.sec-nav nav a{white-space:nowrap;padding:7px 12px;border-radius:999px;font-weight:700;font-size:14px;color:var(--muted)}
+.sec-nav nav a.on{background:var(--ink);color:#fff}
+.sec-cta{display:none;align-items:center;gap:10px;white-space:nowrap}
+.sec-nav.stuck .sec-cta{display:flex}
+.sec-cta b{font-size:16px}
+.sec-cta span{background:var(--sun);border:2px solid var(--ink);border-radius:999px;padding:6px 14px;font-weight:800;font-size:14px}
+@media (max-width:820px){.sec-nav.stuck .sec-cta{display:none}.sec-nav{margin:0 -16px 10px;padding:8px 16px}}
+html{scroll-padding-top:130px}

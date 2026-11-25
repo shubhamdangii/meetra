@@ -90,7 +90,45 @@ export function useEventLocation(client: SupabaseClient | null | undefined, plan
 }
 
 /* ---------- who's coming ---------- */
-export type Attendees = { count: number; photos: string[] };
+export type Attendees = { count: number; photos: string[]; people?: number; solo?: number; first_timers?: number; returning?: number; verified?: number };
+/** "most are coming solo · 3 first-timers · 2 have been before · 1 verified" (no names, ever). */
+export function crowdLine(a: Attendees): string {
+  const p = a.people ?? 0; if (!p) return "";
+  const bits: string[] = [];
+  if ((a.solo ?? 0) * 2 >= p) bits.push(p === 1 ? "coming solo" : "most are coming solo");
+  if (a.first_timers) bits.push(`${a.first_timers} first-timer${a.first_timers > 1 ? "s" : ""}`);
+  if (a.returning) bits.push(`${a.returning} ${a.returning > 1 ? "have" : "has"} been before`);
+  if (a.verified) bits.push(`${a.verified} verified`);
+  return bits.join(" · ");
+}
+
+/* ---------- seat numbers for cards (batched: one request for all cards on screen) ---------- */
+export type PlanCount = { approved_seats: number; waitlisted: number; interested: number };
+const countCache = new Map<string, PlanCount>();
+const countWant = new Set<string>();
+const countSubs = new Set<() => void>();
+let countTimer: ReturnType<typeof setTimeout> | null = null;
+function flushCounts() {
+  countTimer = null;
+  const refs = [...countWant].filter((r) => !countCache.has(r)); countWant.clear();
+  const sb = getSupabase(); if (!sb || !refs.length) return;
+  sb.rpc("plan_counts", { p_refs: refs }).then(({ data }) => {
+    for (const r of refs) countCache.set(r, { approved_seats: 0, waitlisted: 0, interested: 0 });
+    for (const row of (data ?? []) as (PlanCount & { plan_ref: string })[]) countCache.set(row.plan_ref, row);
+    countSubs.forEach((fn) => fn());
+  });
+}
+export function usePlanCount(ref: string, enabled: boolean): PlanCount | null {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    const fn = () => bump((x) => x + 1);
+    countSubs.add(fn);
+    if (!countCache.has(ref)) { countWant.add(ref); if (!countTimer) countTimer = setTimeout(flushCounts, 40); }
+    return () => { countSubs.delete(fn); };
+  }, [ref, enabled]);
+  return enabled ? countCache.get(ref) ?? null : null;
+}
 export function useAttendees(planRef: string | null) {
   const [a, setA] = useState<Attendees | null>(null);
   const load = useCallback(() => {

@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
@@ -209,7 +209,8 @@ export default function EventPage() {
         <div>
           <motion.div className="ev-hero" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}><Poster e={e} title /></motion.div>
           <p className="lede">{e.blurb}</p>
-          <div className="anchor-links"><a href="#unfolds">How it unfolds</a><a href="#going">Who&apos;s coming</a><a href="#host">Your host</a><a href="#where">Location</a><a href="#before">Before you go</a></div>
+          <SectionNav price={priceShort(e)} cta={showStatus ? MOBILE_STATUS[myReq!.status] ?? "Your request" : full ? "Join waiting list" : "Request a seat"}
+            items={[...(gallery.length > 1 ? [["photos", "Photos"]] : []), ["unfolds", "How it unfolds"], ["going", "Who's coming"], ["host", "Host"], ["where", "Location"], ["before", "Before you go"]] as [string, string][]} />
 
           {gallery.length > 1 && (
             <section className="ev-sec" id="photos">
@@ -330,15 +331,46 @@ export default function EventPage() {
 }
 
 /* Host of a real event (from the admin desk): photo, bio, rating out of 5 and what guests said. */
+const TAG_LABEL: Record<string, string> = { welcome: "made people feel welcome", flowing: "kept it flowing", safe: "felt safe", fun: "so much fun", organised: "well organised" };
+
+/** Section links that stick under the header while you scroll; the current section is highlighted. */
+function SectionNav({ items, price, cta }: { items: [string, string][]; price: string; cta: string }) {
+  const [on, setOn] = useState(items[0]?.[0] ?? "");
+  const [stuck, setStuck] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const hdr = document.querySelector(".site-header") as HTMLElement | null;
+    const top = (hdr?.offsetHeight ?? 64) - 2;
+    ref.current?.style.setProperty("--stick", top + "px");
+    const els = items.map(([id]) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+    const io = new IntersectionObserver((xs) => {
+      const vis = xs.filter((x) => x.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (vis) setOn(vis.target.id);
+    }, { rootMargin: `-${top + 60}px 0px -55% 0px` });
+    els.forEach((el) => io.observe(el));
+    const onScroll = () => { const r = ref.current?.getBoundingClientRect(); setStuck(!!r && r.top <= top + 1); };
+    onScroll(); window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { io.disconnect(); window.removeEventListener("scroll", onScroll); };
+  }, [items.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div ref={ref} className={`sec-nav${stuck ? " stuck" : ""}`}>
+      <nav aria-label="On this page">{items.map(([id, label]) => <a key={id} href={`#${id}`} className={on === id ? "on" : ""}>{label}</a>)}</nav>
+      <a className="sec-cta" href="#book"><b>{price}</b><span>{cta}</span></a>
+    </div>
+  );
+}
+
 function RealHost({ id, planRef }: { id: number; planRef: string }) {
   const auth = useAuth();
   const [h, setH] = useState<{ name: string; bio: string; photo_url: string | null } | null>(null);
   const [r, setR] = useState<{ avg_rating: number; reviews: number } | null>(null);
   const [rev, setRev] = useState<{ rating: number; comment: string; first_name: string }[]>([]);
+  const [tags, setTags] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!auth.client) return;
     auth.client.from("host_profiles").select("name,bio,photo_url").eq("id", id).maybeSingle().then(({ data }) => setH(data as typeof h));
     auth.client.rpc("host_ratings", { p_ids: [id] }).then(({ data }) => setR((data as (typeof r)[])?.[0] ?? null));
+    auth.client.rpc("host_tag_counts", { p_host_id: id }).then(({ data }) => setTags((data as Record<string, number>) ?? {}));
     auth.client.rpc("plan_reviews", { p_plan_ref: planRef }).then(({ data }) => setRev(((data as typeof rev) ?? []).filter((x) => x.comment).slice(0, 4)));
   }, [auth.client, id, planRef]);
   if (!h) return <div className="skeleton" style={{ minHeight: 90 }} />;
@@ -351,6 +383,7 @@ function RealHost({ id, planRef }: { id: number; planRef: string }) {
       </div>
       <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3><span className="host-name-u">{h.name}</span> <span className="verified">✓</span> <span className="host-go" aria-hidden="true">→</span></h3>
         {r && r.reviews > 0 ? <p className="host-rating"><b>★ {Number(r.avg_rating).toFixed(1)}</b> / 5 · {r.reviews} review{r.reviews === 1 ? "" : "s"}</p> : <p className="host-rating muted">New host · no reviews yet</p>}
+        {Object.keys(tags).length > 0 && <div className="host-tags">{Object.entries(tags).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => <span key={k}>{TAG_LABEL[k] ?? k} · {n}</span>)}</div>}
         {h.bio && <p className="muted">{h.bio}</p>}
         {rev.length > 0 && <ul className="host-reviews">{rev.map((x, i) => <li key={i}><b>{"★".repeat(x.rating)}</b> “{x.comment}” <small>– {x.first_name}</small></li>)}</ul>}
       </div>
