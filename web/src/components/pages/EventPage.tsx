@@ -352,6 +352,11 @@ function SectionNav({ items, price, cta }: { items: [string, string][]; price: s
     onScroll(); window.addEventListener("scroll", onScroll, { passive: true });
     return () => { io.disconnect(); window.removeEventListener("scroll", onScroll); };
   }, [items.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // keep the highlighted chip visible inside the bar
+  useEffect(() => {
+    const nav = ref.current?.querySelector("nav"); const el = nav?.querySelector("a.on") as HTMLElement | null;
+    if (nav && el) nav.scrollTo({ left: el.offsetLeft - nav.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+  }, [on]);
   return (
     <div ref={ref} className={`sec-nav${stuck ? " stuck" : ""}`}>
       <nav aria-label="On this page">{items.map(([id, label]) => <a key={id} href={`#${id}`} className={on === id ? "on" : ""}>{label}</a>)}</nav>

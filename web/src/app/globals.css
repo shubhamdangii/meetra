@@ -1517,3 +1517,4 @@ html,body{max-width:100%;overflow-x:clip}
 .sec-cta span{background:var(--sun);border:2px solid var(--ink);border-radius:999px;padding:6px 14px;font-weight:800;font-size:14px}
 @media (max-width:820px){.sec-nav.stuck .sec-cta{display:none}.sec-nav{margin:0 -16px 10px;padding:8px 16px}}
 html{scroll-padding-top:130px}
+.leaflet-container{isolation:isolate;z-index:0}
