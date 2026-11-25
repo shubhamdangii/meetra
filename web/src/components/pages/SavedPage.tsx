@@ -91,6 +91,25 @@ export default function SavedPage() {
 
 const endTime = (e: MeetEvent) => startsAt(e).getTime() + 3 * 36e5;
 
+/** "I'm in ✅": re-confirm you're still coming (opens 3 days before the plan). Hosts see it on their door list. */
+function ImIn({ r, e }: { r: MyRequest; e: MeetEvent }) {
+  const auth = useAuth(); const { toast } = useApp();
+  const [at, setAt] = useState<string | null>(r.reconfirmed_at ?? null);
+  const [busy, setBusy] = useState(false);
+  const msLeft = startsAt(e).getTime() - Date.now();
+  if (msLeft <= 0 || msLeft > 3 * 864e5) return null;
+  if (at) return <span className="imin done">I&apos;m in ✅</span>;
+  return (
+    <button type="button" className="btn btn-sun btn-sm imin" disabled={busy} onClick={async (ev) => {
+      if (!auth.client) return;
+      const btn = ev.currentTarget; setBusy(true);
+      const { data, error } = await auth.client.rpc("reconfirm_seat", { p_request_id: r.id });
+      setBusy(false);
+      if (error) return toast("⚠️ " + error.message);
+      setAt(String(data)); burstFrom(btn, ["✅", "🙌", "✨"], 10); toast("Your host knows you're coming ✓");
+    }}>I&apos;m in ✅</button>
+  );
+}
 export const REVIEW_TAGS: [string, string][] = [["welcome", "made me feel welcome"], ["flowing", "kept it flowing"], ["safe", "felt safe"], ["fun", "so much fun"], ["organised", "well organised"]];
 
 function PlanRow({ e, r, i, past = false, onCancel, onPaid }: { e: MeetEvent; r: MyRequest | null; i: number; past?: boolean; onCancel?: (r: MyRequest) => void; onPaid?: () => void }) {
@@ -136,6 +155,7 @@ function PlanRow({ e, r, i, past = false, onCancel, onPaid }: { e: MeetEvent; r:
           <div className="plan-btns">
             <Link className="btn btn-ink btn-sm" href={`/ticket/?id=${e.id}`}>My door pass 🎫</Link>
             <CalendarButton e={e} />
+            {r && <ImIn r={r} e={e} />}
           </div>
         </div>
       )}

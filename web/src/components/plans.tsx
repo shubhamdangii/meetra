@@ -14,7 +14,7 @@ import { type MeetEvent, downloadCalendar, eventUrl, fmtDay } from "@/lib/events
 import { absUrl } from "@/lib/store";
 
 export type ReqStatus = "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended";
-export type MyRequest = { id: number; plan_ref: string; status: ReqStatus; party_size: number; created_at: string; decided_at: string | null; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null };
+export type MyRequest = { id: number; plan_ref: string; status: ReqStatus; party_size: number; created_at: string; decided_at: string | null; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null; reconfirmed_at?: string | null };
 
 /** All my seat requests (newest first). null while loading or when logged out. */
 /** Re-run `load` when the tab comes back into view and every 20 s while it's visible,
@@ -47,7 +47,7 @@ export function useMyRequests() {
   const [rows, setRows] = useState<MyRequest[] | null>(null);
   const load = useCallback(() => {
     if (!auth.client || !auth.me) { setRows(null); return; }
-    auth.client.from("plan_requests").select("id,plan_ref,status,party_size,created_at,decided_at,paid_at,paid_amount,refund_status").eq("user_id", auth.me.id).order("created_at", { ascending: false })
+    auth.client.from("plan_requests").select("id,plan_ref,status,party_size,created_at,decided_at,paid_at,paid_amount,refund_status,reconfirmed_at").eq("user_id", auth.me.id).order("created_at", { ascending: false })
       .then(({ data }) => setRows((data as MyRequest[]) ?? []));
   }, [auth.client, auth.me]);
   useEffect(load, [load]);

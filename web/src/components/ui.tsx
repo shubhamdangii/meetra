@@ -94,9 +94,9 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
           <span><b>{priceShort(e)}</b> {priceLabel(e)}</span>
           <span className={`seats-left ${low ? "" : "ok"}`}>{left === 0 ? "Waitlist" : low ? `${left} left` : `${e.seats} seats`}</span>
         </div>
-        {cnt && (cnt.approved_seats > 0 || cnt.waitlisted > 0) && (
-          <p className="card-stats"><b>{left} of {e.seats} seats left</b>{cnt.approved_seats ? ` · ${cnt.approved_seats} accepted` : ""}{cnt.waitlisted ? ` · ${cnt.waitlisted} on the waitlist` : ""}</p>
-        )}
+        <p className="card-stats"><b>{left === 0 ? "Full" : `${left} of ${e.seats} seats left`}</b>
+          {cnt && cnt.approved_seats > 0 && <> · {cnt.approved_seats} accepted</>}
+          {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</p>
       </div>
       <Link className="card-link" href={eventUrl(e)} aria-label={e.title} />
     </motion.article>

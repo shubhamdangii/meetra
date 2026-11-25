@@ -147,7 +147,7 @@ function PriceDrop({ value, onChange, counts, ready }: { value: string; onChange
 }
 
 /* ---------- map view: plans grouped by area ---------- */
-function PlansMap({ list }: { list: MeetEvent[] }) {
+export function PlansMap({ list }: { list: MeetEvent[] }) {
   const [sel, setSel] = useState<string | null>(null);
   const soon = list.filter((e) => e.day <= 13);
   const groups = new Map<string, MeetEvent[]>();
@@ -182,7 +182,11 @@ export function ExplorePreview() {
   const [q, setQ] = useState("");
   const [price, setPrice] = useState("all");
   const [view, setView] = useState<"list" | "map">("list");
-  const base = upcoming.filter(inCity).filter((e) => (cat === "all" || e.cat === cat) && (!q || `${e.title} ${e.area} ${hostNames(e)}`.toLowerCase().includes(q)));
+  const [when, setWhen] = useState("all");
+  const td0 = today.getDay(), sat0 = (6 - td0 + 7) % 7, sun0 = td0 === 0 ? 0 : 7 - td0;
+  const whenOk = (e: MeetEvent) => ({ all: true, today: e.day === 0, tomorrow: e.day === 1, weekend: (e.day === sat0 || e.day === sun0) && e.day <= 6,
+    week: e.day <= 6, next: e.day > 6 && e.day <= 13 } as Record<string, boolean>)[when];
+  const base = upcoming.filter(inCity).filter((e) => whenOk(e) && (cat === "all" || e.cat === cat) && (!q || `${e.title} ${e.area} ${hostNames(e)}`.toLowerCase().includes(q)));
   const list = base.filter((e) => priceOk(e, price));
   const td = today.getDay(), satOff = (6 - td + 7) % 7, sunOff = td === 0 ? 0 : 7 - td;
   const weekend = (e: MeetEvent) => (e.day === satOff || e.day === sunOff) && e.day <= 6;
@@ -206,6 +210,10 @@ export function ExplorePreview() {
       </div>
       <Chips value={cat} onChange={setCat} />
       <div className="ex-bar">
+        <select className="select" value={when} aria-label="When" onChange={(e) => setWhen(e.target.value)}>
+          <option value="all">All dates</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option>
+          <option value="weekend">This weekend</option><option value="week">This week</option><option value="next">Next week</option>
+        </select>
         <PriceDrop value={price} onChange={setPrice} counts={Object.fromEntries(PRICE_BANDS.map(([v]) => [v, base.filter((e) => priceOk(e, v)).length]))} ready={ready} />
         <div className="seg" role="tablist" aria-label="View">
           {(["list", "map"] as const).map((v) => (

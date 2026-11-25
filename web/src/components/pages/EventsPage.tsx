@@ -9,6 +9,7 @@ import { CATEGORIES } from "@/lib/data";
 import { DOW, PRICE_BANDS, type MeetEvent, addDays, cityName, fmtDay, hostNames, priceOk, relDay } from "@/lib/events";
 import { NotHost } from "../host/useIsHost";
 import { atLeast, isReal } from "@/lib/publicData";
+import { PlansMap } from "../Home";
 
 const WHENS = ["all", "today", "tomorrow", "weekend", "week", "next", "later"];
 
@@ -22,6 +23,7 @@ export default function EventsPage() {
   const [price, setPrice] = useState(PRICE_BANDS.some(([v]) => v === params.get("price")) ? (params.get("price") as string) : "all");
   const [date, setDate] = useState<string | null>(null);
   const [shownDays, setShownDays] = useState(when === "all" ? 7 : 28);
+  const [view, setView] = useState<"list" | "map">(params.get("view") === "map" ? "map" : "list");
 
   const setParam = (k: string, v: string) => {
     const u = new URLSearchParams(params.toString());
@@ -81,8 +83,20 @@ export default function EventsPage() {
         })}
       </div>
       <Chips value={cat} onChange={(id) => setParam("cat", id)} counts={ready ? counts : undefined} />
+      <div className="ex-bar">
+        <span className="muted" style={{ fontSize: 13 }}>{ready ? `${list.length} plan${list.length === 1 ? "" : "s"}` : ""}{view === "map" ? " · approximate areas, exact spots stay private" : ""}</span>
+        <div className="seg" role="tablist" aria-label="View">
+          {(["list", "map"] as const).map((v) => (
+            <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => { setView(v); setParam("view", v === "map" ? "map" : ""); }}>
+              {view === v && <motion.span layoutId="ex-view-on" className="seg-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
+              <span>{v === "list" ? "☰ List" : "🗺️ Map"}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === "map" && ready && <PlansMap list={list} />}
 
-      {!ready ? (
+      {view === "map" ? null : !ready ? (
         <div className="grid">{[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <div key={i} className="skeleton" />)}</div>
       ) : visible.length ? (
         <AnimatePresence mode="popLayout">
@@ -99,7 +113,7 @@ export default function EventsPage() {
       ) : (
         <Empty title="No plans match those filters.">Try a different day or category<NotHost> — or <Link href="/host/" style={{ textDecoration: "underline" }}>host this one yourself</Link></NotHost>.</Empty>
       )}
-      {ready && !date && days.length > shownDays && (
+      {ready && view === "list" && !date && days.length > shownDays && (
         <div className="more-row"><motion.button whileTap={{ scale: 0.95 }} className="btn btn-sun" onClick={() => setShownDays((n) => n + 7)}>Show more days ({days.length - shownDays} left) ↓</motion.button></div>
       )}
     </div>

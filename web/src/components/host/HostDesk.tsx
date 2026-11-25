@@ -9,6 +9,12 @@ import { useAuth } from "../AuthProvider";
 import { burstFrom } from "../fx";
 import { EventForm, type EventFormValue, blankEvent, eventToForm, formToPayload, useEventExtras, validateEvent } from "../admin/Events";
 import { WhoComing } from "../EventBits";
+import { usePlanCount } from "@/lib/eventMedia";
+
+function WaitCount({ planRef }: { planRef: string }) {
+  const c = usePlanCount(planRef, true);
+  return c && c.waitlisted > 0 ? <> · <b>{c.waitlisted}</b> waiting</> : null;
+}
 import { Modal, fmtDT, statusLabel } from "../admin/shared";
 import { AdminCheckIn } from "../pages/AdminTeam";
 import { HostPhoto } from "../Home";
@@ -146,7 +152,7 @@ export function HostDesk({ host }: { host: MyHost }) {
                 {e.status === "pending" && <p className="muted" style={{ fontSize: 13 }}>⏳ {e.req_no} · the team is checking it.</p>}
                 {(e.display_status === "active" || e.display_status === "completed") && (
                   <div className="adm-occ"><div><i style={{ width: `${pct}%` }} /></div>
-                    <small><b>{e.confirmed}/{e.seats}</b> confirmed{e.attended ? ` · ${e.attended} came` : ""}{e.pending ? ` · ${e.pending} waiting for the team` : ""}</small></div>
+                    <small><b>{e.confirmed}/{e.seats}</b> confirmed · {Math.max(0, e.seats - e.confirmed)} seats left{e.attended ? ` · ${e.attended} came` : ""}{e.pending ? ` · ${e.pending} new requests` : ""}<WaitCount planRef={e.plan_ref} /></small></div>
                 )}
                 {(e.display_status === "active" || e.display_status === "completed") && <div className="hd-who"><span>Who&apos;s coming</span><WhoComing planRef={e.plan_ref} seats={e.seats} /></div>}
                 <div className="acts">

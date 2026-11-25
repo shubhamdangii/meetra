@@ -25,6 +25,7 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
   const sorted = useMemo(() => [...plans].sort((a, b) => Math.abs(a.day) - Math.abs(b.day) || a.date.getTime() - b.date.getTime()), [plans]);
   const [plan, setPlan] = useState(sorted[0]?.id ?? "");
   const [lists, setLists] = useState<Record<string, G[]>>({});
+  const [sure, setSure] = useState<Record<string, Set<number>>>({});
   const [scan, setScan] = useState(false);
   const [hit, setHit] = useState<Hit | null>(null);
   const [code, setCode] = useState("");
@@ -35,6 +36,8 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
     const { data, error } = await auth.client.rpc(guestsFn, { p_plan_ref: ref });
     if (error) return;
     setLists((l) => ({ ...l, [ref]: (data as G[]).filter((g) => g.status === "approved" || g.status === "attended") }));
+    const rc = await auth.client.rpc("plan_reconfirmed", { p_plan_ref: ref });
+    if (!rc.error) setSure((s) => ({ ...s, [ref]: new Set(((rc.data ?? []) as { request_id: number }[]).map((x) => x.request_id)) }));
   }, [auth.client, guestsFn]);
   const loadAll = useCallback(() => { sorted.forEach((p) => loadOne(p.id)); }, [sorted, loadOne]);
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -119,7 +122,7 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
               <div key={g.request_id} className={`ci-row ${inn ? "in" : ""}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {g.avatar_url ? <img src={g.avatar_url} alt="" /> : <span className="ph">{(g.display_name || "?")[0]}</span>}
-                <span className="ci-name"><b>{g.full_name || g.display_name}{g.party_size > 1 ? " +1" : ""}</b><small>#{String(g.request_id).padStart(5, "0")}{g.phone ? ` · ${g.phone}` : ""}</small></span>
+                <span className="ci-name"><b>{g.full_name || g.display_name}{g.party_size > 1 ? " +1" : ""}</b><small>#{String(g.request_id).padStart(5, "0")}{g.phone ? ` · ${g.phone}` : ""}{sure[plan]?.has(g.request_id) ? " · ✅ said I'm in" : ""}</small></span>
                 {inn ? <button className="pill on" onClick={() => checkIn(g.request_id, true, plan)} title="Undo">✓ In</button>
                   : <button className="pill" onClick={() => checkIn(g.request_id, false, plan)}>Check in</button>}
               </div>
