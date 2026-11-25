@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   manifest: `${BASE}/manifest.webmanifest`,
   appleWebApp: { capable: true, title: CONFIG.brand, statusBarStyle: "default" },
 };
-export const viewport: Viewport = { themeColor: "#FFF7EC", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#FFF7EC", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-visual" };
 
 // Content Security Policy: the browser refuses anything not listed here (blocks injected
 // scripts, unknown trackers, framing tricks). GitHub Pages can't send security headers,

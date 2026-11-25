@@ -63,6 +63,9 @@ export function EventTypePicker({ type, image, onChange }: { type: string; image
   const folder = type && FOLDERS[type] ? FOLDERS[type].map((f) => typeImagePath(type, f)) : [];
   const options = [...(uploads[type] ?? []), ...folder];
   const known = !type || EVENT_TYPES.includes(type);
+  // "Other": the admin/host writes their own event type (photos uploaded for it are saved under that name)
+  const [otherOpen, setOtherOpen] = useState(false);
+  const other = otherOpen || !known;
 
   async function add(files: FileList | null) {
     if (!files?.length || !auth.client || !type) return;
@@ -79,14 +82,18 @@ export function EventTypePicker({ type, image, onChange }: { type: string; image
   return (
     <div className="field span2 type-pick">
       <label htmlFor="ev-type">Event type</label>
-      <select id="ev-type" value={known ? type : "__custom"} onChange={(e) => {
+      <select id="ev-type" value={other ? "__other" : type || "__none"} onChange={(e) => {
+        if (e.target.value === "__other") { setOtherOpen(true); onChange({ event_type: "", image_url: "" }); return; }
+        setOtherOpen(false);
         const t = e.target.value === "__none" ? "" : e.target.value;
         onChange({ event_type: t, image_url: typeImages(t)[0] ? typeImagePath(t, FOLDERS[t][0]) : "" });
       }}>
         <option value="__none">Choose an event type…</option>
-        {!known && <option value="__custom">{type}</option>}
         {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}{FOLDERS[t]?.length ? ` (${FOLDERS[t].length} photo${FOLDERS[t].length > 1 ? "s" : ""})` : ""}</option>)}
+        <option value="__other">✦ Other (write your own)</option>
       </select>
+      {other && <input aria-label="Your event type" value={type} maxLength={60} placeholder="e.g. Chess Café, Poetry Picnic" autoFocus={otherOpen && !type}
+        onChange={(e) => onChange({ event_type: e.target.value, image_url: image && !image.startsWith("/images/") ? image : "" })} />}
       {type && <>
         <small className="muted">Tap a photo to use it on the event card. {options.length ? "" : "No photos for this type yet, add one below."}</small>
         {options.length > 0 && (

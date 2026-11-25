@@ -10,6 +10,7 @@ import { useAuth } from "../AuthProvider";
 import type { AdminEvent } from "./Events";
 import { ApproveHostDialog, type HostApp } from "./ApproveHost";
 import { compressImage } from "@/lib/imageCompress";
+import { PhotoCropper } from "../PhotoCropper";
 import { CITIES, Chip, Empty, Modal, Stars, cityName, fmtDT, useAsk, useCall, useRpc } from "./shared";
 
 export type HostRow = {
@@ -45,6 +46,7 @@ export function validateHost(f: HostFormValue): string | null {
 export function HostForm({ value, onChange }: { value: HostFormValue; onChange: (f: HostFormValue) => void }) {
   const auth = useAuth(); const { toast } = useApp();
   const [busy, setBusy] = useState<"photo" | "gallery" | null>(null);
+  const [crop, setCrop] = useState<File | null>(null);
   const set = (k: keyof HostFormValue, v: string) => onChange({ ...value, [k]: v });
   async function pick(files: FileList | null, kind: "photo" | "gallery") {
     if (!files?.length || !auth.client) return;
@@ -71,7 +73,8 @@ export function HostForm({ value, onChange }: { value: HostFormValue; onChange: 
         <div className="hf-photo">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {value.photo_url ? <img src={value.photo_url} alt="" /> : <span>{value.name[0] ?? "?"}</span>}
-          <label className="btn btn-white btn-sm">{busy === "photo" ? "Uploading…" : value.photo_url ? "Change" : "Upload"}<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => pick(e.target.files, "photo")} /></label>
+          <label className="btn btn-white btn-sm">{busy === "photo" ? "Uploading…" : value.photo_url ? "Change" : "Upload"}<input type="file" accept="image/*" hidden onChange={(e) => { const x = e.target.files?.[0]; if (x) setCrop(x); e.target.value = ""; }} /></label>
+          <PhotoCropper file={crop} onCancel={() => setCrop(null)} onDone={(x) => { setCrop(null); const dt = new DataTransfer(); dt.items.add(x); pick(dt.files, "photo"); }} />
           {value.photo_url && <button type="button" className="linkish" onClick={() => set("photo_url", "")}>Remove</button>}
         </div></div>
       <div className="field span2"><label>Bio (shown on the site)</label><textarea rows={3} maxLength={400} value={value.bio} onChange={(e) => set("bio", e.target.value)} /></div>

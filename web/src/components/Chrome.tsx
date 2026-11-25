@@ -145,6 +145,23 @@ function ProfileNudge() {
 
 function TabBar({ active }: { active: string }) {
   const { session } = useAuth();
+  const path = usePathname();
+  // keyboard open (a text field focused) → hide the bar instead of letting it float up over the page
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const isField = (t: EventTarget | null) => t instanceof HTMLElement && (t.matches("input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),textarea,select") || t.isContentEditable);
+    const on = (e: FocusEvent) => { if (isField(e.target)) setTyping(true); };
+    const off = () => setTimeout(() => setTyping(isField(document.activeElement)), 60);
+    document.addEventListener("focusin", on); document.addEventListener("focusout", off);
+    return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
+  }, []);
+  // every tab tap lands at the top of the page (same tab again = scroll up)
+  const toTop = (href: string) => {
+    const norm = (p: string) => p.replace(/\/$/, "") || "/";
+    const same = norm(path) === norm(href);
+    if (same) window.scrollTo({ top: 0, behavior: "smooth" });
+    else requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }));
+  };
   const tabs = [
     { key: "home", href: "/", label: "Home", d: I.home },
     { key: "events", href: "/events/", label: "Explore", d: I.explore },
@@ -152,11 +169,11 @@ function TabBar({ active }: { active: string }) {
     { key: "me", href: session ? "/profile/" : "/login/", label: session ? "Account" : "Log in", d: I.me },
   ];
   return (
-    <nav className="tabbar" aria-label="Main (mobile)">
+    <nav className={`tabbar${typing ? " typing" : ""}`} aria-label="Main (mobile)">
       {tabs.map((t) => {
         const on = active === t.key;
         return (
-          <Link key={t.key} href={t.href} className={on ? "active" : ""} aria-current={on ? "page" : undefined} onClick={() => buzz()}>
+          <Link key={t.key} href={t.href} className={on ? "active" : ""} aria-current={on ? "page" : undefined} onClick={() => { buzz(); toTop(t.href); }}>
             {on && <motion.i layoutId="tab-on" className="tab-bg" transition={{ type: "spring", stiffness: 480, damping: 34 }} />}
             <motion.span key={String(on)} initial={on ? { scale: 0.5, y: 6 } : false} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 520, damping: 14 }}><Icon d={t.d} /></motion.span>
             <b>{t.label}</b>

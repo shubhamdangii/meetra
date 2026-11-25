@@ -343,12 +343,13 @@ function RealHost({ id, planRef }: { id: number; planRef: string }) {
   }, [auth.client, id, planRef]);
   if (!h) return <div className="skeleton" style={{ minHeight: 90 }} />;
   return (
-    <Reveal className="host-row" style={{ marginBottom: 14 }}>
+    <Reveal className="host-row host-row-link" style={{ marginBottom: 14 }}>
+      <Link href={`/host-profile/?id=${id}`} className="host-row-hit" aria-label={`Open ${h.name}'s host profile`} />
       <div className="av" style={{ background: "#6C4CF5" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {h.photo_url ? <img src={h.photo_url} alt={h.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : h.name[0]}
       </div>
-      <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3><Link href={`/host-profile/?id=${id}`} style={{ textDecoration: "underline", textDecorationThickness: 2, textUnderlineOffset: 4 }}>{h.name}</Link> <span className="verified">✓</span></h3>
+      <div><span className="eyebrow">{CONFIG.brand} host · verified</span><h3><span className="host-name-u">{h.name}</span> <span className="verified">✓</span> <span className="host-go" aria-hidden="true">→</span></h3>
         {r && r.reviews > 0 ? <p className="host-rating"><b>★ {Number(r.avg_rating).toFixed(1)}</b> / 5 · {r.reviews} review{r.reviews === 1 ? "" : "s"}</p> : <p className="host-rating muted">New host · no reviews yet</p>}
         {h.bio && <p className="muted">{h.bio}</p>}
         {rev.length > 0 && <ul className="host-reviews">{rev.map((x, i) => <li key={i}><b>{"★".repeat(x.rating)}</b> “{x.comment}” <small>– {x.first_name}</small></li>)}</ul>}

@@ -1,5 +1,6 @@
 "use client";
 import { compressImage } from "@/lib/imageCompress";
+import { PhotoCropper } from "../PhotoCropper";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -97,6 +98,7 @@ export default function ProfilePage() {
   const todo = parts.filter((p) => !p[2]).sort((a, b) => b[1] - a[1]);
   const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })();
 
+  const [cropFile, setCropFile] = useState<File | null>(null);
   async function upload(file: File) {
     if (!auth.client || !auth.session || !me) { setAvatar(URL.createObjectURL(file)); return; }
     setPhotoMsg("Uploading…");
@@ -190,8 +192,9 @@ export default function ProfilePage() {
             </motion.div>
             <div>
               <label id="photo-btn" className="btn btn-white btn-sm" htmlFor="photo" style={{ cursor: "pointer" }}>Upload photo</label>
-              <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-              <p className="hint" style={{ marginTop: 8 }}>JPG, PNG or WebP. We resize it for you.</p>
+              <input id="photo" type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f); e.target.value = ""; }} />
+              <PhotoCropper file={cropFile} onCancel={() => setCropFile(null)} onDone={(f) => { setCropFile(null); upload(f); }} />
+              <p className="hint" style={{ marginTop: 8 }}>Pick a photo, then choose the part that goes in the circle.</p>
               <p className="form-msg ok">{photoMsg}</p>
             </div>
           </div>
