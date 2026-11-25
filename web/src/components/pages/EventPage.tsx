@@ -33,7 +33,7 @@ const MOBILE_STATUS: Record<string, string> = { pending: "⏳ Requested", approv
 
 export default function EventPage() {
   const params = useSearchParams();
-  const { ready, byId, upcoming, today, addRequest, toast, confirm } = useApp();
+  const { ready, customLoaded, byId, upcoming, today, addRequest, toast, confirm } = useApp();
   const auth = useAuth();
   const rawId = params.get("id") ?? "";
 
@@ -88,7 +88,8 @@ export default function EventPage() {
     if (myReq?.status === "waitlisted" && auth.client && e) auth.client.rpc("my_waitlist_position", { p_plan_ref: e.id }).then(({ data }) => setPos(data ?? null));
   }, [myReq, auth.client, e]);
 
-  if (!ready) return <div className="wrap" style={{ padding: "60px 0" }}><div className="skeleton" style={{ minHeight: 420 }} /></div>;
+  // real events (x…) come from the database: wait for them before saying "not found"
+  if (!ready || (!e && /^x\d/.test(rawId) && !customLoaded)) return <div className="wrap" style={{ padding: "60px 0" }}><div className="skeleton" style={{ minHeight: 420 }} /></div>;
   if (!e) return (
     <section className="wrap page-hero">
       <h1>This plan has <span className="serif">wandered off.</span></h1><p>It may have finished or been renamed.</p>

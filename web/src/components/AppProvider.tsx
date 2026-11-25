@@ -11,6 +11,7 @@ export type ConfirmOpts = { title: string; body?: string; ok?: string; cancel?: 
 type Req = { id: string; name: string; friend: boolean; at: number };
 type Ctx = {
   ready: boolean;                       // false during the static pre-render; true in the browser
+  customLoaded: boolean;                // real events (from the database) have arrived
   today: Date;
   all: MeetEvent[]; upcoming: MeetEvent[]; past: MeetEvent[];
   byId: (id: string) => MeetEvent | undefined;
@@ -27,6 +28,7 @@ export const useApp = () => { const c = useContext(AppCtx); if (!c) throw new Er
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [customLoaded, setCustomLoaded] = useState(false);
   const [today, setToday] = useState(() => new Date(0));
   const [city, setCityState] = useState(CONFIG.defaultCity);
   const [saved, setSaved] = useState<string[]>([]);
@@ -54,7 +56,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Plans the team added from the admin page (launches, specials).
     const sb = getSupabase();
     const from = new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10);
-    sb?.from("custom_plans").select("*").gte("starts_on", from).then(({ data }) => { if (data?.length) setCustom(data as CustomPlan[]); });
+    if (!sb) setCustomLoaded(true);
+    sb?.from("custom_plans").select("*").gte("starts_on", from).then(({ data }) => { if (data?.length) setCustom(data as CustomPlan[]); setCustomLoaded(true); }, () => setCustomLoaded(true));
   }, []);
 
   const data = useMemo(() => (ready ? buildEvents(today, custom) : { all: [], upcoming: [], past: [] }), [ready, today, custom]);
@@ -67,7 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value: Ctx = {
-    ready, today, ...data,
+    ready, customLoaded, today, ...data,
     byId: (id) => index.get(id),
     city,
     setCity: (c) => { setCityState(c); store.set("mt-city", c); },
