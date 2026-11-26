@@ -9,3 +9,7 @@ supabase/.temp/
 out/
 next-env.d.ts
 *.tsbuildinfo
+
+# Playwright output
+web/test-results/
+web/playwright-report/
