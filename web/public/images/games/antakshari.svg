@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+<defs>
+  <pattern id="dots" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.6" fill="#16122B" opacity=".16"/></pattern>
+  <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#fff" opacity=".07"/></pattern>
+  <clipPath id="card"><rect x="0" y="0" width="400" height="500" rx="28"/></clipPath>
+</defs>
+<g clip-path="url(#card)">
+  <rect width="400" height="500" fill="#FFD6E3"/>
+  <g fill="#ffe4ed" opacity=".55"><path d="M200 210 L900 210 L889.3654271085456 331.5537243668512 Z"/><path d="M200 210 L857.7848345501359 449.4141003279681 L806.2177826491071 560 Z"/><path d="M200 210 L736.2311101832846 659.9513267805775 L649.9513267805776 746.2311101832846 Z"/><path d="M200 210 L550 816.217782649107 L439.4141003279682 867.7848345501358 Z"/><path d="M200 210 L321.55372436685127 899.3654271085456 L200.00000000000006 910 Z"/><path d="M200 210 L78.44627563314879 899.3654271085456 L-39.4141003279681 867.7848345501359 Z"/><path d="M200 210 L-149.99999999999983 816.2177826491071 L-249.95132678057757 746.2311101832846 Z"/><path d="M200 210 L-336.2311101832845 659.9513267805776 L-406.2177826491071 560 Z"/><path d="M200 210 L-457.78483455013577 449.4141003279682 L-489.36542710854565 331.5537243668512 Z"/><path d="M200 210 L-500 210.00000000000009 L-489.36542710854565 88.44627563314867 Z"/><path d="M200 210 L-457.7848345501359 -29.41410032796807 L-406.217782649107 -140.00000000000006 Z"/><path d="M200 210 L-336.2311101832847 -239.95132678057746 L-249.95132678057763 -326.2311101832845 Z"/><path d="M200 210 L-150.00000000000028 -396.217782649107 L-39.414100327968555 -447.78483455013577 Z"/><path d="M200 210 L78.44627563314877 -479.36542710854565 L199.99999999999986 -490 Z"/><path d="M200 210 L321.553724366851 -479.36542710854565 L439.41410032796773 -447.784834550136 Z"/><path d="M200 210 L550 -396.217782649107 L649.9513267805775 -326.2311101832847 Z"/><path d="M200 210 L736.2311101832845 -239.9513267805777 L806.2177826491069 -140.00000000000028 Z"/><path d="M200 210 L857.7848345501359 -29.414100327968015 L889.3654271085455 88.4462756331481 Z"/></g>
+  <rect width="400" height="500" fill="url(#dots)"/>
+  <circle cx="200" cy="210" r="112" fill="#b89aa3" />
+  <circle cx="200" cy="210" r="100" fill="#16122B"/>
+  <circle cx="200" cy="210" r="92" fill="#FFC93C"/>
+  <circle cx="200" cy="210" r="92" fill="url(#dots)"/>
+  <text x="200" y="244" font-size="96" text-anchor="middle" font-family="'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif">🎤</text>
+  <rect x="0" y="318" width="400" height="182" fill="#16122B"/>
+  <rect x="0" y="318" width="400" height="10" fill="#FFC93C"/>
+  <rect x="0" y="332" width="400" height="5" fill="#ffe4ed"/>
+  <g font-family="'Arial Black','Archivo Black',Impact,'Helvetica Neue',sans-serif" font-weight="900" font-size="46" text-anchor="middle" letter-spacing="1">
+    <g fill="#FFC93C" transform="translate(4 4)"><text x="200" y="388">ANTAKSHARI</text></g>
+    <g fill="#FFF7EC"><text x="200" y="388">ANTAKSHARI</text></g>
+  </g>
+  <text x="24" y="474" font-family="Georgia,'Times New Roman',serif" font-style="italic" font-weight="700" font-size="22" fill="#FFF7EC">meetra<tspan fill="#FFC93C">.</tspan></text>
+  <text x="376" y="474" text-anchor="end" font-family="'Courier New',monospace" font-weight="700" font-size="15" fill="#ffe4ed">GAME NO. 18</text>
+  <rect width="400" height="500" fill="url(#scan)"/>
+  <rect x="6" y="6" width="388" height="488" rx="24" fill="none" stroke="#16122B" stroke-width="6"/>
+</g>
+</svg>

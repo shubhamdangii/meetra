@@ -1,7 +1,7 @@
 "use client";
 // Brands/venues form: saved for the team (Admin → Brands), with an optional WhatsApp nudge.
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "../AppProvider";
 import { burstFrom } from "../fx";
 import { Reveal } from "../ui";
@@ -15,6 +15,7 @@ export function PartnerForm() {
   const { city, toast } = useApp();
   const [v, setV] = useState({ name: "", company: "", kind: "venue", phone: "", email: "", link: "", msg: "", trap: "" });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [done, setDone] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setV({ ...v, [k]: e.target.value });
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -28,10 +29,13 @@ export function PartnerForm() {
     setErr(""); setBusy(true);
     const btn = e.currentTarget.querySelector("button[type=submit]");
     const sb = getSupabase();
-    const { error } = sb ? await sb.rpc("submit_partner_lead", { p_name: v.name, p_company: v.company, p_kind: v.kind, p_city: city, p_phone: phone, p_email: v.email, p_link: v.link, p_message: v.msg })
-      : { error: { message: "Not connected" } };
+    const { data, error } = sb ? await sb.rpc("submit_partner_enquiry", { p_name: v.name, p_company: v.company, p_kind: v.kind, p_city: city, p_phone: phone, p_email: v.email, p_link: v.link, p_message: v.msg })
+      : { data: null, error: { message: "Not connected" } };
     setBusy(false);
     if (error) return setErr(error.message);
+    const code = (data as { code?: string } | null)?.code;
+    if (code) { try { const all = JSON.parse(localStorage.getItem(CODES_KEY) || "[]") as string[]; localStorage.setItem(CODES_KEY, JSON.stringify([code, ...all].slice(0, 20))); } catch { /* private mode */ } }
+    setTick((t) => t + 1);
     burstFrom(btn, ["🤝", "✨", "🎉"], 14); toast("Sent ✓ The team will reach out within 2 working days");
     setDone(`Hi ${CONFIG.brand}! I just sent a partnership enquiry for ${v.company} (${v.kind}).`);
   }
@@ -44,6 +48,7 @@ export function PartnerForm() {
             <div className="st-ic">🤝</div><b>Got it, {v.name.split(" ")[0]}!</b>
             <p>Your enquiry is with the {CONFIG.brand} team. We reply within 2 working days on WhatsApp or email.</p>
             <a className="btn btn-white btn-sm" href={whatsappLink(done)} target="_blank" rel="noopener noreferrer" style={{ marginTop: 10 }}>In a hurry? Ping us on WhatsApp</a>
+            <button className="linkish" type="button" onClick={() => { setDone(null); setV({ ...v, company: "", msg: "", link: "" }); }}>Send another enquiry</button>
           </motion.div>
         ) : (
           <motion.form key="form" exit={{ opacity: 0 }} onSubmit={submit} noValidate>
@@ -72,6 +77,35 @@ export function PartnerForm() {
           </motion.form>
         )}
       </AnimatePresence>
+      <MyEnquiries tick={tick} />
     </Reveal>
+  );
+}
+
+const CODES_KEY = "mt-partner-codes";
+const LEAD_STATUS: Record<string, [string, string]> = {
+  new: ["📨 Received", "The team will reply within 2 working days."], talking: ["💬 In discussion", "Someone from the team is talking to you."],
+  won: ["🎉 Partnered", "Welcome aboard!"], not_now: ["🕒 Not right now", "We'll keep your details for future plans."],
+};
+/** Enquiries sent from this device (or while logged in), with their current status. */
+function MyEnquiries({ tick }: { tick: number }) {
+  const [rows, setRows] = useState<{ id: number; company: string; kind: string; status: string; created_at: string; updated_at: string }[] | null>(null);
+  useEffect(() => {
+    let codes: string[] = [];
+    try { codes = JSON.parse(localStorage.getItem(CODES_KEY) || "[]"); } catch { /* ignore */ }
+    const sb = getSupabase(); if (!sb) return;
+    sb.rpc("my_partner_enquiries", { p_codes: codes }).then(({ data, error }) => setRows(error ? [] : ((data as typeof rows) ?? [])));
+  }, [tick]);
+  if (!rows || !rows.length) return null;
+  return (
+    <div className="my-leads">
+      <b>Your enquiries</b>
+      {rows.map((r) => (
+        <div key={r.id} className={`ml-row s-${r.status}`}>
+          <div><b>{r.company}</b><small>{r.kind} · sent {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</small></div>
+          <span title={LEAD_STATUS[r.status]?.[1]}>{LEAD_STATUS[r.status]?.[0] ?? r.status}</span>
+        </div>
+      ))}
+    </div>
   );
 }

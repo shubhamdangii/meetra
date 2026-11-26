@@ -121,7 +121,7 @@ export function DiaryView({ planRef }: { planRef: string }) {
       <p className="muted">{ps.length} photo{ps.length === 1 ? "" : "s"}{ps.length ? `, from ${t(ps[0].taken_at)} to ${t(ps[ps.length - 1].taken_at)}` : ""}.</p>
       {canEdit && <div className="acts" style={{ margin: "8px 0" }}><DiaryUploader planRef={planRef} label="📸 Add more photos" /></div>}
       {!ps.length && <p className="muted">No photos yet.</p>}
-      <ol className="moments">
+      <ol className="d-moments">
         {groups.map((g) => (
           <li key={g[0].id}>
             <div className="m-time"><b>{t(g[0].taken_at)}{g.length > 1 && t(g[g.length - 1].taken_at) !== t(g[0].taken_at) ? ` – ${t(g[g.length - 1].taken_at)}` : ""}</b><small>{g.length} photo{g.length > 1 ? "s" : ""}</small></div>

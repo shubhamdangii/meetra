@@ -26,6 +26,30 @@ const LINKS = [
   { key: "host", href: "/host/", label: "Host", icon: "✨" },
 ];
 
+/** Desktop nav: secondary pages grouped under "More" so the bar stays clean. */
+const MORE_KEYS = ["swipe", "past", "games"];
+const MORE = [
+  ["/swipe/", "🔥", "Discover", "Swipe through plans"], ["/past/", "📸", "Past nights", "Photo diaries"], ["/games/", "🎲", "Party games", "Decks, Mafia, Undercover…"],
+  ["/partners/", "🤝", "For brands & venues", "Host a series, sponsor, partner"], ["/about/", "💬", "How it works", "Safety, payments, rules"],
+] as const;
+function MoreMenu({ active }: { active: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useOutsideClose(open, () => setOpen(false));
+  const path = usePathname();
+  useEffect(() => { setOpen(false); }, [path]);
+  const on = MORE_KEYS.includes(active) || /^\/(partners|about)/.test(path ?? "");
+  return (
+    <div className="more-nav" ref={ref}>
+      <button type="button" className={on ? "active" : ""} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>More <span aria-hidden="true">▾</span></button>
+      <AnimatePresence>{open && (
+        <motion.div className="more-pop" role="menu" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+          {MORE.map(([href, ic, t, s]) => <Link key={href} href={href} role="menuitem"><span aria-hidden="true">{ic}</span><div><b>{t}</b><small>{s}</small></div></Link>)}
+        </motion.div>
+      )}</AnimatePresence>
+    </div>
+  );
+}
+
 /* Line icons for the phone tab bar. */
 const I = {
   home: <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" />,
@@ -240,12 +264,13 @@ export function Header() {
         <div className="wrap nav">
           <Link className="logo" href="/" aria-label={`${CONFIG.brand} home`}>{CONFIG.brand}<i>.</i></Link>
           <nav className="nav-links" aria-label="Main">
-            {LINKS.map((l) => (
+            {LINKS.filter((l) => !MORE_KEYS.includes(l.key)).map((l) => (
               <Link key={l.key} href={l.href} className={active === l.key ? "active" : ""} style={{ position: "relative" }}>
                 {active === l.key && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
                 <span style={{ position: "relative" }}>{l.key === "host" && hostSt && hostSt !== "none" ? "Host desk" : l.label}</span>
               </Link>
             ))}
+            <MoreMenu active={active} />
           </nav>
           <div className="nav-right"><CityPicker /><AccountSlot /><MobileMenu /></div>
         </div>

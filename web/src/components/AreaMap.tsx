@@ -1,6 +1,6 @@
 "use client";
 // Lightweight map: OpenStreetMap tiles laid out by hand (no map library,
-// no iframe). Drag to pan, +/- to zoom. Pins are areas, never exact venues.
+// no iframe). Drag to pan; pinch, double-tap, ctrl/trackpad scroll or +/- to zoom. Pins are areas, never exact venues.
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { project } from "@/lib/geo";
@@ -18,6 +18,10 @@ export function AreaMap({ center, zoom: z0 = 13, pins = [], radius = 0, height =
   const [z, setZ] = useState(z0);
   const [off, setOff] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d: number } | null>(null);
+  const lastTap = useRef(0);
+  const st = useRef({ z: z0, off: { x: 0, y: 0 }, w: 0 });
 
   useEffect(() => {
     const el = box.current; if (!el) return;
@@ -51,14 +55,68 @@ export function AreaMap({ center, zoom: z0 = 13, pins = [], radius = 0, height =
       for (let ty = Math.floor(top / 256); ty <= Math.floor((top + height) / 256); ty++)
         if (ty >= 0 && ty < max) tiles.push({ k: `${z}/${tx}/${ty}`, x: tx * 256 - left, y: ty * 256 - top, src: tile(z, ((tx % max) + max) % max, ty) });
   }
-  const zoomBy = (d: number) => { setZ((v) => Math.max(8, Math.min(17, v + d))); setOff((o) => ({ x: o.x * 2 ** d, y: o.y * 2 ** d })); };
+  st.current = { z, off, w };
+  /** Zoom by d levels keeping the point (px, py) inside the map where it is (default: the middle). */
+  const zoomAt = (d: number, px?: number, py?: number) => {
+    const { z: cz, off: o, w: cw } = st.current;
+    const nz = Math.max(8, Math.min(17, cz + d)); const k = 2 ** (nz - cz);
+    if (nz === cz) return;
+    const x = px ?? cw / 2, y = py ?? height / 2;
+    const no = { x: k * (o.x + cw / 2 - x) + x - cw / 2, y: k * (o.y + height / 2 - y) + y - height / 2 };
+    st.current = { z: nz, off: no, w: cw };
+    setZ(nz); setOff(no);
+  };
+  const zoomBy = (d: number) => zoomAt(d);
+  const local = (e: { clientX: number; clientY: number }) => { const r = box.current!.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  // ctrl/⌘ + wheel and trackpad pinch zoom the map (plain scrolling still scrolls the page)
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    let acc = 0;
+    const onWheel = (ev: WheelEvent) => {
+      if (!ev.ctrlKey && !ev.metaKey) return;
+      ev.preventDefault();
+      acc += -ev.deltaY;
+      if (Math.abs(acc) >= 40) { const p = local(ev); zoomAt(acc > 0 ? 1 : -1, p.x, p.y); acc = 0; }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const mPerPx = (40075016 * Math.cos((center[0] * Math.PI) / 180)) / (256 * 2 ** z);
 
   return (
     <div className="amap" ref={box} style={{ height }}
-      onPointerDown={(e) => { drag.current = { x: e.clientX, y: e.clientY, ox: off.x, oy: off.y, moved: false }; }}
-      onPointerMove={(e) => { const d = drag.current; if (!d) return; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.abs(dx) + Math.abs(dy) > 4) { d.moved = true; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } setOff({ x: d.ox + dx, y: d.oy + dy }); }}
-      onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
+      onPointerDown={(e) => {
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pts.current.size === 2) {
+          const [a, b] = [...pts.current.values()];
+          pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y) }; drag.current = null; return;
+        }
+        // double-tap / double-click zooms in where you tapped
+        const now = Date.now();
+        if (now - lastTap.current < 300) { const p = local(e); zoomAt(1, p.x, p.y); lastTap.current = 0; return; }
+        lastTap.current = now;
+        drag.current = { x: e.clientX, y: e.clientY, ox: off.x, oy: off.y, moved: false };
+      }}
+      onPointerMove={(e) => {
+        if (!pts.current.has(e.pointerId)) return;
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pinch.current && pts.current.size === 2) {
+          const [a, b] = [...pts.current.values()];
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          const ratio = dist / Math.max(1, pinch.current.d);
+          if (ratio > 1.6 || ratio < 0.62) {
+            const mid = local({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
+            zoomAt(ratio > 1 ? 1 : -1, mid.x, mid.y); pinch.current = { d: dist };
+          }
+          return;
+        }
+        const d = drag.current; if (!d) return;
+        const dx = e.clientX - d.x, dy = e.clientY - d.y;
+        if (Math.abs(dx) + Math.abs(dy) > 4) { d.moved = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* pointer already gone */ } }
+        setOff({ x: d.ox + dx, y: d.oy + dy });
+      }}
+      onPointerUp={(e) => { pts.current.delete(e.pointerId); if (pts.current.size < 2) pinch.current = null; drag.current = null; }}
+      onPointerCancel={(e) => { pts.current.delete(e.pointerId); pinch.current = null; drag.current = null; }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {tiles.map((t) => <img key={t.k} src={t.src} alt="" draggable={false} className="amap-tile" style={{ transform: `translate(${t.x}px,${t.y}px)` }} />)}
       {radius > 0 && w > 0 && (() => { const p = project(center[0], center[1], z); const r = radius / mPerPx; return (

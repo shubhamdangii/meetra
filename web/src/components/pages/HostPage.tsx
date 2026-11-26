@@ -210,7 +210,7 @@ function HostApply() {
                         <div className="field"><label htmlFor="hc">Kind of plan</label><select id="hc" value={v.category} onChange={set("category")}>{cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}<option value="other">✦ Something else</option></select></div>
                       </div>
                       <div className="field"><label htmlFor="har">Area *</label><input id="har" maxLength={60} placeholder={v.city_slug === "jaipur" ? "e.g. C-Scheme" : "e.g. Prahlad Nagar"} value={v.area} onChange={set("area")} /></div>
-                      <div className="field-row">
+                      <div className="field-row dt-row">
                         <div className="field"><label htmlFor="hs">Starts *</label><input id="hs" type="datetime-local" min={nowLocalInput()} value={v.starts} onChange={set("starts")} /></div>
                         <div className="field"><label htmlFor="he2">Ends *</label><input id="he2" type="datetime-local" min={v.starts || nowLocalInput()} value={v.ends} onChange={set("ends")} /></div>
                       </div>

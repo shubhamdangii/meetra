@@ -5,7 +5,7 @@ import { useApp } from "./AppProvider";
 import { burstFrom, buzz, useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
-import { DOW, MON, type MeetEvent, eventUrl, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
+import { DOW, MON, type MeetEvent, bookingState, eventUrl, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
 import { usePlanCount } from "@/lib/eventMedia";
 
 export const ease = [0.2, 0.8, 0.2, 1] as const;
@@ -75,14 +75,16 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
   const cnt = usePlanCount(e.id, real);
   const left = cnt ? Math.max(0, e.seats - cnt.approved_seats) : e.left;
   const low = left <= 4;
+  const st = bookingState(e);
   const tilt = useTilt(6);
   return (
-    <motion.article className="card" style={{ ...tilt.style, ["--gx" as string]: tilt.glareX }} {...tilt.handlers}
+    <motion.article className={`card${st !== "open" ? " card-closed" : ""}`} style={{ ...tilt.style, ["--gx" as string]: tilt.glareX }} {...tilt.handlers}
       initial={{ opacity: 0, y: 48, scale: 0.92, rotate: index % 2 ? 3 : -3 }} whileInView={{ opacity: 1, y: 0, scale: 1, rotate: 0 }} viewport={{ once: true, margin: "0px 0px -40px 0px" }}
       transition={{ type: "spring", stiffness: 170, damping: 19, delay: (index % 2) * 0.08 }}
       whileHover={{ y: -4, boxShadow: "7px 7px 0 #16122B" }} whileTap={{ scale: 0.97 }}>
       <span className="glare" aria-hidden="true" />
       <Poster e={e} />
+      {st !== "open" && <span className="closed-badge">{st === "ended" ? "Ended" : "Booking closed"}</span>}
       <SaveButton id={e.id} />
       {e.tags.length > 0 && <div className="tagrow">{e.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
       <div className="card-body">
@@ -94,9 +96,10 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
           <span><b>{priceShort(e)}</b> {priceLabel(e)}</span>
           {left === 0 && <span className="seats-left">Waitlist</span>}
         </div>
+        {st !== "open" ? <p className="card-stats closed"><b>{st === "ended" ? "🏁 Event ended" : "🔒 Registration closed"}</b></p> :
         <p className={`card-stats${low ? " low" : ""}`}><b>{left === 0 ? "Full · join the waitlist" : `${left} of ${e.seats} seats left`}</b>
           {cnt && cnt.approved_seats > 0 && <> · {cnt.approved_seats} accepted</>}
-          {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</p>
+          {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</p>}
       </div>
       <Link className="card-link" href={eventUrl(e)} aria-label={e.title} />
     </motion.article>

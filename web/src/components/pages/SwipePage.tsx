@@ -7,7 +7,7 @@ import { useApp } from "../AppProvider";
 import { deviceId, useAuth } from "../AuthProvider";
 import { Poster } from "../ui";
 import { burst, buzz } from "../fx";
-import { type MeetEvent, eventUrl, hostLine, hostNames, priceLabel, priceShort, relDay } from "@/lib/events";
+import { type MeetEvent, eventUrl, hostLine, hostNames, priceLabel, priceShort, relDay, bookingState } from "@/lib/events";
 import { store } from "@/lib/store";
 
 type Reaction = "interested" | "skip";
@@ -60,7 +60,11 @@ export default function SwipePage() {
   // One card per plan (its next date) in the chosen city.
   const deck = useMemo(() => {
     const seen = new Set<string>();
-    return upcoming.filter(inCity).filter((e) => { const k = e.key + e.city; if (seen.has(k)) return false; seen.add(k); return true; });
+    // every plan still taking requests: real events from the database first (each one is its own card), then one card per example plan
+    const open = upcoming.filter(inCity).filter((e) => bookingState(e) === "open");
+    const real = open.filter((e) => e.key.startsWith("x"));
+    const samples = open.filter((e) => !e.key.startsWith("x")).filter((e) => { const k = e.key + e.city; if (seen.has(k)) return false; seen.add(k); return true; });
+    return [...real, ...samples];
   }, [upcoming, inCity]);
   const left = deck.filter((e) => !swipes[e.id]);
   const top = left[0];

@@ -1560,9 +1560,9 @@ html{scroll-padding-top:130px}
 .dc-n{position:absolute;top:10px;left:10px;background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800}
 .diary{display:grid;gap:8px;padding:20px 0 40px}
 .diary h1{font-size:clamp(32px,7vw,56px);letter-spacing:-.04em;line-height:1}
-.moments{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:22px;border-left:3px solid #E7E0F2;padding-left:16px}
-.moments>li{position:relative;display:grid;gap:8px}
-.moments>li::before{content:"";position:absolute;left:-24px;top:4px;width:13px;height:13px;border-radius:50%;background:var(--violet);border:3px solid var(--cream)}
+.d-moments{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:22px;border-left:3px solid #E7E0F2;padding-left:16px}
+.d-moments>li{position:relative;display:grid;gap:8px}
+.d-moments>li::before{content:"";position:absolute;left:-24px;top:4px;width:13px;height:13px;border-radius:50%;background:var(--violet);border:3px solid var(--cream)}
 .m-time{display:flex;gap:8px;align-items:baseline}
 .m-time small{color:var(--muted)}
 .m-grid{display:grid;gap:8px;grid-template-columns:1fr}
@@ -1574,3 +1574,43 @@ html{scroll-padding-top:130px}
 .m-edit{margin-left:6px}
 .m-edit button{border:0;background:none;cursor:pointer;padding:0 3px}
 .card-stats.low b{color:#B3134B}
+
+/* ---------- closed / ended events ---------- */
+.card-closed .poster,.card-closed img.photo{filter:grayscale(.85);opacity:.75}
+.card-closed h3{color:#6b6680}
+.card-stats.closed b{color:#6b6680}
+.closed-badge{position:absolute;top:10px;right:52px;z-index:3;background:var(--ink);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;letter-spacing:.02em}
+.status-card.s-closed{background:#F3F1F7}
+/* ---------- QA fixes 26 Nov ---------- */
+.gallery{min-width:0}
+/* invite card: Copy link / Share were white on white */
+.invite-card .btn-white{color:var(--ink);background:#fff}
+/* date & time fields: same height, left-aligned, never wider than the column (iOS/Android native pickers) */
+input[type=date],input[type=datetime-local],input[type=time]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;min-height:48px;text-align:left;line-height:1.2;background:#fff}
+input[type=date]::-webkit-date-and-time-value,input[type=datetime-local]::-webkit-date-and-time-value{text-align:left;margin:0}
+.field-row>.field{min-width:0}
+@media (max-width:560px){.field-row.dt-row{grid-template-columns:1fr !important;display:grid;gap:12px}}
+.amap{touch-action:none;user-select:none;-webkit-user-select:none}
+
+/* navbar "More" dropdown */
+.more-nav{position:relative}
+.more-nav>button{border:0;background:none;font:inherit;font-weight:600;padding:8px 14px;border-radius:999px;cursor:pointer;color:inherit}
+.more-nav>button.active,.more-nav>button[aria-expanded=true]{background:var(--ink);color:#fff}
+.more-pop{position:absolute;top:calc(100% + 8px);right:0;z-index:60;background:#fff;border:2px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:6px;display:grid;min-width:260px}
+.more-pop a{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:10px}
+.more-pop a:hover{background:#F3EFFF}
+.more-pop a>span{font-size:20px}
+.more-pop a div{display:grid}
+.more-pop a small{color:var(--muted);font-size:12px}
+/* partner enquiries status */
+.my-leads{margin-top:16px;display:grid;gap:8px;border-top:2px dashed #E4DDF0;padding-top:14px}
+.ml-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#FAF8FF;border-radius:12px;padding:10px 12px}
+.ml-row div{display:grid;min-width:0}
+.ml-row small{color:var(--muted);font-size:12px;text-transform:capitalize}
+.ml-row span{white-space:nowrap;font-weight:800;font-size:13px}
+/* retro game covers */
+.deck-face{overflow:hidden}
+.deck-face .game-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1}
+.deck-face .deck-count{position:absolute;top:10px;right:10px;z-index:2;background:#fff;border:2px solid var(--ink);border-radius:999px;padding:2px 9px;font-weight:800;font-size:12px}
+.party-cover{overflow:hidden;padding:0;background:var(--ink)}
+.party-cover img{width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block}

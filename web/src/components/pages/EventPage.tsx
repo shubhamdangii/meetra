@@ -8,7 +8,7 @@ import { useAuth } from "../AuthProvider";
 import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
 import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
-import { addressDropAt, catOf, fmtDay, typeImages, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
+import { addressDropAt, bookingState, catOf, eventUrl, fmtDay, typeImages, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
 import { CalendarButton, useLiveRefresh, useSeatStream } from "../plans";
 import { payForSeat, rupees } from "@/lib/razorpay";
 import { PhotoStrip } from "../Photos";
@@ -17,7 +17,7 @@ import { areaPoint } from "@/lib/geo";
 import { ExactLocation, WhoComing } from "../EventBits";
 import { useTypeUploads } from "@/lib/eventMedia";
 
-type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended"; party_size: number; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null } | null;
+type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended"; party_size: number; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null; auto_closed_at?: string | null } | null;
 
 const STATUS = {
   pending: ["⏳", "Request sent", "The team is reviewing requests. Seats go to the most complete profiles first."],
@@ -40,11 +40,12 @@ export default function EventPage() {
   // Old link to a past date? Show the next date of the same plan.
   const e = useMemo(() => {
     const found = byId(rawId);
-    if (found && found.day >= 0) return found;
+    if (found) return found;
     const key = rawId.replace(/-\d{8}$/, "");
-    return upcoming.find((x) => `${x.key}-${x.city}` === key) ?? found;
+    return upcoming.find((x) => `${x.key}-${x.city}` === key);
   }, [rawId, byId, upcoming]);
-  useEffect(() => { if (ready && e && e.id !== rawId && byId(rawId)) toast("That date has passed — showing the next one"); }, [ready, e, rawId, byId, toast]);
+  // the next date of the same plan (each date is its own event: its own requests and statuses)
+  const nextDate = useMemo(() => (e ? upcoming.find((x) => x.key === e.key && x.city === e.city && x.id !== e.id && x.date > e.date && bookingState(x) === "open") : undefined), [e, upcoming]);
   // Tab title ("Introverts' Dinner · Jaipur · meetra"). Set after Next applies its own page title.
   useEffect(() => {
     if (!e) return;
@@ -75,7 +76,7 @@ export default function EventPage() {
   }, [e, auth.client]);
   const loadMine = useCallback(() => {
     if (!e || !auth.client || !auth.me) { setMyReq(null); return; }
-    auth.client.from("plan_requests").select("id,status,party_size,paid_at,paid_amount,refund_status").eq("plan_ref", e.id).eq("user_id", auth.me.id).maybeSingle()
+    auth.client.from("plan_requests").select("id,status,party_size,paid_at,paid_amount,refund_status,auto_closed_at").eq("plan_ref", e.id).eq("user_id", auth.me.id).maybeSingle()
       .then(({ data }) => setMyReq(data as MyReq));
   }, [e, auth.client, auth.me]);
   useEffect(() => {
@@ -105,7 +106,10 @@ export default function EventPage() {
   const left = counts ? Math.max(0, e.seats - counts.approved_seats) : e.left;
   const full = left === 0;
   // real events close for requests at their booking deadline; sample plans once their day has passed
-  const closed = e.day < 0 || (!!e.bookingClosesAt && Date.now() >= e.bookingClosesAt.getTime());
+  const state = bookingState(e);
+  const closed = state !== "open";
+  const closedTitle = state === "ended" ? "This event has ended" : "Registration closed";
+  const closedText = state === "ended" ? "This date is over, so it no longer takes requests." : "This event is no longer accepting requests.";
   const pct = Math.round((1 - left / e.seats) * 100);
   const sameKey = upcoming.filter((x) => x.key === e.key && x.city === e.city && x.id !== e.id).slice(0, 4);
   const others = upcoming.filter((x) => x.city === e.city && x.key !== e.key && x.day <= e.day + 7).filter((x, i, a) => a.findIndex((y) => y.key === x.key) === i).slice(0, 4);
@@ -189,6 +193,7 @@ export default function EventPage() {
   };
 
   const showStatus = myReq && myReq.status !== "cancelled";
+  const lapsed = !!myReq && (!!myReq.auto_closed_at || (state === "ended" && (myReq.status === "pending" || myReq.status === "waitlisted")));
 
   return (
     <div className="wrap">
@@ -210,7 +215,7 @@ export default function EventPage() {
         <div>
           <motion.div className="ev-hero" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}><Poster e={e} title /></motion.div>
           <p className="lede">{e.blurb}</p>
-          <SectionNav price={priceShort(e)} cta={showStatus ? MOBILE_STATUS[myReq!.status] ?? "Your request" : full ? "Join waiting list" : "Request a seat"}
+          <SectionNav price={priceShort(e)} cta={showStatus ? (lapsed ? "Request closed" : MOBILE_STATUS[myReq!.status] ?? "Your request") : closed ? (state === "ended" ? "Event ended" : "Registration closed") : full ? "Join waiting list" : "Request a seat"}
             items={[...(gallery.length > 1 ? [["photos", "Photos"]] : []), ["unfolds", "How it unfolds"], ["going", "Who's coming"], ["host", "Host"], ["where", "Location"], ["before", "Before you go"]] as [string, string][]} />
 
           {gallery.length > 1 && (
@@ -284,11 +289,19 @@ export default function EventPage() {
             <AnimatePresence mode="wait">
               {waText ? (
                 <WhatsAppDone key="wa" text={waText} heading={`Almost there, ${name}!`} link={whatsappLink(waText)} />
+              ) : !showStatus && closed ? (
+                <motion.div key="closed" className="status-card s-closed" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  <div className="st-ic">{state === "ended" ? "🏁" : "🔒"}</div>
+                  <b>{closedTitle}</b>
+                  <p>{closedText}</p>
+                  {nextDate ? <Link className="btn btn-sun btn-sm" href={eventUrl(nextDate)}>Next date: {fmtDay(nextDate.date)} →</Link> : <Link className="btn btn-white btn-sm" href="/events/">See what&apos;s on →</Link>}
+                </motion.div>
               ) : showStatus ? (
                 <motion.div key="status" className={`status-card s-${myReq!.status}`} initial={{ opacity: 0, scale: 0.92, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
-                  <motion.div className="st-ic" initial={{ rotate: -20, scale: 0.5 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }}>{statusText(myReq!.status)[0]}</motion.div>
-                  <b>{myReq!.status === "waitlisted" && pos ? `You're #${pos} on the waiting list` : statusText(myReq!.status)[1]}</b>
-                  <p>{statusText(myReq!.status)[2]}</p>
+                  <motion.div className="st-ic" initial={{ rotate: -20, scale: 0.5 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }}>{lapsed ? "⌛" : statusText(myReq!.status)[0]}</motion.div>
+                  <b>{lapsed ? "Request closed" : myReq!.status === "waitlisted" && pos ? `You're #${pos} on the waiting list` : statusText(myReq!.status)[1]}</b>
+                  <p>{lapsed ? `The event started before your request was decided, so it was closed.${myReq!.paid_at ? " Your payment is refunded in full." : " Nothing was charged."}` : statusText(myReq!.status)[2]}</p>
+                  {(lapsed || myReq!.status === "declined") && nextDate && <Link className="btn btn-sun btn-sm" href={eventUrl(nextDate)}>Request the next date: {fmtDay(nextDate.date)} →</Link>}
                   {needsPay && <div className="pay-box"><b>One step left: pay {priceShort(e)}{myReq!.party_size > 1 ? " × 2" : ""} to confirm</b><small>UPI, QR, cards, netbanking or wallets via Razorpay.</small>
                     <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun btn-block" type="button" disabled={busy} onClick={payToConfirm}>{busy ? "Opening…" : "Pay & confirm my seat →"}</motion.button></div>}
                   {myReq!.paid_at && <p className="paid-tag">💳 Paid{myReq!.paid_amount ? " " + rupees(myReq!.paid_amount) : ""}{myReq!.refund_status === "refunded" ? " · refunded ↩" : myReq!.refund_status === "pending" ? " · refund on its way ↩" : ""}</p>}
@@ -296,7 +309,7 @@ export default function EventPage() {
                     <p className="drop-note">{Date.now() >= addressDropAt(e).getTime() ? "📍 Exact spot is on your WhatsApp." : `📍 Exact spot drops ${fmtWhen(addressDropAt(e))}`}</p>
                     <div className="plan-btns" style={{ justifyContent: "center" }}><Link className="btn btn-ink btn-sm" href={`/ticket/?id=${e.id}`}>My door pass 🎫</Link><CalendarButton e={e} /></div>
                   </>}
-                  {myReq!.status !== "declined" && myReq!.status !== "attended" && <button className="linkish" type="button" onClick={cancel}>{myReq!.status === "approved" ? "I can't make it" : "Cancel my request"}</button>}
+                  {!lapsed && state !== "ended" && myReq!.status !== "declined" && myReq!.status !== "attended" && <button className="linkish" type="button" onClick={cancel}>{myReq!.status === "approved" ? "I can't make it" : "Cancel my request"}</button>}
                 </motion.div>
               ) : (
                 <motion.form key="form" onSubmit={request} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -326,7 +339,7 @@ export default function EventPage() {
       {sameKey.length > 0 && <section className="sec" style={{ paddingBottom: 0 }}><div className="group-head"><h3>More dates for {e.title.split(" · ")[0]}</h3></div><div className="grid">{sameKey.map((x, i) => <EventCard key={x.id} e={x} index={i} />)}</div></section>}
       <section className="sec"><div className="group-head"><h3>More plans to try</h3><Link className="btn btn-white btn-sm" href="/events/">Explore all →</Link></div><div className="grid">{others.map((x, i) => <EventCard key={x.id} e={x} index={i} />)}</div></section>
 
-      <div className={`mobile-book ${bookOnScreen ? "away" : ""}`} aria-hidden={bookOnScreen}><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className={`btn btn-sm ${showStatus ? "btn-white" : "btn-sun"}`} href="#book">{showStatus ? MOBILE_STATUS[myReq!.status] ?? "Your request" : full ? "Join waiting list" : "Request a seat"}</a></div>
+      <div className={`mobile-book ${bookOnScreen ? "away" : ""}`} aria-hidden={bookOnScreen}><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className={`btn btn-sm ${showStatus ? "btn-white" : "btn-sun"}`} href="#book">{showStatus ? (lapsed ? "Request closed" : MOBILE_STATUS[myReq!.status] ?? "Your request") : closed ? (state === "ended" ? "Event ended" : "Registration closed") : full ? "Join waiting list" : "Request a seat"}</a></div>
     </div>
   );
 }

@@ -142,6 +142,11 @@ export const priceOk = (e: MeetEvent, b: string) =>
 /* ---------- plan times (used by Your plans, the door pass and calendar files) ---------- */
 export const startsAt = (e: MeetEvent) => { const d = new Date(e.date); const m = mins(e.time); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d; };
 export const endsAt = (e: MeetEvent) => { const s = startsAt(e); const m = mins(e.end); if (!m) return new Date(s.getTime() + 2 * 36e5); const d = new Date(e.date); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return d <= s ? new Date(d.getTime() + 864e5) : d; };
+/** When requests stop: the event's own deadline, else 4 hours before the start. */
+export const bookingClosesAt = (e: MeetEvent) => e.bookingClosesAt ?? new Date(startsAt(e).getTime() - 4 * 36e5);
+/** "open" → can request · "closed" → registration closed, event not started · "ended" → the event has started/finished. */
+export const bookingState = (e: MeetEvent, now = Date.now()): "open" | "closed" | "ended" =>
+  now >= startsAt(e).getTime() ? "ended" : now >= bookingClosesAt(e).getTime() ? "closed" : "open";
 /** The exact spot is shared 2 hours before the start (8 pm the night before for morning plans). */
 export const addressDropAt = (e: MeetEvent) => {
   const s = startsAt(e);
