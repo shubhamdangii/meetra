@@ -117,6 +117,17 @@ try {
   r = await as(B.auth, "select public.admin_decide_request($1, true, 'ok')", [rid]); ok("the other admin approves it", r.ok, r.err);
   ok("approved event is live", (await q1("select status from public.custom_plans where id = $1", [draft.row?.v])).status === "approved");
 
+  console.log("\nEvent library · who can hide example plans");
+  r = await as(A.auth, "select public.admin_hide_template('quiz-night', true)"); ok("main admin hides an example plan", r.ok, r.err);
+  ok("…and it's in the hidden list everyone reads", (await as("anon", "select count(*)::int n from public.hidden_templates where key = 'quiz-night'")).row?.n === 1);
+  r = await as(A.auth, "select public.admin_hide_template('quiz-night', false)");
+  ok("main admin restores it", r.ok && (await q1("select count(*)::int n from public.hidden_templates where key = 'quiz-night'")).n === 0, r.err);
+  r = await as(H.auth, "select public.admin_hide_template('quiz-night', true)"); ok("host can't delete events", !r.ok && /Main admins only/.test(r.err), r.err);
+  r = await as(SUB.auth, "select public.admin_hide_template('quiz-night', true)"); ok("sub-admin can't delete events", !r.ok, r.err);
+  r = await as(M.auth, "insert into public.hidden_templates (key) values ('x')"); ok("member can't write the hidden list directly", !r.ok);
+  r = await as(H.auth, "select public.host_save_event_draft(null, $1::jsonb) v", [JSON.stringify({ title: "QA_lib", category: "games", starts_at: iso(80), ends_at: iso(82), area: "QA", price: 99, price_type: "reservation", seats: 8, event_type: "Boards & Chai" })]);
+  ok("host adds an event from a card (draft, their own event)", r.ok && (await q1("select host_id from public.custom_plans where id = $1", [r.row?.v]))?.host_id === H_ID, r.err);
+
   console.log("\nPoint 9 · brand & venue enquiries are trackable");
   r = await as("anon", "select public.submit_partner_enquiry('QA_name','QA_company','venue','ahmedabad','9876543210',null,null,'QA') v");
   ok("visitor sends an enquiry and gets a tracking code", r.ok && !!r.row.v.code, r.err);
