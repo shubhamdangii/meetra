@@ -71,6 +71,9 @@ function HostApply() {
   const [waText, setWaText] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV((x) => ({ ...x, [k]: e.target.value }));
+  // follow the city picked in the header until the person chooses one in the form (the saved city loads after the first render)
+  const cityTouched = useRef(false);
+  useEffect(() => { if (!cityTouched.current && CONFIG.cities[city]?.live) setV((x) => (x.city_slug === city ? x : { ...x, city_slug: city, plan_id: "" })); }, [city]);
   // events in this city that still need a host
   const [free, setFree] = useState<Unassigned[] | null>(null);
   useEffect(() => {
@@ -189,7 +192,7 @@ function HostApply() {
                     {app?.status === "rejected" ? "Not this time last round — try a new idea! " : app?.status === "withdrawn" ? "Welcome back. " : ""}
                     Takes 2 minutes. {auth.enabled ? "You'll get your place in the host line straight away." : "We reply on WhatsApp within a day."}
                   </p>
-                  <div className="field"><label htmlFor="hcity">City</label><select id="hcity" value={v.city_slug} onChange={set("city_slug")}>{liveCities.map(([slug, c]) => <option key={slug} value={slug}>{c.name}</option>)}</select></div>
+                  <div className="field"><label htmlFor="hcity">City</label><select id="hcity" value={v.city_slug} onChange={(e) => { cityTouched.current = true; set("city_slug")(e); }}>{liveCities.map(([slug, c]) => <option key={slug} value={slug}>{c.name}</option>)}</select></div>
                   <fieldset className="ev-choice">
                     <legend>Which event will you host? *</legend>
                     <div className="seg2" role="radiogroup">

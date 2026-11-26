@@ -132,3 +132,13 @@ test("deep link to an unknown plan shows a friendly message", async ({ page }) =
   await page.goto("event/?id=QA_does-not-exist-20200101"); await settle(page);
   await expect(page.getByText(/wandered off/)).toBeVisible();
 });
+
+test("point 8 · 'Become a host' lists events for the city you chose (saved city loads after first paint)", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("mt-city", JSON.stringify("jaipur")));
+  await page.goto("host/"); await settle(page);
+  await expect(page.locator("#hcity")).toHaveValue("jaipur");
+  // the list is reliable: the same answer on reload
+  const count = async () => (await page.getByRole("radio", { name: /Pick an event/ }).textContent()) ?? "";
+  const first = await count(); await page.reload(); await settle(page);
+  expect(await count()).toBe(first);
+});
