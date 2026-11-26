@@ -112,11 +112,14 @@ test("point 9 · partner form validates empty input", async ({ page }) => {
   await expect(page.locator(".form-msg.err")).toBeVisible();
 });
 
-test("point 14 · swipe deck has only open plans, database events included", async ({ page }) => {
+test("point 14 · swipe deck has every open plan (same count as Explore minus closed ones)", async ({ page }) => {
+  await page.goto("events/"); await settle(page);
+  const total = Number((await page.locator(".ex-bar span.muted").first().textContent())?.match(/(\d+) plan/)?.[1]);
+  const closed = await page.locator(".card.card-closed").count();   // only today's plans can be closed
+  expect(total).toBeGreaterThan(30);
   await page.goto("swipe/"); await settle(page);
-  await expect(page.locator(".deck")).toBeVisible();
-  const count = await page.evaluate(() => document.querySelectorAll(".deck .swipe-card, .deck article, .deck [class*=card]").length);
-  expect(count).toBeGreaterThan(0);
+  const deck = Number((await page.getByText(/^\d+ of \d+$/).first().textContent())?.split(" of ")[1]);
+  expect(deck).toBe(total - closed);
 });
 
 test("point 15 · every game has a retro cover that loads", async ({ page }) => {
