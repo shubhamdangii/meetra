@@ -1620,3 +1620,6 @@ input[type=date]::-webkit-date-and-time-value,input[type=datetime-local]::-webki
   .save-bar{bottom:calc(80px + env(safe-area-inset-bottom, 0px))}
   .toast{bottom:calc(88px + env(safe-area-inset-bottom, 0px))}
 }
+.invite-card .btn-sun{color:var(--ink)}
+/* every profile/form field is the same height (date pickers used to sit 2px taller than selects) */
+.field input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),.field select{min-height:48px;box-sizing:border-box}
