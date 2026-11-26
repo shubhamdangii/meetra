@@ -130,9 +130,25 @@ function Pipeline({ e }: { e: Dash["events"] }) {
 function HostTable({ rows }: { rows: Dash["hosts"] }) {
   if (!rows.length) return <Empty>No hosts yet. Add them in the Hosts tab.</Empty>;
   const sorted = [...rows].sort((a, b) => (Number(b.avg_rating ?? -1) - Number(a.avg_rating ?? -1)) || b.bookings - a.bookings);
+  const medal = ["🥇", "🥈", "🥉"];
   return (
-    <div className="tbl-wrap"><table><thead><tr><th>Host</th><th>Rating</th><th>Events</th><th>Completed</th><th>Bookings</th></tr></thead>
-      <tbody>{sorted.map((h) => <tr key={h.id}><td><b>{h.name}</b><br /><small className="muted">{cityName(h.city)}{h.status !== "active" ? " · inactive" : ""}</small></td>
-        <td><Stars v={h.avg_rating} n={h.reviews} /></td><td className="num">{h.events}</td><td className="num">{h.completed}</td><td className="num">{h.bookings}</td></tr>)}</tbody></table></div>
+    <ol className="hp-list">
+      {sorted.map((h, i) => {
+        const r = h.avg_rating == null ? null : Number(h.avg_rating);
+        return (
+          <li key={h.id} className={h.status !== "active" ? "off" : ""}>
+            <span className="hp-rank" aria-label={`Rank ${i + 1}`}>{r != null && i < 3 ? medal[i] : i + 1}</span>
+            <span className="hp-av" aria-hidden="true">{h.name[0]}</span>
+            <div className="hp-main">
+              <b>{h.name}</b><small>{cityName(h.city)}{h.status !== "active" ? " · inactive" : ""}</small>
+              <div className="hp-bar" aria-hidden="true"><i style={{ width: `${r ? (r / 5) * 100 : 0}%` }} /></div>
+            </div>
+            <div className="hp-score">{r != null ? <><b>{r.toFixed(1)}</b><span>★ · {h.reviews} review{h.reviews === 1 ? "" : "s"}</span></> : <span className="muted">No reviews yet</span>}</div>
+            <div className="hp-stats"><span><b>{h.events}</b> events</span><span><b>{h.completed}</b> done</span><span><b>{h.bookings}</b> guests</span></div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
+

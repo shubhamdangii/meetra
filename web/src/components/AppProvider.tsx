@@ -22,6 +22,8 @@ type Ctx = {
   /** Styled "Are you sure?" dialog. Resolves true when the person confirms. */
   confirm: (o: ConfirmOpts) => Promise<boolean>;
   reloadCustom: () => void;
+  /** Example plans a main admin removed from the site (Event library). */
+  hiddenKeys: Set<string>; reloadHidden: () => void;
 };
 const AppCtx = createContext<Ctx | null>(null);
 export const useApp = () => { const c = useContext(AppCtx); if (!c) throw new Error("useApp outside AppProvider"); return c; };
@@ -60,7 +62,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sb?.from("custom_plans").select("*").gte("starts_on", from).then(({ data }) => { if (data?.length) setCustom(data as CustomPlan[]); setCustomLoaded(true); }, () => setCustomLoaded(true));
   }, []);
 
-  const data = useMemo(() => (ready ? buildEvents(today, custom) : { all: [], upcoming: [], past: [] }), [ready, today, custom]);
+  const [hiddenKeys, setHidden] = useState<Set<string>>(new Set());
+  const reloadHidden = useCallback(() => {
+    getSupabase()?.from("hidden_templates").select("key").then(({ data }) => setHidden(new Set(((data ?? []) as { key: string }[]).map((r) => r.key))));
+  }, []);
+  useEffect(() => { reloadHidden(); }, [reloadHidden]);
+  const data = useMemo(() => (ready ? buildEvents(today, custom, hiddenKeys) : { all: [], upcoming: [], past: [] }), [ready, today, custom, hiddenKeys]);
   const index = useMemo(() => new Map(data.all.map((e) => [e.id, e])), [data]);
 
   const toast = useCallback((msg: string) => {
@@ -70,7 +77,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value: Ctx = {
-    ready, customLoaded, today, ...data,
+    ready, customLoaded, today, ...data, hiddenKeys, reloadHidden,
     byId: (id) => index.get(id),
     city,
     setCity: (c) => { setCityState(c); store.set("mt-city", c); },

@@ -8,6 +8,7 @@ import { CATS, CITIES, Chip, Empty, Modal, cityName, fmtDT, fromLocalInput, nowL
 import { CATEGORIES } from "@/lib/data";
 import { EventTypePicker } from "../EventBits";
 import { DiaryUploader } from "../Diary";
+import { EventLibrary } from "../EventLibrary";
 import { MAPS_HINT, isMapsUrl } from "@/lib/eventMedia";
 import { useAuth } from "../AuthProvider";
 import { useEffect } from "react";
@@ -119,6 +120,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
   const ev = useRpc<AdminEvent[]>("admin_events");
   const hs = useRpc<AdminHost[]>("admin_hosts");
   const call = useCall(); const { ask, ui } = useAsk(); const { reloadCustom } = useApp() as ReturnType<typeof useApp> & { reloadCustom?: () => void };
+  const [view, setView] = useState<"cards" | "list">("cards");
   const [city, setCity] = useState(""); const [host, setHost] = useState(""); const [st, setSt] = useState<(typeof FILTERS)[number]>("all"); const [qq, setQ] = useState("");
   const [edit, setEdit] = useState<{ mode: "new" | "draft" | "change"; ev?: AdminEvent; f: EventFormValue } | null>(null);
   const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
@@ -178,6 +180,14 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
 
   return (
     <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="adm-seg ev-view" role="tablist" aria-label="View">
+        <button role="tab" aria-selected={view === "cards"} className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}>🗂 Event library</button>
+        <button role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>☰ Manage list</button>
+      </div>
+      {view === "cards" ? <>
+        <div className="adm-bar"><button className="btn btn-sun btn-sm" onClick={() => { setErr(null); setEdit({ mode: "new", f: blankEvent("ahmedabad") }); }}>＋ New event from scratch</button></div>
+        <EventLibrary mode="admin" events={ev.data ? ev.data.map(withX) : null} onChange={refresh} goApprovals={goApprovals} />
+      </> : <>
       <div className="adm-bar">
         <button className="btn btn-sun btn-sm" onClick={() => { setErr(null); setEdit({ mode: "new", f: blankEvent(city || "jaipur") }); }}>＋ New event</button>
         <input className="adm-search" placeholder="Search title, area, host…" value={qq} onChange={(e) => setQ(e.target.value)} />
@@ -207,6 +217,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
         </table></div>
       )}
 
+      </>}
       <Modal open={!!openNow} onClose={() => setOpen(null)} wide title={openNow ? openNow.title : ""}>
         {openNow && (() => { const e = openNow; const pct = Math.min(100, Math.round((e.confirmed / Math.max(1, e.seats)) * 100)); return (
           <div className="adm-card" style={{ boxShadow: "none" }}>

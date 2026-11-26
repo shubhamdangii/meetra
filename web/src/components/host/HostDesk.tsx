@@ -10,6 +10,8 @@ import { burstFrom } from "../fx";
 import { EventForm, type EventFormValue, blankEvent, eventToForm, formToPayload, useEventExtras, validateEvent } from "../admin/Events";
 import { WhoComing } from "../EventBits";
 import { DiaryUploader } from "../Diary";
+import { EventLibrary } from "../EventLibrary";
+import type { AdminEvent } from "../admin/Events";
 import { usePlanCount } from "@/lib/eventMedia";
 
 function WaitCount({ planRef }: { planRef: string }) {
@@ -132,6 +134,11 @@ export function HostDesk({ host }: { host: MyHost }) {
         </motion.div>
       )}</AnimatePresence>
 
+      <details className="hd-lib">
+        <summary>📚 Event library: add any event with your own date</summary>
+        <EventLibrary mode="host" city={host.city_slug} onChange={load}
+          events={(events ?? []).map((e) => ({ ...e, ...(extras.get(e.id) ?? {}), host_id: host.id, host_name: host.name, waitlisted: 0, pending_req: e.req_status === "pending" ? e.req_no : null, cancel_reason: null, created_by_name: null, updated_at: e.starts_at }) as unknown as AdminEvent)} />
+      </details>
       <ol className="hd-how">
         <li><b>1</b>Propose an event</li><li><b>2</b>The team checks it</li><li><b>3</b>It goes live everywhere</li>
       </ol>

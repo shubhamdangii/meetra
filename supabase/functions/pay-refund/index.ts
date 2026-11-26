@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     });
     const j = await r.json();
     if (r.ok) { ok++; await admin.from("payments").update({ status: "refunded", refund_id: j.id, refunded_at: new Date().toISOString() }).eq("id", p.id); }
-    else { failed++; await admin.from("payments").update({ status: "refund_failed", refund_error: j?.error?.description ?? "refund failed" }).eq("id", p.id); }
+    else { failed++; await admin.from("payments").update({ status: "refund_failed", refund_error: [j?.error?.description, j?.error?.field && `field: ${j.error.field}`, j?.error?.reason && `reason: ${j.error.reason}`, `http ${r.status}`].filter(Boolean).join(" · ").slice(0, 300) }).eq("id", p.id); }
   }
   // only touch the request's refund flag if it's still the declined/cancelled one (not re-paid since)
   if (ok || failed) await admin.from("plan_requests").update({ refund_status: failed ? "failed" : "refunded" }).eq("id", requestId).eq("refund_status", "pending");

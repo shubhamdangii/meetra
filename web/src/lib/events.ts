@@ -16,7 +16,7 @@ export const typeImages = (type: string | null | undefined): string[] => (type &
 /** A stored image: "/images/…" paths get the site prefix, uploaded https:// links stay as they are. */
 export const imgSrc = (u: string | null | undefined): string | null => (!u ? null : u.startsWith("/") ? BASE + u : u);
 /** The example plans' photo folders. */
-const TEMPLATE_TYPE: Record<string, string> = {
+export const TEMPLATE_TYPE: Record<string, string> = {
   "introverts-dinner": "Introverts' Dinner", "board-games-chai": "Boards & Chai", "mafia-night": "Mafia Night", "pickleball-dinner": "Pickleball & Dinner",
   "run-club": "Run & Coffee", "home-cinema": "Home Cinema", "book-club-lunch": "Books & Bites", "open-mic": "Open Mic", "craft-workshop": "Craft & Chill",
   "sketch-walk": "Sketch Walk", "food-walk": "Street Food Walk", "sunrise": "Sunrise Trek", "quiz-night": "Quiz Night", "deep-talks": "2AM Deep Talks",
@@ -57,11 +57,11 @@ export type CustomPlan = {
 const PATTERNS = ["dots", "grid", "rings", "stripes", "sun", "waves"];
 export const customPlanId = (c: Pick<CustomPlan, "id" | "city_slug" | "starts_on"> & { plan_ref?: string }) => c.plan_ref || `x${c.id}-${c.city_slug}-${c.starts_on.replace(/-/g, "")}`;
 
-export function buildEvents(today: Date, custom: CustomPlan[] = []) {
+export function buildEvents(today: Date, custom: CustomPlan[] = [], hidden: Set<string> = new Set()) {
   const diff = (d: Date) => Math.round((d.getTime() - today.getTime()) / 864e5);
   const all: MeetEvent[] = [];
   Object.entries(CONFIG.cities).filter(([, c]) => c.live).forEach(([city]) => {
-    (CONFIG.samplePlans ? TEMPLATES : []).forEach((t: any) => {
+    (CONFIG.samplePlans ? TEMPLATES : []).filter((t: any) => !hidden.has(t.key)).forEach((t: any) => {
       const ov = t.cities && t.cities[city]; if (!ov) return;
       const dates: Date[] = [];
       if (t.once != null) dates.push(addDays(today, t.once));
