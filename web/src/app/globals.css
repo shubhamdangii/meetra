@@ -1705,16 +1705,6 @@ input[type=date]::-webkit-date-and-time-value,input[type=datetime-local]::-webki
   .adm-root .tbl-wrap::-webkit-scrollbar-thumb{background:#CFC8E0;border-radius:999px}
 }
 
-/* event library: active switch, inactive cards, chooser, recent activity */
-.lib-card.off{opacity:.62;filter:grayscale(.6)}
-.lib-switch{position:absolute;right:8px;bottom:8px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:inherit;font-size:12px;font-weight:800;cursor:pointer;min-height:32px}
-.lib-switch i{width:30px;height:18px;border-radius:999px;background:#d6d3e0;position:relative;transition:background .2s}
-.lib-switch i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .2s}
-.lib-switch.on i{background:#22a35a}
-.lib-switch.on i::after{transform:translateX(12px)}
-.lib-more{display:flex;flex-wrap:wrap;gap:6px;width:100%}
-.lib-more .btn{flex:1 1 auto}
-.lib-host{width:100%;min-height:38px;font-size:14px}
 .lib-choose{display:grid;gap:12px}
 @media (min-width:560px){.lib-choose{grid-template-columns:1fr 1fr}}
 .lib-choose button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:16px;border:2px solid var(--ink);border-radius:16px;background:#fff;color:var(--ink);font:inherit;cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
@@ -1723,10 +1713,107 @@ input[type=date]::-webkit-date-and-time-value,input[type=datetime-local]::-webki
 .lib-choose small{opacity:.7;line-height:1.35}
 .ev-act{margin-top:18px;padding:14px;border:2px solid var(--ink);border-radius:16px;background:#fff}
 .ev-act-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-/* library card actions: one per line, so "Add date" never swells and the admin buttons never get cut */
-.lib-acts{flex-direction:column;align-items:stretch}
-.lib-acts .btn-sun{flex:none}
-.lib-more{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.lib-more .btn{min-width:0;padding-inline:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lib-more .lib-host{grid-column:1/-1}
-@media (max-width:480px){.lib-more{grid-template-columns:1fr}}
+
+/* ---------- event library cards v2: photo-first, one clear primary action, quiet tools ---------- */
+.lib-tabs{display:flex;gap:2px;padding:4px;border:2px solid var(--ink);border-radius:999px;background:#fff;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none;box-shadow:2px 2px 0 var(--ink)}
+.lib-tabs::-webkit-scrollbar{display:none}
+.lib-tabs button{position:relative;border:0;background:none;font:inherit;font-weight:800;font-size:13px;padding:7px 14px;border-radius:999px;cursor:pointer;color:var(--ink-2);white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.lib-tabs button.on{color:var(--ink)}
+.lib-tab-bg{position:absolute;inset:0;background:var(--sun);border-radius:999px;z-index:0}
+.lib-tab-l{position:relative;z-index:1}
+.lib-tabs small{font-size:11px;font-weight:700;opacity:.6;margin-left:3px}
+.lib-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;align-items:start}
+.lib-card{grid-template-rows:auto 1fr auto;border-radius:20px;box-shadow:4px 4px 0 var(--ink);transition:box-shadow .25s ease;will-change:transform}
+.lib-card:hover{box-shadow:7px 9px 0 var(--ink)}
+.lib-card.off .lib-img img{filter:grayscale(1) brightness(.85)}
+.lib-card.off .lib-title{color:var(--muted)}
+.lib-skel{min-height:300px;border-radius:20px}
+.lib-img{aspect-ratio:4/3;background:linear-gradient(135deg,#F3EFFF,#FFF1D6)}
+.lib-img img{transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.lib-card:hover .lib-img img{transform:scale(1.07)}
+.lib-emoji{font-size:52px;filter:drop-shadow(0 6px 10px rgba(22,18,43,.15))}
+.lib-shade{position:absolute;inset:auto 0 0 0;height:60%;background:linear-gradient(to top,rgba(22,18,43,.78),rgba(22,18,43,0));pointer-events:none}
+.lib-kind{top:10px;left:10px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-width:1.5px}
+.lib-kind.k-example{background:#fff;color:var(--violet)}
+.lib-when{position:absolute;left:12px;right:12px;bottom:10px;color:#fff;font-size:13px;font-weight:800;letter-spacing:-.01em;text-shadow:0 1px 8px rgba(0,0,0,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib-switch{position:absolute;top:9px;right:9px;display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;min-height:28px;border-radius:999px;border:1.5px solid var(--ink);background:rgba(255,255,255,.96);color:var(--ink);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lib-switch b{font-size:11px;font-weight:800;letter-spacing:.02em}
+.lib-track{width:32px;height:20px;border-radius:999px;background:#CFCBDB;display:flex;align-items:center;padding:3px;transition:background .25s}
+.lib-switch.on .lib-track{background:#1FA463;justify-content:flex-end}
+.lib-track i{display:block;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.lib-body{display:grid;align-content:start;gap:8px;padding:12px 14px 12px;min-width:0}
+.lib-title{font-size:16.5px;line-height:1.22;letter-spacing:-.015em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lib-meta{display:flex;gap:5px;font-size:12.5px;color:var(--ink-2);min-width:0}
+.lib-meta span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-av{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--pink));color:#fff;font-size:11px;font-weight:800;letter-spacing:.02em}
+.lib-hostbtn{display:flex;align-items:center;gap:8px;width:100%;min-height:38px;padding:5px 10px 5px 6px;border:1.5px solid #E6E1F2;border-radius:12px;background:#FAF8FF;font:inherit;font-size:13px;font-weight:700;color:var(--ink);text-align:left;transition:border-color .2s,background .2s,transform .2s}
+button.lib-hostbtn{cursor:pointer}
+button.lib-hostbtn:hover{border-color:var(--violet);background:#F1ECFF}
+button.lib-hostbtn:hover .go{transform:translateX(3px)}
+.lib-hostbtn .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-hostbtn .go{font-style:normal;font-size:18px;line-height:1;opacity:.45;transition:transform .2s}
+.lib-hostbtn.empty{border-style:dashed;border-color:#F0A2BE;background:#FFF5F8;color:#B3134B}
+.lib-hostbtn.empty .lib-av{background:#fff;color:#B3134B;border:1.5px dashed #F0A2BE;font-size:15px}
+button.lib-hostbtn.empty .lib-av{animation:lib-pulse 2.2s ease-in-out infinite}
+@keyframes lib-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,79,135,.35)}50%{box-shadow:0 0 0 6px rgba(255,79,135,0)}}
+.lib-hostbtn.static{background:transparent;border-color:transparent;padding-left:0;min-height:30px}
+.lib-status{justify-self:start}
+.lib-pending{display:flex;align-items:center;gap:7px;justify-self:start;border:0;background:#FFF6DB;color:#7A5300;font:inherit;font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;cursor:pointer}
+.lib-pending .dot{width:7px;height:7px;border-radius:50%;background:#E0A100;animation:lib-pulse 1.8s infinite}
+.lib-acts{display:grid;gap:8px;padding:0 14px 14px}
+.lib-add{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border:2px solid var(--ink);border-radius:13px;background:var(--sun);color:var(--ink);font:inherit;font-weight:800;font-size:14px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);transition:box-shadow .2s,transform .2s}
+.lib-add:hover{box-shadow:3px 4px 0 var(--ink);transform:translateY(-1px)}
+.lib-add::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);transition:left .7s ease;pointer-events:none}
+.lib-add:hover::after{left:140%}
+.lib-add .pl{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--sun);font-size:15px;line-height:1;font-weight:900}
+.lib-tools{display:grid;grid-template-columns:1fr 1fr;border:1.5px solid #E6E1F2;border-radius:13px;overflow:hidden;background:#fff}
+.lib-tools button{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;height:38px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:background .2s,color .2s}
+.lib-tools button+button{border-left:1.5px solid #E6E1F2}
+.lib-tools button:hover{background:#F1ECFF;color:var(--violet)}
+.lib-tools button span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-ghost{height:38px;border:1.5px dashed var(--ink);border-radius:13px;background:#fff;font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.lib-empty{display:grid;justify-items:center;gap:6px;padding:36px 16px;border:2px dashed #D9D3E8;border-radius:20px;text-align:center;color:var(--ink-2)}
+.lib-empty span{font-size:36px}
+/* chooser, quick change, host picker */
+.lib-choose{display:grid;gap:12px}
+@media (min-width:560px){.lib-choose{grid-template-columns:1fr 1fr}}
+.lib-choose button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:16px;border:2px solid var(--ink);border-radius:16px;background:#fff;color:var(--ink);font:inherit;cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .15s,box-shadow .15s}
+.lib-choose button:hover{transform:translateY(-2px);box-shadow:4px 5px 0 var(--ink)}
+.lib-choose button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.lib-choose span{font-size:28px}
+.lib-choose small{opacity:.7;line-height:1.35}
+.lib-now{display:grid;gap:2px;padding:10px 12px;margin-bottom:12px;border-radius:12px;background:#F6F3FF;font-size:14px}
+.lib-now span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--violet)}
+.lib-hosts{display:grid;gap:8px}
+.lib-hosts button{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px 10px 10px;border:2px solid var(--ink);border-radius:14px;background:#fff;color:var(--ink);font:inherit;font-weight:700;font-size:15px;text-align:left;cursor:pointer;transition:background .2s,transform .2s}
+.lib-hosts button:hover:not(:disabled){background:#F6F3FF;transform:translateX(3px)}
+.lib-hosts button .lib-av{width:36px;height:36px;font-size:13px}
+.lib-hosts button .nm{flex:1}
+.lib-hosts button i{font-style:normal;font-size:20px;opacity:.4}
+.lib-hosts button.cur{background:#EEFAF3;border-color:#1FA463;cursor:default}
+.lib-hosts button em{font-style:normal;font-size:12px;color:#137a46;font-weight:800}
+.lib-hosts .lib-nohost{justify-content:center;border-style:dashed;border-width:1.5px;font-size:13px;color:var(--ink-2)}
+.ev-act{margin-top:18px;padding:14px;border:2px solid var(--ink);border-radius:16px;background:#fff}
+.ev-act-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+@media (max-width:480px){
+  .lib-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .lib-card{border-radius:16px;box-shadow:3px 3px 0 var(--ink)}
+  .lib-img{aspect-ratio:1/1}
+  .lib-body{gap:6px;padding:10px 10px 8px}
+  .lib-title{font-size:14px}
+  .lib-meta{font-size:11.5px}
+  .lib-when{font-size:11px;left:9px;bottom:8px}
+  .lib-kind{top:8px;left:8px;font-size:9px;padding:2px 7px}
+  .lib-switch{top:7px;right:7px;padding:2px 7px 2px 2px;gap:4px;min-height:24px}
+  .lib-switch b{font-size:10px}
+  .lib-track{width:28px;height:18px}
+  .lib-track i{width:12px;height:12px}
+  .lib-hostbtn{font-size:12px;min-height:34px;padding:4px 8px 4px 4px;gap:6px}
+  .lib-av{width:22px;height:22px;font-size:9.5px}
+  .lib-acts{padding:0 10px 10px;gap:6px}
+  .lib-add{height:38px;font-size:13px;border-radius:11px}
+  .lib-tools{border-radius:11px}
+  .lib-tools button{flex-direction:column;gap:0;height:44px;font-size:10.5px}
+  .lib-tools button span:first-child{font-size:15px;line-height:1.2}
+}
+@media (prefers-reduced-motion:reduce){.lib-card:hover .lib-img img{transform:none}.lib-add::after,button.lib-hostbtn.empty .lib-av,.lib-pending .dot{animation:none;transition:none}}

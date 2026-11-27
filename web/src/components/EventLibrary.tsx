@@ -3,13 +3,13 @@
 // Admins: add a date (one-time or weekly), reschedule, change location, assign a host, switch Active / Inactive.
 //         Nothing is ever deleted. Changes to live events go to the other admin (maker-checker); the switch is instant + logged.
 // Hosts:  add a date from any card (the team approves it).
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { burstFrom } from "./fx";
 import { type AdminEvent, type AdminHost, type EventFormValue, blankEvent, eventToForm, formToPayload, validateEvent } from "./admin/Events";
-import { CITIES, Chip, Modal, cityName, fmtDT, useAsk } from "./admin/shared";
+import { CITIES, Chip, Modal, cityName, fmtDT, toLocalInput, useAsk } from "./admin/shared";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES, TEMPLATES } from "@/lib/data";
 import { TEMPLATE_TYPE, eventImages, imgSrc, typeImages } from "@/lib/events";
@@ -26,6 +26,11 @@ const to24 = (label: string) => {
   const m = /(\d+)(?::(\d+))?\s*(am|pm)/i.exec(label || ""); if (!m) return "19:00";
   let h = +m[1] % 12; if (/pm/i.test(m[3])) h += 12; return `${String(h).padStart(2, "0")}:${m[2] ?? "00"}`;
 };
+const pad = (n: number) => String(n).padStart(2, "0");
+/** "2026-11-29T22:00" → same time on the next day (an event that ends after midnight) */
+const nextDay = (v: string) => { const d = new Date(v); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${v.slice(-5)}`; };
+const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+const spring = { type: "spring", stiffness: 420, damping: 32 } as const;
 const cats = (CATEGORIES as { id: string; label: string; icon: string }[]).filter((c) => c.id !== "all");
 const catOk = (c: string) => (cats.some((x) => x.id === c) ? c : "other");
 
@@ -73,6 +78,10 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
   const [chooser, setChooser] = useState(false);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   useEffect(() => { if (newTick) setChooser(true); }, [newTick]);
+  // quick changes on a live event: just the time, or just the place (full form stays one tap away)
+  const [quick, setQuick] = useState<{ e: LibEvent; kind: "time" | "place"; date: string; st: string; en: string; area: string; maps: string; note: string } | null>(null);
+  const [qErr, setQErr] = useState("");
+  const [hostFor, setHostFor] = useState<LibEvent | null>(null);
 
   const all = useMemo(() => {
     const cf = lockCity ?? (city || null);
@@ -141,7 +150,38 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
     const name = hostId ? hosts.find((h) => String(h.id) === hostId)?.name ?? "host" : "no host yet";
     const { data, error } = await auth.client.rpc("admin_submit_request", { p_entity: "event", p_action: "update", p_target: e.id, p_payload: { host_id: hostId ? Number(hostId) : null }, p_note: `Assign host: ${name}` });
     if (error) return toast("⚠️ " + error.message);
-    toast(`${data} sent ✓ The other admin approves the new host`); onChange?.(); goApprovals?.(String(data));
+    toast(`${data} sent ✓ The other admin approves the new host`); setHostFor(null); onChange?.();
+  }
+
+  function openQuick(e: LibEvent, kind: "time" | "place") {
+    const s = toLocalInput(e.starts_at), en = toLocalInput(e.ends_at);
+    setQErr(""); setQuick({ e, kind, date: s.slice(0, 10), st: s.slice(11, 16), en: en.slice(11, 16), area: e.area ?? "", maps: e.maps_url ?? "", note: "" });
+  }
+  async function sendQuick() {
+    if (!quick || !auth.client) return;
+    const base = eventToForm(quick.e as LibEvent & Record<string, unknown>);
+    let f: EventFormValue;
+    if (quick.kind === "time") {
+      const starts = `${quick.date}T${quick.st}`; let ends = `${quick.date}T${quick.en}`; if (quick.en <= quick.st) ends = nextDay(ends);
+      f = { ...base, starts, ends, closes: "" };
+    } else f = { ...base, area: quick.area, maps_url: quick.maps };
+    const problem = validateEvent(f); if (problem) return setQErr(problem);
+    const p = formToPayload(f);
+    let diff: Record<string, unknown>;
+    if (quick.kind === "time") {
+      const s = new Date(p.starts_at as string).getTime(), en = new Date(p.ends_at as string).getTime();
+      if (s === new Date(quick.e.starts_at).getTime() && en === new Date(quick.e.ends_at).getTime()) return setQErr("Pick a new date or time first.");
+      diff = { starts_at: p.starts_at, ends_at: p.ends_at, booking_closes_at: new Date(s - 4 * 3600e3).toISOString() };
+    } else {
+      if (p.area === (quick.e.area ?? "") && (p.maps_url ?? "") === (quick.e.maps_url ?? "")) return setQErr("Change the area or the map link first.");
+      diff = { area: p.area, maps_url: p.maps_url };
+    }
+    setQErr(""); setBusy(true);
+    const note = quick.note.trim() || (quick.kind === "time" ? `Reschedule to ${fmtDT(p.starts_at as string)}` : `New location: ${p.area}`);
+    const { data, error } = await auth.client.rpc("admin_submit_request", { p_entity: "event", p_action: "update", p_target: quick.e.id, p_payload: diff, p_note: note });
+    setBusy(false);
+    if (error) return setQErr(error.message);
+    toast(`${data} sent ✓ Live event stays the same until the other admin approves`); setQuick(null); onChange?.();
   }
 
   const startT = add?.f.starts.slice(-5) ?? "", endT = add?.f.ends.slice(-5) ?? "";
@@ -156,47 +196,114 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
         <input className="adm-search" placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search events" />
         {!lockCity && <select className="select" value={city} onChange={(e) => setCity(e.target.value)} aria-label="City"><option value="">All cities</option>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select>}
       </div>
-      <div className="adm-seg" role="tablist" aria-label="Event status">{TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l} <small>{counts[k] ?? 0}</small></button>)}</div>
-      {events === null ? <div className="skeleton" style={{ minHeight: 200 }} /> : !cards.length ? <p className="muted">Nothing here.</p> : (
-        <div className="lib-grid">
+      <div className="lib-tabs" role="tablist" aria-label="Event status">{TABS.map(([k, l]) => (
+        <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>
+          {tab === k && <motion.span layoutId={`lib-tab-${mode}`} className="lib-tab-bg" transition={spring} />}
+          <span className="lib-tab-l">{l} <small>{counts[k] ?? 0}</small></span>
+        </button>))}</div>
+      {events === null ? <div className="lib-grid">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton lib-skel" />)}</div> : !cards.length ? (
+        <motion.div className="lib-empty" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}><span aria-hidden="true">{tab === "inactive" ? "🌙" : "🗂️"}</span><b>Nothing here{q ? ` for "${q}"` : ""}.</b></motion.div>
+      ) : (
+        <motion.div className="lib-grid" layout>
+          <AnimatePresence mode="popLayout">
           {cards.map((c, i) => {
-            const e = c.ev; const live = e && e.status === "approved" && e.display_status === "active";
+            const e = c.ev; const live = !!e && e.status === "approved" && e.display_status === "active";
+            const canTools = admin && live && !e!.pending_req;
+            const weekly = c.sub.includes("weekly");
+            const showChip = c.kind === "event" && (!c.active || c.status !== "active");
             return (
-              <motion.article key={c.id} className={`lib-card${c.active ? "" : " off"}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.02 }}>
+              <motion.article layout key={c.id} className={`lib-card${c.active ? "" : " off"}`}
+                initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.15 } }}
+                whileHover={{ y: -5 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.025 }}>
                 <div className="lib-img">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {c.image ? <img src={c.image} alt="" loading="lazy" /> : <span aria-hidden="true">{c.emoji}</span>}
-                  <span className={`lib-kind k-${c.kind}`}>{c.kind === "example" ? "Example" : "Event"}</span>
-                  {admin && (c.kind === "example" || live || (e && !c.active)) && (
-                    <button type="button" className={`lib-switch${c.active ? " on" : ""}`} role="switch" aria-checked={c.active} aria-label={`${c.title}: ${c.active ? "active" : "inactive"}`} onClick={() => toggle(c)}>
-                      <i /><span>{c.active ? "Active" : "Inactive"}</span>
-                    </button>
+                  {c.image ? <img src={c.image} alt="" loading="lazy" /> : <span className="lib-emoji" aria-hidden="true">{c.emoji}</span>}
+                  <span className="lib-shade" aria-hidden="true" />
+                  <span className={`lib-kind k-${c.kind}`}>{c.kind === "example" ? "✦ Example" : "● Event"}</span>
+                  {admin && (c.kind === "example" || live || (!!e && !c.active)) && (
+                    <motion.button type="button" whileTap={{ scale: 0.9 }} className={`lib-switch${c.active ? " on" : ""}`} role="switch" aria-checked={c.active}
+                      aria-label={`${c.title}: ${c.active ? "active, tap to set inactive" : "inactive, tap to set active"}`} onClick={() => toggle(c)}>
+                      <span className="lib-track"><motion.i layout transition={{ type: "spring", stiffness: 700, damping: 34 }} /></span><b>{c.active ? "Live" : "Off"}</b>
+                    </motion.button>
                   )}
+                  <span className="lib-when">{e ? <>🗓 {fmtDT(e.starts_at)}</> : weekly ? "↻ Repeats weekly" : "◷ One-off plan"}</span>
                 </div>
                 <div className="lib-body">
-                  <b>{c.title}</b>
-                  <small>{cityName(c.city)}{c.area ? ` · ${c.area}` : ""}</small>
-                  <small className="muted">{c.sub}{e?.host_name ? ` · ${e.host_name}` : e ? " · Host TBA" : ""}</small>
-                  {c.status && c.kind === "event" && <Chip s={c.active ? c.status : "inactive"} />}
-                  {e?.pending_req && <button className="adm-link small" onClick={() => goApprovals?.(e.pending_req!)}>⏳ {e.pending_req} waiting</button>}
+                  <b className="lib-title">{c.title}</b>
+                  <span className="lib-meta"><span aria-hidden="true">📍</span><span>{c.area ? `${c.area}, ` : ""}{cityName(c.city)}</span></span>
+                  {e && (canTools ? (
+                    <button type="button" className={`lib-hostbtn${e.host_name ? "" : " empty"}`} onClick={() => setHostFor(e)} aria-label={e.host_name ? `Host: ${e.host_name}. Change host` : "Assign a host"}>
+                      <span className="lib-av" aria-hidden="true">{e.host_name ? initials(e.host_name) : "+"}</span>
+                      <span className="nm">{e.host_name ?? "Assign a host"}</span><i className="go" aria-hidden="true">›</i>
+                    </button>
+                  ) : (
+                    <span className={`lib-hostbtn static${e.host_name ? "" : " empty"}`}><span className="lib-av" aria-hidden="true">{e.host_name ? initials(e.host_name) : "?"}</span><span className="nm">{e.host_name ?? "Host announced soon"}</span></span>
+                  ))}
+                  {showChip && <span className="lib-status"><Chip s={c.active ? c.status! : "inactive"} /></span>}
+                  {e?.pending_req && <button className="lib-pending" onClick={() => goApprovals?.(e.pending_req!)}><span className="dot" aria-hidden="true" />{e.pending_req} waiting for approval</button>}
                 </div>
                 <div className="lib-acts">
-                  {c.active && <button className="btn btn-sun btn-sm" onClick={() => openAdd(c)}>＋ Add date</button>}
-                  {admin && live && !e!.pending_req && <div className="lib-more">
-                    <button className="btn btn-white btn-sm" onClick={() => onEdit?.(e!, "change")}>📅 Reschedule</button>
-                    <button className="btn btn-white btn-sm" onClick={() => onEdit?.(e!, "change")}>📍 Location</button>
-                    <select className="select lib-host" aria-label={`Host for ${c.title}`} value={e!.host_id ?? ""} onChange={(x) => assignHost(e!, x.target.value)}>
-                      <option value="">🎙️ Assign host…</option>
-                      {hosts.filter((h) => h.status === "active" && h.city_slug === e!.city_slug).map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-                    </select>
+                  {c.active && <motion.button whileTap={{ scale: 0.95 }} className="lib-add" onClick={() => openAdd(c)}><span className="pl" aria-hidden="true">+</span>Add date</motion.button>}
+                  {canTools && <div className="lib-tools">
+                    <motion.button whileTap={{ scale: 0.92 }} onClick={() => openQuick(e!, "time")} aria-label={`Reschedule ${c.title}`}><span aria-hidden="true">🗓</span><span>Reschedule</span></motion.button>
+                    <motion.button whileTap={{ scale: 0.92 }} onClick={() => openQuick(e!, "place")} aria-label={`Change location of ${c.title}`}><span aria-hidden="true">📍</span><span>Location</span></motion.button>
                   </div>}
-                  {admin && e?.status === "draft" && <button className="btn btn-white btn-sm" onClick={() => onEdit?.(e, "draft")}>✏️ Edit draft</button>}
+                  {admin && e?.status === "draft" && <motion.button whileTap={{ scale: 0.95 }} className="lib-ghost" onClick={() => onEdit?.(e, "draft")}>✏️ Edit draft</motion.button>}
                 </div>
               </motion.article>
             );
           })}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       )}
+
+      {/* reschedule / location: only the fields that change */}
+      <Modal open={!!quick} onClose={() => setQuick(null)} title={quick ? `${quick.kind === "time" ? "Reschedule" : "Change location"}: ${quick.e.title}` : ""}>
+        {quick && <>
+          <div className="lib-now"><span>Now</span><b>{quick.kind === "time" ? `${fmtDT(quick.e.starts_at)} → ${fmtDT(quick.e.ends_at)}` : `${quick.e.area || "—"}, ${cityName(quick.e.city_slug)}`}</b></div>
+          <div className="adm-form lib-when-form">
+            {quick.kind === "time" ? <>
+              <div className="field span2"><label htmlFor="q-date">New date *</label><input id="q-date" type="date" min={new Date().toISOString().slice(0, 10)} value={quick.date} onChange={(x) => setQuick({ ...quick, date: x.target.value })} /></div>
+              <div className="field-row dt-row span2">
+                <div className="field"><label htmlFor="q-st">Starts *</label><input id="q-st" type="time" value={quick.st} onChange={(x) => setQuick({ ...quick, st: x.target.value })} /></div>
+                <div className="field"><label htmlFor="q-en">Ends *</label><input id="q-en" type="time" value={quick.en} onChange={(x) => setQuick({ ...quick, en: x.target.value })} /></div>
+              </div>
+              <p className="muted span2" style={{ fontSize: 13 }}>Bookings close 4 hours before the new start. Guests who already have a seat get a notification after approval.</p>
+            </> : <>
+              <div className="field span2"><label htmlFor="q-area">Area *</label><input id="q-area" value={quick.area} maxLength={60} onChange={(x) => setQuick({ ...quick, area: x.target.value })} /></div>
+              <div className="field span2"><label htmlFor="q-maps">Exact location (Google Maps link)</label><input id="q-maps" type="url" inputMode="url" value={quick.maps} placeholder="https://maps.app.goo.gl/…" onChange={(x) => setQuick({ ...quick, maps: x.target.value })} />
+                <small className="muted">{quick.maps.trim() && !isMapsUrl(quick.maps) ? "⚠️ " + MAPS_HINT : "Only confirmed guests see the exact pin."}</small></div>
+            </>}
+            <div className="field span2"><label htmlFor="q-note">Why? (optional, for the other admin)</label><input id="q-note" value={quick.note} maxLength={200} onChange={(x) => setQuick({ ...quick, note: x.target.value })} /></div>
+          </div>
+          {qErr && <p className="form-msg err" role="alert">{qErr}</p>}
+          <div className="adm-row-end">
+            <button className="btn btn-white btn-sm" onClick={() => { const e = quick.e; setQuick(null); onEdit?.(e, "change"); }}>All fields…</button>
+            <button className="btn btn-ink btn-sm" disabled={busy} onClick={sendQuick}>{busy ? "Sending…" : "Send for approval"}</button>
+          </div>
+        </>}
+      </Modal>
+
+      {/* host picker: people, not a dropdown */}
+      <Modal open={!!hostFor} onClose={() => setHostFor(null)} title={hostFor ? `Who hosts ${hostFor.title}?` : ""}>
+        {hostFor && (() => {
+          const list = hosts.filter((h) => h.status === "active" && h.city_slug === hostFor.city_slug);
+          return <>
+            <p className="adm-note">The other admin approves the change. Until then the current host stays.</p>
+            <div className="lib-hosts">
+              {list.map((h, i) => {
+                const cur = String(hostFor.host_id ?? "") === String(h.id);
+                return <motion.button key={h.id} type="button" className={cur ? "cur" : ""} disabled={cur} onClick={() => assignHost(hostFor, String(h.id))}
+                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} whileTap={{ scale: 0.97 }}>
+                  <span className="lib-av" aria-hidden="true">{initials(h.name)}</span><span className="nm">{h.name}</span>{cur ? <em>Current ✓</em> : <i aria-hidden="true">›</i>}
+                </motion.button>;
+              })}
+              {!list.length && <p className="muted">No active hosts in {cityName(hostFor.city_slug)} yet. Add one in the Hosts tab.</p>}
+              {hostFor.host_id != null && <button type="button" className="lib-nohost" onClick={() => assignHost(hostFor, "")}>Remove host (show &quot;Host announced soon&quot;)</button>}
+            </div>
+          </>;
+        })()}
+      </Modal>
 
       {/* "＋ New event": pick from the library (only date/time/place to fill) or create from scratch (all fields) */}
       <Modal open={chooser} onClose={() => setChooser(false)} title="New event">
