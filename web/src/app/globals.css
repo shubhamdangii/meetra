@@ -1735,7 +1735,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=datetime-local]::-webki
 .lib-shade{position:absolute;inset:auto 0 0 0;height:60%;background:linear-gradient(to top,rgba(22,18,43,.78),rgba(22,18,43,0));pointer-events:none}
 .lib-kind{top:10px;left:10px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-width:1.5px}
 .lib-kind.k-example{background:#fff;color:var(--violet)}
-.lib-when{position:absolute;left:12px;right:12px;bottom:10px;color:#fff;font-size:13px;font-weight:800;letter-spacing:-.01em;text-shadow:0 1px 8px rgba(0,0,0,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib-datetag{position:absolute;left:12px;right:12px;bottom:10px;color:#fff;font-size:13px;font-weight:800;letter-spacing:-.01em;text-shadow:0 1px 8px rgba(0,0,0,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lib-switch{position:absolute;top:9px;right:9px;display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;min-height:28px;border-radius:999px;border:1.5px solid var(--ink);background:rgba(255,255,255,.96);color:var(--ink);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .lib-switch b{font-size:11px;font-weight:800;letter-spacing:.02em}
 .lib-track{width:32px;height:20px;border-radius:999px;background:#CFCBDB;display:flex;align-items:center;padding:3px;transition:background .25s}
@@ -1802,7 +1802,7 @@ button.lib-hostbtn.empty .lib-av{animation:lib-pulse 2.2s ease-in-out infinite}
   .lib-body{gap:6px;padding:10px 10px 8px}
   .lib-title{font-size:14px}
   .lib-meta{font-size:11.5px}
-  .lib-when{font-size:11px;left:9px;bottom:8px}
+  .lib-datetag{font-size:11px;left:9px;bottom:8px}
   .lib-kind{top:8px;left:8px;font-size:9px;padding:2px 7px}
   .lib-switch{top:7px;right:7px;padding:2px 7px 2px 2px;gap:4px;min-height:24px}
   .lib-switch b{font-size:10px}

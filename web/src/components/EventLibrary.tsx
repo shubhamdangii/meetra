@@ -242,7 +242,7 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
                       <span className="lib-track"><motion.i layout transition={{ type: "spring", stiffness: 700, damping: 34 }} /></span><b>{c.active ? "Live" : "Off"}</b>
                     </motion.button>
                   )}
-                  <span className="lib-when">{e ? <>🗓 {fmtDT(e.starts_at)}</> : weekly ? "↻ Repeats weekly" : "◷ One-off plan"}</span>
+                  <span className="lib-datetag">{e ? <>🗓 {fmtDT(e.starts_at)}</> : weekly ? "↻ Repeats weekly" : "◷ One-off plan"}</span>
                 </div>
                 <div className="lib-body">
                   <b className="lib-title">{c.title}</b>
