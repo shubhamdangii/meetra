@@ -136,11 +136,11 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
       {e.tags.length > 0 && <div className="tagrow">{e.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
       <div className="card-body">
         {extra}
-        <FitLine group="card-when" floor={10.5} min={9} className="when"><b>{e.time}</b><i aria-hidden="true">·</i>{e.area}{city === "all" ? ` · ${CONFIG.cities[e.city].name}` : ""}</FitLine>
-        <span className="card-tt" title={e.title}><FitLine group="card-title" floor={13.5} min={12} as="h3">{e.title.split(" · ")[0]}</FitLine></span>
-        <FitLine group="card-by" floor={11} className={`by ${hostTba(e) ? "tba" : ""}`}><span className="by-ic" aria-hidden="true">{hostTba(e) ? "🎙️" : "✓"}</span>{hostLine(e)}</FitLine>
+        <FitLine group="card-when" floor={10.5} min={8.5} className="when"><b>{e.time}</b><i aria-hidden="true">·</i>{e.area}{city === "all" ? ` · ${CONFIG.cities[e.city].name}` : ""}</FitLine>
+        <span className="card-tt" title={e.title}><FitLine group="card-title" floor={13.5} min={9} as="h3">{e.title.split(" · ")[0]}</FitLine></span>
+        <FitLine group="card-by" floor={11} min={8.5} className={`by ${hostTba(e) ? "tba" : ""}`}><span className="by-ic" aria-hidden="true">{hostTba(e) ? "🎙️" : "✓"}</span>{hostLine(e)}</FitLine>
         <div className="card-foot">
-          <FitLine group="card-price" floor={11} className="cf-price"><b>{priceShort(e)}</b><span>{priceLabel(e)}</span></FitLine>
+          <FitLine group="card-price" floor={11} min={8.5} className="cf-price"><b>{priceShort(e)}</b><span>{priceLabel(e)}</span></FitLine>
           {st !== "open" ? <FitLine group="card-stats" floor={10.5} as="p" className="card-stats closed"><b>{st === "ended" ? "🏁 Event ended" : "🔒 Registration closed"}</b></FitLine> :
           <FitLine group="card-stats" floor={10.5} as="p" className={`card-stats${low ? " low" : ""}${left === 0 ? " full" : ""}`}><i className="dot" aria-hidden="true" /><b>{left === 0 ? "Full · join the waitlist" : `${left} of ${e.seats} seats left`}</b>
             {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</FitLine>}
