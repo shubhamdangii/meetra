@@ -1,5 +1,5 @@
 "use client";
-// Event library: every event as a card — real events from the database and the example plans.
+// Event library: every event as a card - real events from the database and the example plans.
 // Admins: add a date (one-time or weekly), reschedule, change location, assign a host, switch Active / Inactive.
 //         Nothing is ever deleted. Changes to live events go to the other admin (maker-checker); the switch is instant + logged.
 // Hosts:  add a date from any card (the team approves it).
@@ -88,7 +88,7 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   useEffect(() => { if (newTick) setChooser(true); }, [newTick]);
   // quick changes on a live event: just the time, or just the place (full form stays one tap away)
-  const [quick, setQuick] = useState<{ e: LibEvent; kind: "time" | "place"; date: string; st: string; en: string; area: string; maps: string; note: string } | null>(null);
+  const [quick, setQuick] = useState<{ e: LibEvent; kind: "time" | "place"; date: string; st: string; en: string; area: string; maps: string; landmark: string; meet: string; address: string; note: string } | null>(null);
   const [qErr, setQErr] = useState("");
   const [hostFor, setHostFor] = useState<LibEvent | null>(null);
 
@@ -171,7 +171,7 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
 
   function openQuick(e: LibEvent, kind: "time" | "place") {
     const s = toLocalInput(e.starts_at), en = toLocalInput(e.ends_at);
-    setQErr(""); setQuick({ e, kind, date: s.slice(0, 10), st: s.slice(11, 16), en: en.slice(11, 16), area: e.area ?? "", maps: e.maps_url ?? "", note: "" });
+    setQErr(""); setQuick({ e, kind, date: s.slice(0, 10), st: s.slice(11, 16), en: en.slice(11, 16), area: e.area ?? "", maps: e.maps_url ?? "", landmark: e.landmark ?? "", meet: e.meeting_point ?? "", address: e.address ?? "", note: "" });
   }
   async function sendQuick() {
     if (!quick || !auth.client) return;
@@ -180,7 +180,7 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
     if (quick.kind === "time") {
       const starts = `${quick.date}T${quick.st}`; let ends = `${quick.date}T${quick.en}`; if (quick.en <= quick.st) ends = nextDay(ends);
       f = { ...base, starts, ends, closes: "" };
-    } else f = { ...base, area: quick.area, maps_url: quick.maps };
+    } else f = { ...base, area: quick.area, maps_url: quick.maps, landmark: quick.landmark, meeting_point: quick.meet, address: quick.address };
     const problem = validateEvent(f); if (problem) return setQErr(problem);
     const p = formToPayload(f);
     let diff: Record<string, unknown>;
@@ -189,8 +189,9 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
       if (s === new Date(quick.e.starts_at).getTime() && en === new Date(quick.e.ends_at).getTime()) return setQErr("Pick a new date or time first.");
       diff = { starts_at: p.starts_at, ends_at: p.ends_at, booking_closes_at: new Date(s - 4 * 3600e3).toISOString() };
     } else {
-      if (p.area === (quick.e.area ?? "") && (p.maps_url ?? "") === (quick.e.maps_url ?? "")) return setQErr("Change the area or the map link first.");
-      diff = { area: p.area, maps_url: p.maps_url };
+      const same = (a: unknown, b: unknown) => (a ?? "") === (b ?? "");
+      if (same(p.area, quick.e.area) && same(p.maps_url, quick.e.maps_url) && same(p.landmark, quick.e.landmark) && same(p.meeting_point, quick.e.meeting_point) && same(p.address, quick.e.address)) return setQErr("Change something first.");
+      diff = { area: p.area, maps_url: p.maps_url, landmark: p.landmark, meeting_point: p.meeting_point, address: p.address };
     }
     setQErr(""); setBusy(true);
     const note = quick.note.trim() || (quick.kind === "time" ? `Reschedule to ${fmtDT(p.starts_at as string)}` : `New location: ${p.area}`);
@@ -278,7 +279,7 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
       {/* reschedule / location: only the fields that change */}
       <Modal open={!!quick} onClose={() => setQuick(null)} title={quick ? `${quick.kind === "time" ? "Reschedule" : "Change location"}: ${quick.e.title}` : ""}>
         {quick && <>
-          <div className="lib-now"><span>Now</span><b>{quick.kind === "time" ? `${fmtDT(quick.e.starts_at)} → ${fmtDT(quick.e.ends_at)}` : `${quick.e.area || "—"}, ${cityName(quick.e.city_slug)}`}</b></div>
+          <div className="lib-now"><span>Now</span><b>{quick.kind === "time" ? `${fmtDT(quick.e.starts_at)} → ${fmtDT(quick.e.ends_at)}` : `${quick.e.area || "-"}, ${cityName(quick.e.city_slug)}`}</b></div>
           <div className="adm-form lib-when-form">
             {quick.kind === "time" ? <>
               <div className="field span2"><label htmlFor="q-date">New date *</label><input id="q-date" type="date" min={new Date().toISOString().slice(0, 10)} value={quick.date} onChange={(x) => setQuick({ ...quick, date: x.target.value })} /></div>
@@ -289,6 +290,9 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
               <p className="muted span2" style={{ fontSize: 13 }}>Bookings close 4 hours before the new start. Guests who already have a seat get a notification after approval.</p>
             </> : <>
               <div className="field span2"><label htmlFor="q-area">Area *</label><input id="q-area" value={quick.area} maxLength={60} onChange={(x) => setQuick({ ...quick, area: x.target.value })} /></div>
+              <div className="field span2"><label htmlFor="q-lm">Landmark <span className="hint">everyone sees it</span></label><input id="q-lm" value={quick.landmark} maxLength={120} placeholder="e.g. Opposite Law Garden" onChange={(x) => setQuick({ ...quick, landmark: x.target.value })} /></div>
+              <div className="field span2"><label htmlFor="q-mp">Meeting point <span className="hint">everyone sees it</span></label><input id="q-mp" value={quick.meet} maxLength={200} placeholder="e.g. Host waits at the entrance with a yellow card" onChange={(x) => setQuick({ ...quick, meet: x.target.value })} /></div>
+              <div className="field span2"><label htmlFor="q-ad">Full address <span className="hint">only confirmed guests</span></label><input id="q-ad" value={quick.address} maxLength={200} placeholder="Venue name, floor, street" onChange={(x) => setQuick({ ...quick, address: x.target.value })} /></div>
               <div className="field span2"><label htmlFor="q-maps">Exact location (Google Maps link)</label><input id="q-maps" type="url" inputMode="url" value={quick.maps} placeholder="https://maps.app.goo.gl/…" onChange={(x) => setQuick({ ...quick, maps: x.target.value })} />
                 <small className="muted">{quick.maps.trim() && !isMapsUrl(quick.maps) ? "⚠️ " + MAPS_HINT : "Only confirmed guests see the exact pin."}</small></div>
             </>}

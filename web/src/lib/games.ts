@@ -54,33 +54,6 @@ export const DECKS: Deck[] = [
     ],
   },
   {
-    id: "pink-city", name: "Pink City × Amdavad", for: "Desi dinners, chai stops, night drives", color: "#FFD7B0", emoji: "🪔",
-    blurb: "Kachori debates, garba stories, family WhatsApp drama. For tables that speak fluent desi.",
-    kinds: { warm: K.warm, city: { label: "Desi life", dot: "#FF7A3D" }, play: K.play, wild: K.wild },
-    cards: [
-      ...c("warm", [
-        "Pyaaz kachori or khaman? Defend your answer.", "What's the most dramatic message in your family WhatsApp group?",
-        "Which relative asks the most questions at weddings?", "What's your Sunday breakfast at home?",
-        "Garba night or a quiet chai on the terrace?", "What's your 'mummy is calling' excuse to leave somewhere?",
-      ]),
-      ...c("city", [
-        "Best place for late-night maggi or chai in your city?", "Amer Fort or Adalaj stepwell, which one would you show a friend?",
-        "What's the most desi thing you still do even though you'd deny it?", "Your best Navratri or Diwali memory?",
-        "Which wedding song makes you dance no matter what?", "What did your parents never let you do as a kid?",
-        "Your go-to order at a thali place?",
-      ]),
-      ...c("play", [
-        "Do your best impression of a shopkeeper bargaining. Table scores you out of 10.", "Name 5 Bollywood songs with the word 'dil' in 20 seconds.",
-        "Explain your job like you're telling your nani.", "Everyone: the most overused phrase in your family.",
-        "Mimic your parent answering a phone call.", "Sing one line of an old Hindi song. Next person continues.",
-      ]),
-      ...c("wild", [
-        "Antakshari round! Start with the last letter of the last song sung.", "Whoever got the latest wedding invite answers the next card.",
-        "Everyone shares one word of local slang. Table votes the best.",
-      ], "Play it whenever."),
-    ],
-  },
-  {
     id: "house-party", name: "House Party", for: "House parties, birthdays, rooftop nights", color: "#DDEBB8", emoji: "🎈",
     blurb: "Louder cards for bigger rooms. Dares you can actually do, stories you'll retell tomorrow.",
     kinds: { warm: K.warm, play: K.play, wild: K.wild },
@@ -185,7 +158,7 @@ export const PARTY: Party[] = [
     how: ["Pair up. You get 2 minutes and a prompt.", "When the timer rings, the app shows who moves next.", "Keep going until everyone has met everyone."] },
   { id: "undercover", name: "Undercover", line: "One of you has a different word.", players: "4+ players", icon: "🕵️", min: 4, color: "#E2D9FF",
     how: ["Pass the phone. Each person peeks at their secret word, then hides it.", "One person has a word that's close but different.", "Go round: everyone says ONE word about their word.", "Vote out who sounds off. The undercover wins if they reach the last three."] },
-  { id: "mafia", name: "Mafia", line: "Close your eyes, Pink City.", players: "5+ players", icon: "🌒", min: 5, color: "#16122B",
+  { id: "mafia", name: "Mafia", line: "Close your eyes, town.", players: "5+ players", icon: "🌒", min: 5, color: "#16122B",
     how: ["The app secretly deals roles. Pass the phone so each person sees theirs.", "One person narrates using the script on screen.", "At night the mafia picks someone. The doctor saves one. The detective checks one.", "By day everyone debates and votes. Town wins when the mafia is out."] },
   { id: "heads-up", name: "Heads Up", line: "Phone on your forehead. Friends do the rest.", players: "2+ players", icon: "🤳", min: 2, color: "#C9F5E4",
     how: ["Pick a category. Hold the phone to your forehead, screen facing out.", "Friends act, describe or hum. You guess.", "Tap Got it or Pass. 60 seconds per round."] },
@@ -207,11 +180,28 @@ export const PARTY: Party[] = [
     how: ["One person describes the word on screen to their team.", "They can't say any of the forbidden words below it.", "Got it = point. Said a forbidden word = buzz! 60 seconds a turn."] },
   { id: "dumb-charades", name: "Dumb Charades", line: "Bollywood, no words, full drama.", players: "Teams", icon: "🎭", min: 2, color: "#C9F5E4",
     how: ["One person sees a film and acts it out. No talking, no lip-syncing.", "Show the number of words with your fingers first.", "Your team has 90 seconds to guess."] },
+  { id: "trivia", name: "Table Trivia", line: "Two teams, quick questions, one winner.", players: "4 to 20 · 2 teams", icon: "🧠", min: 2, color: "#E2D9FF",
+    how: ["Split the table into two teams.", "Read the question out loud. Teams whisper, then shout their answer.", "Tap Reveal. Give the point to whoever got it. First to 7 wins."] },
+  { id: "word-chain", name: "Word Chain", line: "Start where the last word ended.", players: "3 to 12 players", icon: "🔗", min: 3, color: "#C9F5E4",
+    how: ["Pick a theme: food, places, films or anything.", "Say a word that starts with the last letter of the previous word, then type it in.", "10 seconds a turn. Repeat a word or run out of time and you're out. Last one in wins."] },
   { id: "story-chain", name: "Story Chain", line: "One line each. Nobody sees the whole thing.", players: "3+ players", icon: "📜", min: 3, color: "#DDEBB8",
     how: ["The app starts a story.", "Each person only sees the last line, then adds one of their own.", "At the end, read the whole thing out loud."] },
 ];
 
 // ---------- content for the party engines ----------
+export const TRIVIA: [string, string][] = [
+  ["Which city is called the Pink City?", "Jaipur"], ["Which river flows through Ahmedabad?", "Sabarmati"], ["How many players are on a cricket team on the field?", "11"],
+  ["What is the national animal of India?", "Tiger"], ["Which planet is known as the Red Planet?", "Mars"], ["What do bees make?", "Honey"],
+  ["Which festival is called the festival of lights?", "Diwali"], ["How many states does India have?", "28"], ["What is the capital of Japan?", "Tokyo"],
+  ["Which instrument has 88 keys?", "Piano"], ["Who wrote the Indian national anthem?", "Rabindranath Tagore"], ["Which ocean is the largest?", "Pacific"],
+  ["What is the boiling point of water in Celsius?", "100"], ["Which fort in Jaipur sits on a hill above Maota Lake?", "Amber (Amer) Fort"], ["Which kite festival is famous in Gujarat?", "Uttarayan"],
+  ["How many sides does a hexagon have?", "6"], ["Which fruit is called the king of fruits in India?", "Mango"], ["What is the largest mammal?", "Blue whale"],
+  ["Which Indian dance form comes from Gujarat and is played at Navratri?", "Garba"], ["In which sport do you hear 'love' as a score?", "Tennis"], ["What colour do you get mixing blue and yellow?", "Green"],
+  ["Which is the longest river in India?", "Ganga"], ["How many minutes are in a day?", "1,440"], ["Which city hosts the Hawa Mahal?", "Jaipur"],
+  ["Which app's logo is a little ghost?", "Snapchat"], ["What is the hardest natural substance?", "Diamond"], ["Which month has 28 days in a normal year?", "February (all of them do!)"],
+];
+export const WORD_THEMES: [string, string][] = [["anything", "Anything"], ["food", "Food & drinks"], ["places", "Cities & places"], ["films", "Films & songs"]];
+
 export const UNDERCOVER_PAIRS: [string, string][] = [
   ["Chai", "Coffee"], ["Samosa", "Kachori"], ["Garba", "Bhangra"], ["Jaipur", "Udaipur"], ["Auto", "Cab"], ["Lassi", "Chaas"],
   ["Diwali", "Holi"], ["Cricket", "Football"], ["Instagram", "Snapchat"], ["Wedding", "Engagement"], ["Mango", "Papaya"],

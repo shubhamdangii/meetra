@@ -76,7 +76,7 @@ export function mapsEmbed(u: string): string | null {
   return null;
 }
 
-export type EventLocation = { maps_url: string | null; allowed: boolean } | null;
+export type EventLocation = { maps_url: string | null; address?: string | null; allowed: boolean; has_address?: boolean } | null;
 /** The exact spot, only returned by the server for confirmed (and paid) guests, the host and the team. */
 export function useEventLocation(client: SupabaseClient | null | undefined, planRef: string | null, enabled = true) {
   const [loc, setLoc] = useState<EventLocation | undefined>(undefined);
@@ -137,4 +137,16 @@ export function useAttendees(planRef: string | null) {
   }, [planRef]);
   useEffect(() => { load(); }, [load]);
   return { attendees: a, reload: load };
+}
+
+/** Public meeting details of a live event: landmark + meeting point (anyone can see), and whether a private pin/address exists. */
+export function useMeetingInfo(client: SupabaseClient | null | undefined, planRef: string | null) {
+  const [m, setM] = useState<{ landmark: string | null; meeting_point: string | null; has_pin: boolean } | null>(null);
+  useEffect(() => {
+    if (!client || !planRef || !planRef.startsWith("x")) { setM(null); return; }
+    let alive = true;
+    client.rpc("event_meeting_info", { p_plan_ref: planRef }).then(({ data }) => { if (alive) setM(((data as typeof m[]) ?? [])[0] ?? null); });
+    return () => { alive = false; };
+  }, [client, planRef]);
+  return m;
 }

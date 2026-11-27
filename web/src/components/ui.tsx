@@ -1,6 +1,7 @@
 "use client";
 import { motion, type HTMLMotionProps } from "framer-motion";
 import Link from "next/link";
+import { useLayoutEffect, useRef } from "react";
 import { useApp } from "./AppProvider";
 import { burstFrom, buzz, useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
@@ -69,6 +70,24 @@ export function SaveButton({ id, label = false, className = "" }: { id: string; 
   );
 }
 
+/** One line, always: the text shrinks (down to `min` px) until it fits its box, on every screen size. */
+export function FitLine({ as: Tag = "span", className = "", min = 11, children }: { as?: "span" | "h3" | "b" | "p" | "div"; className?: string; min?: number; children: React.ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const fit = () => {
+      el.style.fontSize = "";
+      let fs = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth + 0.5 && fs > min) { fs -= 0.5; el.style.fontSize = `${fs}px`; }
+    };
+    fit();
+    const ro = new ResizeObserver(fit); ro.observe(el);
+    return () => ro.disconnect();
+  }, [children, min]);
+  const T = Tag as React.ElementType;
+  return <T ref={ref} className={`fit1 ${className}`}>{children}</T>;
+}
+
 export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: number; extra?: React.ReactNode }) {
   const { city } = useApp();
   const real = e.key.startsWith("x");
@@ -89,17 +108,17 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
       {e.tags.length > 0 && <div className="tagrow">{e.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
       <div className="card-body">
         {extra}
-        <span className="when">{e.time} · {e.area}{city === "all" ? " · " + CONFIG.cities[e.city].name : ""}</span>
-        <h3>{e.title}</h3>
-        <span className={`by ${hostTba(e) ? "tba" : ""}`}>{hostTba(e) ? "🎙️ " : ""}{hostLine(e)}</span>
+        <FitLine className="when">{e.time} · {e.area}{city === "all" ? " · " + CONFIG.cities[e.city].name : ""}</FitLine>
+        <FitLine as="h3" min={13}>{e.title}</FitLine>
+        <FitLine className={`by ${hostTba(e) ? "tba" : ""}`}>{hostTba(e) ? "🎙️ " : ""}{hostLine(e)}</FitLine>
         <div className="price">
-          <span><b>{priceShort(e)}</b> {priceLabel(e)}</span>
+          <FitLine><b>{priceShort(e)}</b> {priceLabel(e)}</FitLine>
           {left === 0 && <span className="seats-left">Waitlist</span>}
         </div>
-        {st !== "open" ? <p className="card-stats closed"><b>{st === "ended" ? "🏁 Event ended" : "🔒 Registration closed"}</b></p> :
-        <p className={`card-stats${low ? " low" : ""}`}><b>{left === 0 ? "Full · join the waitlist" : `${left} of ${e.seats} seats left`}</b>
+        {st !== "open" ? <FitLine as="p" className="card-stats closed"><b>{st === "ended" ? "🏁 Event ended" : "🔒 Registration closed"}</b></FitLine> :
+        <FitLine as="p" className={`card-stats${low ? " low" : ""}`}><b>{left === 0 ? "Full · join the waitlist" : `${left} of ${e.seats} seats left`}</b>
           {cnt && cnt.approved_seats > 0 && <> · {cnt.approved_seats} accepted</>}
-          {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</p>}
+          {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</FitLine>}
       </div>
       <Link className="card-link" href={eventUrl(e)} aria-label={e.title} />
     </motion.article>

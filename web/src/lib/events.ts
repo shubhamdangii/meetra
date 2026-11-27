@@ -105,8 +105,13 @@ export function buildEvents(today: Date, custom: CustomPlan[] = [], hidden: Set<
       hostId: c.host_id ?? undefined, bookingClosesAt: c.booking_closes_at ? new Date(c.booking_closes_at) : undefined,
     });
   });
-  all.sort((a, b) => a.date.getTime() - b.date.getTime() || mins(a.time) - mins(b.time));
-  return { all, upcoming: all.filter((e) => e.day >= 0), past: all.filter((e) => e.day < 0).reverse() };
+  // A real event added from an example plan (same plan, city and day) replaces that day's example copy: one card, never two.
+  const norm = (e: MeetEvent) => `${e.city}|${ymd(e.date)}|${e.title.split(" · ")[0].trim().toLowerCase()}`;
+  const realDays = new Set(all.filter((e) => e.key.startsWith("x")).map(norm));
+  const seen = new Set<string>();
+  const list = all.filter((e) => (e.key.startsWith("x") || !realDays.has(norm(e))) && !seen.has(e.id) && (seen.add(e.id), true));
+  list.sort((a, b) => a.date.getTime() - b.date.getTime() || mins(a.time) - mins(b.time));
+  return { all: list, upcoming: list.filter((e) => e.day >= 0), past: list.filter((e) => e.day < 0).reverse() };
 }
 
 /* ---------- formatting ---------- */
@@ -118,7 +123,7 @@ export const relDay = (d: Date, today: Date) => {
 export const hostNames = (e: MeetEvent) => e.hosts.map((h) => (h === "tba" ? "Host TBA" : h)).join(" & ");
 /** True when a real event has no host picked yet. */
 export const hostTba = (e: MeetEvent) => e.hosts.length === 1 && e.hosts[0] === "tba";
-/** "Hosted by <host from the database>" — or "Host announced soon" when the team hasn't picked one yet. */
+/** "Hosted by <host from the database>" - or "Host announced soon" when the team hasn't picked one yet. */
 export const hostLine = (e: MeetEvent) => (hostTba(e) ? "Host announced soon" : `Hosted by ${hostNames(e)}`);
 export const priceShort = (e: MeetEvent) =>
   e.priceType === "free" ? "Free" : e.priceType === "estimate" ? `~₹${e.price.toLocaleString("en-IN")}` : `₹${e.price.toLocaleString("en-IN")}`;

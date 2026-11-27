@@ -1,5 +1,5 @@
 "use client";
-// /host-profile/?id=6 — a host's public page: rating, reviews, gallery and their plans.
+// /host-profile/?id=6 - a host's public page: rating, reviews, gallery and their plans.
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";

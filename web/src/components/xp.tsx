@@ -80,15 +80,15 @@ export function XpCard({ score, hasPhoto, bio, phoneVerified, words = false, pro
   return (
     <section className="xp">
       <div className="xp-top">
-        <motion.span className="xp-lv" initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 300, damping: 12 }}>{lvEm}</motion.span>
+        <motion.span className="xp-lv" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.35 }}>{lvEm}</motion.span>
         <div className="xp-txt">
-          <span className="eyebrow" style={{ color: "var(--sun)" }}>Level {li + 1} · {lvName}</span>
+          <span className="xp-eyebrow">Level {li + 1} · {lvName}</span>
           <b><motion.span key={xp} initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>{xp}</motion.span> XP</b>
           <small>{next ? `${next[0] - xp} XP to ${next[2]} ${next[1]}` : "Max level. Absolute legend."}</small>
         </div>
       </div>
       <div className="xp-bar"><motion.i initial={{ width: 0 }} animate={{ width: `${Math.max(4, pct)}%` }} transition={{ type: "spring", stiffness: 60, damping: 16, delay: 0.2 }} /></div>
-      <p className="xp-perk">⚡ Earn XP by filling your profile, coming to plans, playing games and bringing friends.</p>
+      <p className="xp-perk">Earn XP by filling your profile, coming to plans, playing games and bringing friends.</p>
 
       {quests.length > 0 && <>
         <h3 className="xp-h">Next quests</h3>
@@ -106,8 +106,8 @@ export function XpCard({ score, hasPhoto, bio, phoneVerified, words = false, pro
       <div className="xp-badges">
         {badges.map((b, i) => (
           <motion.button type="button" key={b.id} className={`xp-b ${b.ok ? "on" : ""}`} onClick={() => setOpen(open === b.id ? null : b.id)}
-            initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 380, damping: 14, delay: 0.05 * i }}
-            whileTap={{ scale: 0.88, rotate: -8 }} aria-label={`${b.name}: ${b.ok ? "earned" : b.how}`}>
+            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.025 * i }}
+            whileTap={{ scale: 0.94 }} aria-label={`${b.name}: ${b.ok ? "earned" : b.how}`}>
             <span>{b.ok ? b.em : "🔒"}</span><small>{b.name}</small>
           </motion.button>
         ))}

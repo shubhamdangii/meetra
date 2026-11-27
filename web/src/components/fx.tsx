@@ -160,7 +160,7 @@ export function buzz(ms = 10) {
 export function ScrollFX() {
   const path = usePathname();
   useEffect(() => {
-    // Reveal anything whose top is above 90% of the screen — including headings you flung past
+    // Reveal anything whose top is above 90% of the screen - including headings you flung past
     // and ones re-created after a filter change. Checked on scroll and every half second.
     document.documentElement.classList.add("fx-ready");
     let raf = 0;

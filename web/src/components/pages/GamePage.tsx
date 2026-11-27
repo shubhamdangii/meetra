@@ -1,5 +1,5 @@
 "use client";
-// /game/?id=… — plays one deck or one party game on a single phone.
+// /game/?id=… - plays one deck or one party game on a single phone.
 // Everything runs on this device; names are kept only in this browser.
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import { noteGamePlayed } from "../xp";
 import { CONFIG } from "@/lib/config";
 import { store } from "@/lib/store";
 import {
-  ANTAKSHARI_LETTERS, CHARADES, DECKS, TABOO, EMOJI_CLUES, HEADS_UP, HOT_SEAT, PARTY, SPEED_PROMPTS, SPIN_TASKS, STORY_STARTS,
+  ANTAKSHARI_LETTERS, CHARADES, DECKS, TABOO, TRIVIA, WORD_THEMES, EMOJI_CLUES, HEADS_UP, HOT_SEAT, PARTY, SPEED_PROMPTS, SPIN_TASKS, STORY_STARTS,
   UNDERCOVER_PAIRS, VOTE_Q, WYR, type Deck, type Party,
 } from "@/lib/games";
 
@@ -192,7 +192,7 @@ function DeckGame({ d }: { d: Deck }) {
 function PartyGame({ p }: { p: Party }) {
   const pl = usePlayers();
   const [go, setGo] = useState(false);
-  const needs = !["heads-up", "emoji-charades", "would-you-rather", "antakshari", "hot-seat", "taboo", "dumb-charades"].includes(p.id);
+  const needs = !["heads-up", "emoji-charades", "would-you-rather", "antakshari", "hot-seat", "taboo", "dumb-charades", "trivia"].includes(p.id);
   const ok = !needs || pl.names.length >= p.min;
   const Engine = ENGINES[p.id];
   if (go && ok) return (
@@ -538,7 +538,86 @@ function DumbCharades() {
   }} />;
 }
 
+/** Two teams, one question at a time; reveal, then give the point. First to 7. */
+function Trivia() {
+  const order = useRef(shuffle(TRIVIA.map((_, k) => k))); const [n, setN] = useState(0);
+  const [score, setScore] = useState([0, 0]); const [open, setOpen] = useState(false);
+  const [q, a] = TRIVIA[order.current[n % order.current.length]];
+  const win = score.findIndex((s) => s >= 7);
+  const next = (team: number | null, el?: Element) => {
+    if (team !== null) { setScore((s) => s.map((v, k) => (k === team ? v + 1 : v))); if (el) burstFrom(el, ["🧠", "✨"], 8); }
+    setOpen(false); setN(n + 1); buzz();
+  };
+  if (win >= 0) return (
+    <div className="panel gm-panel center"><span className="gm-big">🏆</span><h2>Team {win ? "B" : "A"} wins {score[win]}–{score[1 - win]}</h2>
+      <button className="btn btn-sun btn-block" onClick={() => { setScore([0, 0]); setN(n + 1); }}>Play again</button></div>
+  );
+  return (
+    <>
+      <div className="gm-score">{["Team A", "Team B"].map((t, k) => <div key={t}><small>{t}</small><b>{score[k]}</b></div>)}</div>
+      <FlipCard k={`${n}-${open}`} color={open ? "#C9F5E4" : "#E2D9FF"}>
+        <div className="gm-card-in center"><span className="eyebrow">Question {n + 1}</span><h2 className="gm-q">{q}</h2>
+          {open ? <p className="gm-answer"><small>Answer</small><b>{a}</b></p> : <button className="btn btn-ink btn-sm" onClick={() => { setOpen(true); buzz(); }}>Reveal answer</button>}</div>
+      </FlipCard>
+      {open && <div className="gm-row three">
+        <button className="btn btn-sun" onClick={(e) => next(0, e.currentTarget)}>Team A ✓</button>
+        <button className="btn btn-white" onClick={() => next(null)}>Nobody</button>
+        <button className="btn btn-sun" onClick={(e) => next(1, e.currentTarget)}>Team B ✓</button>
+      </div>}
+    </>
+  );
+}
+
+/** Say a word that starts with the last letter of the one before. 10 seconds, no repeats, last one standing wins. */
+function WordChain({ names }: EP) {
+  const [theme, setTheme] = useState<string | null>(null);
+  const [alive, setAlive] = useState<string[]>(names); const [turn, setTurn] = useState(0);
+  const [words, setWords] = useState<string[]>([]); const [v, setV] = useState(""); const [err, setErr] = useState("");
+  const out = useRef<() => void>(() => {});
+  const t = useTimer(() => out.current());
+  const who = alive[turn % Math.max(1, alive.length)];
+  const need = words.length ? words[words.length - 1].slice(-1).toUpperCase() : null;
+  const knock = (why: string) => {
+    const rest = alive.filter((x) => x !== who); setErr(`${who} is out: ${why}`); buzz(200);
+    setAlive(rest); setTurn((k) => (rest.length ? k % rest.length : 0)); setV("");
+    if (rest.length > 1) t.start(10);
+  };
+  out.current = () => knock("time's up");
+  const submit = () => {
+    const w = v.trim().toLowerCase().replace(/[^a-z\s-]/g, ""); if (!w) return;
+    if (need && w[0].toUpperCase() !== need) return setErr(`It has to start with ${need}`);
+    if (words.includes(w)) return knock(`"${w}" was already said`);
+    setWords([...words, w]); setV(""); setErr(""); setTurn((k) => (k + 1) % alive.length); buzz(); t.start(10);
+  };
+  if (!theme) return (
+    <div className="panel gm-panel"><h3>Pick a theme</h3>
+      <div className="gm-themes">{WORD_THEMES.map(([k, l]) => <button key={k} className="pill" onClick={() => { setTheme(k); t.start(10); }}>{l}</button>)}</div></div>
+  );
+  if (alive.length <= 1) return (
+    <div className="panel gm-panel center"><span className="gm-big">🔗</span><h2>{alive[0] ?? "Nobody"} wins!</h2><p className="muted">{words.length} words in the chain.</p>
+      <button className="btn btn-sun btn-block" onClick={() => { setAlive(names); setWords([]); setTurn(0); setErr(""); setTheme(null); }}>Play again</button></div>
+  );
+  return (
+    <>
+      <FlipCard k={`${words.length}-${alive.length}`} color="#C9F5E4">
+        <div className="gm-card-in center"><span className="eyebrow">{who}&apos;s turn · {WORD_THEMES.find(([k]) => k === theme)?.[1]}</span>
+          {need ? <><small className="muted">Starts with</small><span className="gm-letter">{need}</span></> : <h2>Any word to start</h2>}
+          <Ring left={t.left} total={10} />
+          <form className="gm-chain" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+            <input className="gm-input" value={v} onChange={(e) => setV(e.target.value)} placeholder="Type the word you said" autoFocus aria-label="Your word" autoCapitalize="none" />
+            <button className="btn btn-ink btn-sm" type="submit">Next →</button>
+          </form>
+          {err && <p className="gm-err" role="status">{err}</p>}
+        </div>
+      </FlipCard>
+      {words.length > 0 && <p className="gm-trail">{words.slice(-6).join(" → ")}</p>}
+      <p className="muted center" style={{ fontSize: 13 }}>Still in: {alive.join(", ")}</p>
+    </>
+  );
+}
+
 const ENGINES: Record<string, (p: EP) => React.ReactNode> = {
+  trivia: Trivia, "word-chain": WordChain,
   taboo: Taboo, "dumb-charades": DumbCharades,
   "speed-friending": SpeedFriending, undercover: Undercover, mafia: Mafia, "heads-up": HeadsUp, "hot-seat": HotSeat,
   "would-you-rather": WouldYouRather, "emoji-charades": EmojiCharades, "two-truths": TwoTruths, "secret-vote": SecretVote,

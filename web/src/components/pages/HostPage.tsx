@@ -114,7 +114,7 @@ function HostApply() {
       return;
     }
     if (!auth.session) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(v)); } catch {} auth.requireLogin("/host/"); return; }
-    if (!auth.client || !auth.me) return toast("Still loading your account — try again in a second.");
+    if (!auth.client || !auth.me) return toast("Still loading your account. Try again in a second.");
     // which event will they host?
     let newEvent: NewEvent | null = null;
     if (v.choice === "existing") {
@@ -164,7 +164,7 @@ function HostApply() {
       <section className="split host-split" style={{ paddingBottom: 30 }}>
         <Reveal className="panel" id="apply">
           <AnimatePresence mode="wait">
-            {waText ? <WhatsAppDone key="wa" text={waText} heading="Love it — one last tap" link={whatsappLink(waText)} />
+            {waText ? <WhatsAppDone key="wa" text={waText} heading="Love it! One last tap" link={whatsappLink(waText)} />
               : app === undefined && auth.enabled && auth.session ? <div key="load" className="skeleton" style={{ minHeight: 320 }} />
               : open ? (
                 <motion.div key="status" className={`status-card s-${app!.status === "approved" ? "approved" : app!.status === "waitlisted" ? "waitlisted" : "pending"}`}
@@ -189,7 +189,7 @@ function HostApply() {
                 <motion.form key="form" ref={formRef} exit={{ opacity: 0 }} onSubmit={submit}>
                   <h2 style={{ fontSize: 30, letterSpacing: "-.04em", marginBottom: 6 }}>{name ? `Pitch your plan, ${name}` : "Pitch your plan"}</h2>
                   <p className="muted" style={{ marginBottom: 18 }}>
-                    {app?.status === "rejected" ? "Not this time last round — try a new idea! " : app?.status === "withdrawn" ? "Welcome back. " : ""}
+                    {app?.status === "rejected" ? "Not this time last round. Try a new idea! " : app?.status === "withdrawn" ? "Welcome back. " : ""}
                     Takes 2 minutes. {auth.enabled ? "You'll get your place in the host line straight away." : "We reply on WhatsApp within a day."}
                   </p>
                   <div className="field"><label htmlFor="hcity">City</label><select id="hcity" value={v.city_slug} onChange={(e) => { cityTouched.current = true; set("city_slug")(e); }}>{liveCities.map(([slug, c]) => <option key={slug} value={slug}>{c.name}</option>)}</select></div>
@@ -225,7 +225,7 @@ function HostApply() {
                     <div className="field"><label htmlFor="hg">Group size</label><input id="hg" type="number" min={2} max={200} value={v.group_size} onChange={set("group_size")} /></div>
                   </div>
                   <div className="field"><label htmlFor="ha">When are you free? (optional)</label><input id="ha" maxLength={200} placeholder="Weekday evenings, Sunday mornings…" value={v.availability} onChange={set("availability")} /></div>
-                  <div className="field"><label htmlFor="he">Hosted anything before? (optional)</label><textarea id="he" maxLength={800} placeholder="Clubs, events, classes, college fests — or nothing yet, that's fine!" value={v.experience} onChange={set("experience")} /></div>
+                  <div className="field"><label htmlFor="he">Hosted anything before? (optional)</label><textarea id="he" maxLength={800} placeholder="Clubs, events, classes, college fests, or nothing yet, that's fine!" value={v.experience} onChange={set("experience")} /></div>
                   <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun btn-block" type="submit" disabled={busy}>
                     {!auth.enabled ? "Send on WhatsApp →" : auth.session ? (busy ? "Sending…" : "Join the host line →") : "Log in & join the host line →"}
                   </motion.button>

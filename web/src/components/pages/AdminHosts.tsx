@@ -60,7 +60,7 @@ export function AdminHosts() {
         <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> Show live, rejected &amp; withdrawn</label>
         <button className="btn btn-white btn-sm" onClick={load}>Refresh</button>
       </div>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Best profile score first, then who applied earlier. The note is shown to the applicant on their host page — use it for call times or next steps.</p>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Best profile score first, then who applied earlier. The note is shown to the applicant on their host page. Use it for call times or next steps.</p>
       <div className="tbl-wrap"><table>
         <thead><tr><th>Applicant</th><th>Score</th><th>Contact</th><th>Plan</th><th>Details</th><th>Status</th><th>Note to applicant</th><th /></tr></thead>
         <tbody>

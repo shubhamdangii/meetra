@@ -1,5 +1,5 @@
 /* =========================================================
-   SITE SETTINGS — change the brand, cities and contact here.
+   SITE SETTINGS - change the brand, cities and contact here.
    Everything on every page reads from this file.
    ========================================================= */
 export const CONFIG: {

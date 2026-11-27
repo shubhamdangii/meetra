@@ -1,5 +1,5 @@
 "use client";
-// "Make this member a host": the admin also gives them an event — the one they asked for, any event that
+// "Make this member a host": the admin also gives them an event - the one they asked for, any event that
 // still needs a host, or a brand new one created right here. All of it goes to the other admin as one request.
 import { useEffect, useState } from "react";
 import { useApp } from "../AppProvider";

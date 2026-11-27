@@ -69,7 +69,7 @@ export const TEMPLATES: any = [
     price: 99, priceType: "reservation", seats: 12, emoji: "🍿", pal: 1, pattern: "sun",
     themes: ["Cult Classics", "Rom-Com Night", "2000s Bollywood", "Anime Night"],
     blurb: "Projector, beanbags, popcorn and a pre-movie quiz. Stay back for the post-movie debate.",
-    steps: ["Popcorn and a 10-minute film quiz", "The screening — phones away", "Hot takes and ratings after"],
+    steps: ["Popcorn and a 10-minute film quiz", "The screening, phones away", "Hot takes and ratings after"],
     cities: { jaipur: { area: "Raja Park" }, ahmedabad: { area: "Satellite" } } },
 
   { key: "book-club-lunch", title: "Book Club Lunch", cat: "food", days: [6], time: "1 pm", end: "3 pm",
@@ -80,7 +80,7 @@ export const TEMPLATES: any = [
 
   { key: "open-mic", title: "Rooftop Open Mic", cat: "night", days: [5], time: "9 pm", end: "12 am",
     price: 299, priceType: "per person", seats: 40, emoji: "🎤", pal: 2, pattern: "sun",
-    blurb: "Poetry, stand-up, songs — sign up to perform or just come to cheer. One drink included.",
+    blurb: "Poetry, stand-up, songs. Sign up to perform or just come to cheer. One drink included.",
     steps: ["Sign-up sheet opens at 8:45", "Three sets of 5-minute acts", "Open floor and music to close"],
     cities: { jaipur: { area: "Vaishali Nagar" }, ahmedabad: { area: "Sindhu Bhavan Road" } } },
 
@@ -93,7 +93,7 @@ export const TEMPLATES: any = [
 
   { key: "sketch-walk", title: "Sketch Walk", cat: "art", days: [6], time: "5 pm", end: "7 pm",
     price: 99, priceType: "reservation", seats: 14, emoji: "✏️", pal: 9, pattern: "grid",
-    blurb: "Sketch the city together. Total beginners welcome — bring a pencil, we bring the vibe.",
+    blurb: "Sketch the city together. Total beginners welcome. Bring a pencil, we bring the vibe.",
     steps: ["5-minute drawing warm-up", "Walk and sketch three spots", "Show-and-tell over snacks"],
     cities: { jaipur: { area: "Jawahar Kala Kendra" }, ahmedabad: { area: "Kankaria" } } },
 
@@ -150,7 +150,7 @@ export const TEMPLATES: any = [
 
   { key: "women-brunch", title: "Women-only Sunday Brunch", cat: "food", days: [0], time: "11 am", end: "1 pm",
     price: 99, priceType: "reservation", seats: 12, emoji: "🥞", pal: 1, pattern: "dots", tags: ["Women only"],
-    blurb: "A relaxed brunch table just for women — new to the city or just new to the group.",
+    blurb: "A relaxed brunch table just for women, new to the city or just new to the group.",
     steps: ["Coffee and quick intros", "Brunch and long conversations", "Optional café-hop after"],
     cities: { jaipur: { area: "C-Scheme" }, ahmedabad: { area: "Vastrapur" } } },
 

@@ -4,13 +4,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "./AppProvider";
-import { Chips, Empty, EventCard, HostAv, Poster, Reveal, ease } from "./ui";
+import { Chips, Empty, EventCard, FitLine, HostAv, Poster, Reveal, ease } from "./ui";
 import { buzz, CountUp, Gallery, Wavy } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { REVIEWS } from "@/lib/data";
 import { NotHost } from "./host/useIsHost";
 import { MON, PRICE_BANDS, priceOk, type MeetEvent, cityName, eventUrl, hostLine, hostNames, momentPhotos, relDay } from "@/lib/events";
-import { PhotoStrip } from "./Photos";
+import { PinnedPhotoStrip } from "./Photos";
 import { atLeast, isReal, useFeaturedReviews, useHostCount, usePublicHosts, type PublicHost } from "@/lib/publicData";
 import { CITY_CENTER, areaPoint, kmBetween } from "@/lib/geo";
 import { AreaMap } from "./AreaMap";
@@ -63,7 +63,7 @@ export function HeroStack() {
             whileDrag={{ scale: 1.05, rotate: 0, cursor: "grabbing" }}>
             <Link href={eventUrl(e)} style={{ display: "block" }} draggable={false} onClickCapture={(ev) => { if (dragged.current) { ev.preventDefault(); ev.stopPropagation(); } }}>
               <Poster e={e} />
-              <div className="sc-body"><div className="meta">{relDay(e.date, today)} · {e.time} · {e.area}</div><h3>{e.title}</h3><div className="meta by-line">{hostLine(e)}</div></div>
+              <div className="sc-body"><FitLine className="meta">{relDay(e.date, today)} · {e.time} · {e.area}</FitLine><FitLine as="h3">{e.title}</FitLine><FitLine className="meta by-line">{hostLine(e)}</FitLine></div>
             </Link>
           </motion.div>
         );
@@ -103,23 +103,19 @@ export function Faces() {
   );
 }
 
-export function Marquee() {
-  const { upcoming, inCity } = useApp();
-  const items = [...new Set(upcoming.filter(inCity).slice(0, 24).map((e) => `${e.emoji} ${e.title.split(" · ")[0]}`))].slice(0, 12);
-  const list = items.length ? items : ["🍝 Introverts' Dinner", "🎲 Board Games & Chai", "🌄 Sunrise Trek", "🧠 Quiz Night", "🎤 Open Mic"];
-  // each group is long enough to cover the widest screen; two identical groups scroll by exactly one group → no gap, ever
-  const group: string[] = []; while (group.length < 16) group.push(...list);
-  const strip = (cls: string, rev = false) => (
-    <div className={`mq ${cls}`}>
-      <div className={`mq-track${rev ? " rev" : ""}`} style={{ ["--mq-dur" as string]: `${group.length * 4.2}s` }}>
-        {[0, 1].map((g) => <div key={g} className="mq-group">{group.map((t, i) => <span key={i}>{t}</span>)}</div>)}
-      </div>
-    </div>
-  );
+/* ---------- closing ribbon above the footer: a slim 3D conveyor of words with glowing orbs (transform-only animation) ---------- */
+const RIBBON = ["Come alone", "Leave with a group chat", "Jaipur", "Hosted every day", "Ahmedabad", "No awkward small talk", "Real people, real nights"];
+export function Ribbon() {
+  // two identical groups, each wider than any screen, scrolled by exactly one group: seamless
+  const group: string[] = []; while (group.length < 14) group.push(...RIBBON);
   return (
-    <div className="mq-wrap" aria-hidden="true">
-      {strip("mq-a")}
-      {strip("mq-b", true)}
+    <div className="rb" aria-hidden="true">
+      <div className="rb-3d">
+        <div className="rb-track">
+          {[0, 1].map((g) => <div key={g} className="rb-group">{group.map((w, i) => <span key={i} className={`rb-w w${i % 3}`}>{w}<i className="rb-orb" /></span>)}</div>)}
+        </div>
+      </div>
+      <span className="rb-sheen" />
     </div>
   );
 }
@@ -315,9 +311,9 @@ export function Wall() {
 }
 
 /* ---------- real photos from past meetups ---------- */
-export function Moments() {
-  const photos = useMemo(() => momentPhotos(24), []);
-  return <PhotoStrip photos={photos} label="Photos from past meetups" auto={3800} />;
+export function Moments({ head }: { head?: React.ReactNode }) {
+  const photos = useMemo(() => momentPhotos(12), []);
+  return <PinnedPhotoStrip photos={photos} label="Photos from past meetups" head={head} />;
 }
 
 export function Stats() {

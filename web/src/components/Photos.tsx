@@ -1,8 +1,8 @@
 "use client";
 // Real meetup photos: polaroid strip + tap-to-open lightbox. Files come from public/images (see image-manifest).
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import { lockScroll } from "@/lib/scrollLock";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Gallery } from "./fx";
 
@@ -26,6 +26,80 @@ export function PhotoStrip({ photos, label, auto = 0 }: { photos: Photo[]; label
           </motion.button>
         ))}
       </Gallery>
+      <Lightbox photos={photos} index={open} onIndex={setOpen} />
+    </>
+  );
+}
+
+/** Photos move sideways as the page scrolls down: the section stays pinned until the last photo is in view, then the page carries on.
+ *  It's plain page scroll (no wheel/touch hijacking), so mouse, trackpad, touch, keyboard and scrolling back up all just work.
+ *  Reduced motion: a normal swipe strip. */
+const SPEED = 1.6;   // photos move 1.6 px sideways per px of page scroll
+export function PinnedPhotoStrip({ photos, label, head }: { photos: Photo[]; label: string; head?: React.ReactNode }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const outer = useRef<HTMLDivElement>(null), view = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null);
+  const [dist, setDist] = useState(0);
+  const [still, setStill] = useState(false);
+  useEffect(() => { setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches); }, []);
+  // the pinned range in page pixels: from "section reaches its sticky top" to "section bottom leaves", measured from the real layout
+  const geo = useRef({ start: 0, len: 1 });
+  useEffect(() => {
+    const measure = () => {
+      const t = track.current, v = view.current, o = outer.current; if (!t || !v || !o) return;
+      // travel = track width minus the visible box (inside the padding), plus room for the last card's tilt; never past the screen edge
+      const cs = getComputedStyle(v);
+      const box = Math.min(v.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), window.innerWidth - 32);
+      setDist(Math.max(0, t.scrollWidth - box + 14));
+      const s = o.firstElementChild as HTMLElement;
+      const stickyTop = parseFloat(getComputedStyle(s).top) || 0;
+      geo.current = { start: o.getBoundingClientRect().top + window.scrollY - stickyTop, len: Math.max(1, o.offsetHeight - s.offsetHeight) };
+    };
+    measure();
+    const ro = new ResizeObserver(measure); if (track.current) ro.observe(track.current); if (view.current) ro.observe(view.current); ro.observe(document.body);
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [photos.length, still, dist]);
+  const { scrollY } = useScroll();
+  // read the live position every frame (content above can change height), so the last photo lands exactly when the section un-pins
+  const prog = useTransform(scrollY, () => {
+    const o = outer.current; if (!o) return 0;
+    const sEl = o.firstElementChild as HTMLElement;
+    const top = parseFloat(getComputedStyle(sEl).top) || 0;
+    const len = Math.max(1, o.offsetHeight - sEl.offsetHeight);
+    return Math.min(1, Math.max(0, (top - o.getBoundingClientRect().top) / len));
+  });
+  const x = useTransform(prog, (p) => -dist * p);
+  const pct = useTransform(prog, (p) => `${p * 100}%`);
+  if (!photos.length) return null;
+  if (still) return <>{head}<PhotoStrip photos={photos} label={label} /></>;
+  // keyboard: tabbing to a photo scrolls the page to the point where that photo is on screen
+  const focusPhoto = (el: HTMLElement) => {
+    const v = view.current; if (!v || !dist) return;
+    v.scrollLeft = 0;
+    const want = Math.min(dist, Math.max(0, el.offsetLeft - 24)) / dist;
+    window.scrollTo({ top: geo.current.start + want * geo.current.len, behavior: "smooth" });
+  };
+  return (
+    <>
+      <div ref={outer} className="pin" style={{ height: `calc(var(--pin-h) + ${Math.round(dist / SPEED)}px)` }}>
+        <div className="pin-sticky">
+          {head}
+          <div ref={view} className="pin-view" role="region" aria-label={label}>
+            <motion.div ref={track} className="pin-track" style={{ x }}>
+              {photos.map((p, i) => (
+                <motion.button key={p.src} type="button" className="polaroid" onClick={() => setOpen(i)} onFocus={(e) => focusPhoto(e.currentTarget)}
+                  aria-label={`Open photo ${i + 1} of ${photos.length}${p.caption ? `: ${p.caption}` : ""}`} style={{ rotate: ROT[i % ROT.length] }}
+                  whileHover={{ rotate: 0, scale: 1.04, y: -6 }} whileTap={{ scale: 0.96 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.src} alt={p.caption || "meetra meetup photo"} loading={i < 6 ? "eager" : "lazy"} decoding="async" draggable={false} />
+                  {p.caption && <span className="cap">{p.caption}</span>}
+                </motion.button>
+              ))}
+            </motion.div>
+          </div>
+          <div className="pin-bar" aria-hidden="true"><motion.i style={{ width: pct }} /></div>
+        </div>
+      </div>
       <Lightbox photos={photos} index={open} onIndex={setOpen} />
     </>
   );

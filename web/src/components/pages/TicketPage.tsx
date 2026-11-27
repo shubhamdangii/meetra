@@ -1,5 +1,5 @@
 "use client";
-// /ticket/?id=<plan> — the door pass for a plan you're confirmed on.
+// /ticket/?id=<plan> - the door pass for a plan you're confirmed on.
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";

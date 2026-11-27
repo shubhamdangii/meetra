@@ -1,5 +1,5 @@
 "use client";
-// /saved/ — "Your plans": seat requests with their status, door passes,
+// /saved/ - "Your plans": seat requests with their status, door passes,
 // calendar files, past plans and saved-for-later.
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
@@ -175,10 +175,11 @@ function RateBox({ planRef }: { planRef: string }) {
   const [stars, setStars] = useState(0); const [hover, setHover] = useState(0); const [text, setText] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [done, setDone] = useState<number | null>(null); const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     if (!auth.client || !auth.me) return;
     auth.client.from("host_reviews").select("rating,comment,tags").eq("plan_ref", planRef).eq("user_id", auth.me.id).maybeSingle()
-      .then(({ data }) => { if (data) { setDone((data as { rating: number }).rating); setText((data as { comment: string }).comment ?? ""); setTags((data as { tags?: string[] }).tags ?? []); } });
+      .then(({ data }) => { if (data) { const r = (data as { rating: number }).rating; setDone(r); setStars(r); setText((data as { comment: string }).comment ?? ""); setTags((data as { tags?: string[] }).tags ?? []); } });
   }, [auth.client, auth.me, planRef]);
   async function send(ev: React.MouseEvent<HTMLButtonElement>) {
     if (!stars || !auth.client) return;
@@ -186,12 +187,21 @@ function RateBox({ planRef }: { planRef: string }) {
     const { error } = await auth.client.rpc("submit_review", { p_plan_ref: planRef, p_rating: stars, p_comment: text.trim(), p_tags: tags });
     setBusy(false);
     if (error) return toast(error.message);
-    burstFrom(btn, ["⭐", "💜", "✨"], 14); buzz(); setDone(stars); toast("Thanks for the review ✓");
+    burstFrom(btn, ["⭐", "💜", "✨"], 14); buzz(); toast(done ? "Rating updated ✓" : "Thanks for the review ✓"); setDone(stars); setEditing(false);
   }
-  if (done) return <p className="plan-note">You rated your host {"★".repeat(done)}{"☆".repeat(5 - done)} · thank you!</p>;
+  // already rated: show it right here; tap a star (or Edit) to change it, no need to open the plan page
+  if (done && !editing) return (
+    <div className="rate-done">
+      <span>Your rating</span>
+      <div className="rate-stars sm" role="radiogroup" aria-label={`Your rating: ${done} of 5. Tap to change`}>
+        {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" role="radio" aria-checked={done === n} aria-label={`Change to ${n} star${n > 1 ? "s" : ""}`} className={done >= n ? "on" : ""} onClick={() => { setStars(n); setEditing(true); }}>★</button>)}
+      </div>
+      <button type="button" className="linkish" onClick={() => { setStars(done); setEditing(true); }}>Edit</button>
+    </div>
+  );
   return (
     <div className="rate-box">
-      <b>How was your host?</b>
+      <b>{done ? "Update your rating" : "How was your host?"}</b>
       <div className="rate-stars" role="radiogroup" aria-label="Rating out of 5" onMouseLeave={() => setHover(0)}>
         {[1, 2, 3, 4, 5].map((n) => (
           <motion.button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} star${n > 1 ? "s" : ""}`}
@@ -202,7 +212,10 @@ function RateBox({ planRef }: { planRef: string }) {
         <button key={k} type="button" aria-pressed={tags.includes(k)} className={tags.includes(k) ? "on" : ""} onClick={() => setTags((t) => t.includes(k) ? t.filter((x) => x !== k) : [...t, k])}>{l}</button>
       ))}</div>}
       {stars > 0 && <textarea rows={2} maxLength={600} placeholder="Anything to share? (optional)" value={text} onChange={(e) => setText(e.target.value)} />}
-      {stars > 0 && <button type="button" className="btn btn-ink btn-sm" disabled={busy} onClick={send}>Send review</button>}
+      {stars > 0 && <div className="rate-foot">
+        {done && <button type="button" className="btn btn-white btn-sm" onClick={() => { setStars(done); setEditing(false); }}>Cancel</button>}
+        <button type="button" className="btn btn-ink btn-sm" disabled={busy} onClick={send}>{busy ? "Saving…" : done ? "Save rating" : "Send review"}</button>
+      </div>}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-// /games/ — the hub: card decks up top, party games below.
+// /games/ - the hub: card decks up top, party games below.
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { DECKS, PARTY } from "@/lib/games";

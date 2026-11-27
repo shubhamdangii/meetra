@@ -8,14 +8,14 @@ import { useAuth } from "../AuthProvider";
 import { EventCard, HostAv, Poster, Reveal, SaveButton, WhatsAppDone } from "../ui";
 import { burstFrom } from "../fx";
 import { CONFIG } from "@/lib/config";
-import { addressDropAt, bookingState, catOf, eventUrl, fmtDay, typeImages, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
+import { type MeetEvent, addressDropAt, bookingState, catOf, eventUrl, fmtDay, typeImages, hostTba, fmtWhen, hostNames, priceLabel, priceShort, whatsappLink } from "@/lib/events";
 import { CalendarButton, useLiveRefresh, useSeatStream } from "../plans";
 import { payForSeat, rupees } from "@/lib/razorpay";
 import { PhotoStrip } from "../Photos";
 import { AreaMap } from "../AreaMap";
 import { areaPoint } from "@/lib/geo";
 import { ExactLocation, WhoComing } from "../EventBits";
-import { useTypeUploads } from "@/lib/eventMedia";
+import { useEventLocation, useMeetingInfo, useTypeUploads } from "@/lib/eventMedia";
 
 type MyReq = { id: number; status: "pending" | "approved" | "waitlisted" | "declined" | "cancelled" | "attended"; party_size: number; paid_at?: string | null; paid_amount?: number | null; refund_status?: string | null; auto_closed_at?: string | null } | null;
 
@@ -23,7 +23,7 @@ const STATUS = {
   pending: ["⏳", "Request sent", "The team is reviewing requests. Seats go to the most complete profiles first."],
   approved: ["🎉", "You're in!", "Your door pass is ready. Show its QR code at the door."],
   waitlisted: ["🕒", "You're on the waiting list", "If a seat opens up, the highest-priority person on the list gets it. Complete your profile to move up."],
-  declined: ["🙏", "Not this time", "This plan is full. Try another date — there's something on every day."],
+  declined: ["🙏", "Not this time", "This plan is full. Try another date. There's something on every day."],
   attended: ["✅", "You're checked in!", "Have the best time. You can rate your host 30 minutes after the plan starts, in Your plans."],
 } as const;
 // any status we don't know yet shows a neutral card instead of crashing the page
@@ -126,7 +126,7 @@ export default function EventPage() {
       toast("Paid ✓ Your seat is confirmed and your door pass is ready");
     } catch (err) { setBusy(false); toast("⚠️ " + (err as Error).message); }
   }
-  const payNote = e.priceType === "reservation" ? "Food and drinks are ordered separately." : e.priceType === "per person" ? "Covers everything listed in the plan." : e.priceType === "estimate" ? "Final inclusions and price shared before you pay." : "Free — just show up on time.";
+  const payNote = e.priceType === "reservation" ? "Food and drinks are ordered separately." : e.priceType === "per person" ? "Covers everything listed in the plan." : e.priceType === "estimate" ? "Final inclusions and price shared before you pay." : "Free. Just show up on time.";
   const score = auth.me?.profile_score;
 
   async function request(ev: React.FormEvent) {
@@ -136,7 +136,7 @@ export default function EventPage() {
     const submitBtn = (ev.currentTarget as HTMLFormElement).querySelector("button[type=submit]");
     if (auth.enabled) {
       if (!auth.requireLogin(`/event/?id=${e.id}`)) return;
-      if (!auth.client || !auth.me) return toast("Still loading your account — try again in a second.");
+      if (!auth.client || !auth.me) return toast("Still loading your account. Try again in a second.");
       // paid plans: pay first (Razorpay); the verified payment creates the seat request. Waiting list stays free.
       if (paid && !full) {
         setBusy(true);
@@ -261,14 +261,7 @@ export default function EventPage() {
             <a className="linkish" style={{ display: "inline-block", marginTop: 10 }} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.area}, ${city}`)}`} target="_blank" rel="noopener noreferrer">Explore the area ↗</a>
           </section>
 
-          <section className="ev-sec" id="before" style={{ border: 0 }}>
-            <h2>Before <span className="serif" style={{ color: "var(--violet)" }}>you go</span></h2>
-            <details className="acc" open><summary>Price &amp; what it covers</summary><div className="acc-body"><b>{priceShort(e)} {priceLabel(e)}.</b> {payNote} {e.priceType === "reservation" ? `The ${priceShort(e)} reservation is non-refundable once confirmed.` : ""}</div></details>
-            <details className="acc"><summary>Where to meet</summary><div className="acc-body">{e.area}, {city}. The exact spot (with a Google Maps link) shows in Your plans after your seat is confirmed and paid.</div></details>
-            <details className="acc"><summary>Who can come</summary><div className="acc-body">{e.tags.includes("Women only") ? "This plan is for women only." : "Open to everyone 18+."} Most people come alone — that&apos;s the point.</div></details>
-            <details className="acc"><summary>Cancellations</summary><div className="acc-body">If you can&apos;t make it, cancel here as early as you can so someone on the waiting list gets your seat. If we cancel, you get a full refund.</div></details>
-            <details className="acc"><summary>Help at the meetup</summary><div className="acc-body">Your host is there from start to finish. You can also message us on WhatsApp any time.</div></details>
-          </section>
+          <BeforeYouGo e={e} city={city} payNote={payNote} confirmed={myReq?.status === "approved" || myReq?.status === "attended"} />
         </div>
 
         <aside className="book" id="book">
@@ -281,7 +274,7 @@ export default function EventPage() {
               {e.bookingClosesAt && <li><span className="ic">⏳</span><div><small>Requests close</small><b>{e.bookingClosesAt.toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true })}</b></div></li>}
               <li><span className="ic">👥</span><div style={{ flex: 1 }}><small>Group</small><b>Up to {e.seats} · {e.tags.includes("Women only") ? "women only" : "open to all"}</b>
                 <div className="meter"><motion.i initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.9, ease: "easeOut" }} /></div>
-                <small style={{ color: left <= 4 ? "#B3134B" : "var(--muted)" }}>{full ? `Full${counts ? ` · ${counts.waitlisted} on the waiting list` : " — join the waiting list"}` : `${left} of ${e.seats} seats left`}</small>
+                <small style={{ color: left <= 4 ? "#B3134B" : "var(--muted)" }}>{full ? `Full${counts ? ` · ${counts.waitlisted} on the waiting list` : " · join the waiting list"}` : `${left} of ${e.seats} seats left`}</small>
                 {counts && counts.interested > 0 && <small className="muted" style={{ display: "block" }}>♥ {counts.interested} {counts.interested === 1 ? "person" : "people"} interested</small>}
               </div></li>
             </ul>
@@ -344,6 +337,47 @@ export default function EventPage() {
 
       <div className={`mobile-book ${bookOnScreen ? "away" : ""}`} aria-hidden={bookOnScreen}><div><b>{priceShort(e)}</b> <small className="muted">{priceLabel(e)}</small><br /><small className="muted">{fmtDay(e.date)} · {e.time}</small></div><a className={`btn btn-sm ${showStatus ? "btn-white" : "btn-sun"}`} href="#book">{showStatus ? (lapsed ? "Request closed" : MOBILE_STATUS[myReq!.status] ?? "Your request") : closed ? (state === "ended" ? "Event ended" : "Registration closed") : full ? "Join waiting list" : "Request a seat"}</a></div>
     </div>
+  );
+}
+
+/* "Before you go": where exactly to go (area, landmark, meeting point, address, map) and the practical facts, at a glance. */
+function BeforeYouGo({ e, city, payNote, confirmed }: { e: MeetEvent; city: string; payNote: string; confirmed: boolean }) {
+  const auth = useAuth();
+  const real = e.key.startsWith("x");
+  const meet = useMeetingInfo(auth.client, real ? e.id : null);
+  const loc = useEventLocation(auth.client, real ? e.id : null, real && !!auth.session);
+  const paidPlan = e.priceType !== "free" && e.price > 0;
+  const lockText = `Unlocks once your seat is confirmed${paidPlan ? " and paid" : ""}`;
+  const areaMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.area}, ${city}`)}`;
+  const rows: [string, string, React.ReactNode, boolean?][] = [
+    ["📍", "Area", `${e.area}, ${city}`],
+    ["🏛️", "Landmark", meet?.landmark || "Shared with your confirmation", !meet?.landmark],
+    ["🙋", "Meeting point", meet?.meeting_point || "Your host waits at the entrance. Look for the meetra card on the table.", !meet?.meeting_point],
+    ["🏠", "Full address", loc?.allowed && loc.address ? loc.address : confirmed && loc?.allowed ? "Your host shares it before the plan" : `🔒 ${lockText}`, !(loc?.allowed && loc.address)],
+    ["🗺️", "Map", loc?.allowed && loc.maps_url
+      ? <a href={loc.maps_url} target="_blank" rel="noopener noreferrer">Open the exact pin in Google Maps ↗</a>
+      : <a href={areaMaps} target="_blank" rel="noopener noreferrer">See the area in Google Maps ↗</a>],
+  ];
+  const facts: [string, string, React.ReactNode][] = [
+    ["⏰", "When", <>{fmtDay(e.date)}, {e.time}{e.end ? ` to ${e.end}` : ""}. Arrive 10 minutes early.</>],
+    ["💸", "Price", <><b>{priceShort(e)} {priceLabel(e)}.</b> {payNote}{e.priceType === "reservation" ? ` The reservation is non-refundable once confirmed.` : ""}</>],
+    ["👥", "Who can come", <>{e.tags.includes("Women only") ? "Women only, 18+." : "Everyone 18+."} Most people come alone, that&apos;s the point.</>],
+    ["↩️", "Cancelling", "Can't make it? Cancel early so someone on the waiting list gets your seat. If we cancel, you get a full refund."],
+    ["🆘", "Help on the day", <>Your host is there start to finish. <Link href="/safety/">Help &amp; safety</Link></>],
+  ];
+  return (
+    <section className="ev-sec" id="before" style={{ border: 0 }}>
+      <h2>Before <span className="serif" style={{ color: "var(--violet)" }}>you go</span></h2>
+      <div className="byg-loc">
+        <div className="byg-loc-head"><b>How to find us</b>{!confirmed && real && <small>Address and pin unlock after confirmation</small>}</div>
+        {rows.map(([ic, k, v, soft]) => (
+          <div key={k} className="byg-row"><span className="byg-ic" aria-hidden="true">{ic}</span><div><small>{k}</small><p className={soft ? "soft" : ""}>{v}</p></div></div>
+        ))}
+      </div>
+      <ul className="byg-facts">
+        {facts.map(([ic, k, v]) => <li key={k}><span className="byg-ic" aria-hidden="true">{ic}</span><div><b>{k}</b><p>{v}</p></div></li>)}
+      </ul>
+    </section>
   );
 }
 

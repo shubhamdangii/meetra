@@ -111,7 +111,7 @@ export default function EventsPage() {
           ))}
         </AnimatePresence>
       ) : (
-        <Empty title="No plans match those filters.">Try a different day or category<NotHost> — or <Link href="/host/" style={{ textDecoration: "underline" }}>host this one yourself</Link></NotHost>.</Empty>
+        <Empty title="No plans match those filters.">Try a different day or category<NotHost>, or <Link href="/host/" style={{ textDecoration: "underline" }}>host this one yourself</Link></NotHost>.</Empty>
       )}
       {ready && view === "list" && !date && days.length > shownDays && (
         <div className="more-row"><motion.button whileTap={{ scale: 0.95 }} className="btn btn-sun" onClick={() => setShownDays((n) => n + 7)}>Show more days ({days.length - shownDays} left) ↓</motion.button></div>

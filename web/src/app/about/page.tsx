@@ -17,7 +17,7 @@ export default function Page() {
       </section>
 
       <section className="steps sec" style={{ paddingTop: 20 }}>
-        {[["01", "Browse", "Something on every day — dinners, games, sports, walks, workshops and weekend trips. Or swipe through them on Discover."],
+        {[["01", "Browse", "Something on every day: dinners, games, sports, walks, workshops and weekend trips. Or swipe through them on Discover."],
           ["02", "Request", "Log in and request a seat. When a plan is popular, the most complete profiles get seats first."],
           ["03", "Show up", "Your host does the introductions. You just have to say yes to the second plan."]].map(([n, t, d], i) => (
           <Reveal key={n} delay={i * 0.1} className="step"><span className="num">{n}</span><h3>{t}</h3><p>{d}</p></Reveal>
@@ -29,7 +29,7 @@ export default function Page() {
         <div>
           <Acc q="📝 How seat requests work" open>Request a seat, the team checks the group mix and confirms on WhatsApp. You pay only once you&apos;re in.</Acc>
           <Acc q="⭐ Priority by profile">When a plan is popular, the most complete profiles get seats and waiting-list places first. Nobody is blocked for a short profile.</Acc>
-          <Acc q="👥 Group size">Mostly 8–16 people — small enough that you actually talk to everyone.</Acc>
+          <Acc q="👥 Group size">Mostly 8 to 16 people, small enough that you actually talk to everyone.</Acc>
           <Acc q="📍 Where you'll meet">Cafés, courts, studios and rooftops we&apos;ve checked ourselves. The exact address is shared after confirmation.</Acc>
           <Acc q="📜 House rules, enforced">Be kind, be on time, no pushy dating or selling. Breaking them means you won&apos;t be invited back.</Acc>
           <Acc q="💸 What you'll pay">Usually a ₹99 seat reservation. Food and drinks are ordered separately unless the plan says &quot;per person&quot;.</Acc>
@@ -43,7 +43,7 @@ export default function Page() {
           <Acc q="Public, checked venues">Plans happen at places we&apos;ve visited ourselves. Trips are run by our own team with vetted stays.</Acc>
           <Acc q="Balanced groups & women-only plans">Hosts balance each table, and there are women-only plans every week in every city.</Acc>
           <Acc q="Your number stays private">Only the hosts of plans you request (and our team) see it. No guest lists are shared.</Acc>
-          <Acc q="Report anything">Message us on WhatsApp any time — during or after a plan. We respond the same day and can block people from future plans.</Acc>
+          <Acc q="Report anything">Message us on WhatsApp any time, during or after a plan. We respond the same day and can block people from future plans.</Acc>
         </div>
       </section>
 

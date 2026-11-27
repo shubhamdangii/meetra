@@ -49,7 +49,7 @@ export default function LoginPage() {
     went.current = true;
     (async () => {
       const m = auth.me ?? (await auth.refreshMe());
-      router.replace(auth.takeNext(m && m.profile_score >= 70 ? "/events/" : "/profile/"));
+      router.replace(auth.takeNext("/"));
     })();
   }, [auth.ready, auth.session]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -139,7 +139,7 @@ export default function LoginPage() {
           <AnimatePresence mode="wait">
             {resetMode && auth.session ? (
               <motion.section key="reset" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                <NewPassword onDone={() => router.replace(auth.takeNext("/events/"))} />
+                <NewPassword onDone={() => router.replace(auth.takeNext("/"))} />
               </motion.section>
             ) : !wa ? (
               <motion.section key="choose" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>

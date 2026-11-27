@@ -14,7 +14,7 @@ import { useAuth } from "../AuthProvider";
 import { useEffect } from "react";
 
 /** Type, photo and exact location live outside the public event lists: load them for the events the caller manages. */
-export type EventExtras = { id: number; event_type: string | null; image_url: string | null; maps_url: string | null; is_active?: boolean };
+export type EventExtras = { id: number; event_type: string | null; image_url: string | null; maps_url: string | null; is_active?: boolean; address?: string | null; landmark?: string | null; meeting_point?: string | null };
 export function useEventExtras(ids: number[] | null) {
   const auth = useAuth();
   const [map, setMap] = useState<Map<number, EventExtras>>(new Map());
@@ -31,24 +31,25 @@ export type AdminEvent = {
   starts_at: string; ends_at: string; booking_closes_at: string; area: string; price: number; price_type: string; seats: number;
   emoji: string; blurb: string; steps: string[]; tags: string[]; status: string; display_status: string;
   confirmed: number; pending: number; waitlisted: number; pending_req: string | null; cancel_reason: string | null; created_by_name: string | null; updated_at: string;
-  category_other?: string | null; event_type?: string | null; image_url?: string | null; maps_url?: string | null; is_active?: boolean;
+  category_other?: string | null; event_type?: string | null; image_url?: string | null; maps_url?: string | null; is_active?: boolean; address?: string | null; landmark?: string | null; meeting_point?: string | null;
 };
 export type AdminHost = { id: number; name: string; city_slug: string; status: string };
 
 export type EventFormValue = {
   title: string; city_slug: string; category: string; other: string; host_id: string; starts: string; ends: string; closes: string; area: string;
   price: string; price_type: string; seats: string; emoji: string; blurb: string; steps: string; tags: string;
-  event_type: string; image_url: string; maps_url: string;
+  event_type: string; image_url: string; maps_url: string; address: string; landmark: string; meeting_point: string;
 };
 const H4 = 4 * 3600e3;   // bookings close at least 4 hours before the start
 export const blankEvent = (city = "jaipur"): EventFormValue => ({ title: "", city_slug: city, category: "food", other: "", host_id: "", starts: "", ends: "", closes: "", area: "",
-  price: "99", price_type: "reservation", seats: "12", emoji: "✨", blurb: "", steps: "", tags: "", event_type: "", image_url: "", maps_url: "" });
+  price: "99", price_type: "reservation", seats: "12", emoji: "✨", blurb: "", steps: "", tags: "", event_type: "", image_url: "", maps_url: "", address: "", landmark: "", meeting_point: "" });
 export const eventToForm = (e: Partial<AdminEvent> & Record<string, unknown>): EventFormValue => ({
   title: String(e.title ?? ""), city_slug: String(e.city_slug ?? "jaipur"), category: String(e.category ?? "food"), other: String(e.category_other ?? ""), host_id: e.host_id != null ? String(e.host_id) : "",
   starts: toLocalInput(e.starts_at as string), ends: toLocalInput(e.ends_at as string), closes: toLocalInput(e.booking_closes_at as string), area: String(e.area ?? ""),
   price: String(e.price ?? 0), price_type: String(e.price_type ?? "reservation"), seats: String(e.seats ?? 12), emoji: String(e.emoji ?? "✨"),
   blurb: String(e.blurb ?? ""), steps: ((e.steps as string[]) ?? []).join("\n"), tags: ((e.tags as string[]) ?? []).join(", "),
   event_type: String(e.event_type ?? ""), image_url: String(e.image_url ?? ""), maps_url: String(e.maps_url ?? ""),
+  address: String(e.address ?? ""), landmark: String(e.landmark ?? ""), meeting_point: String(e.meeting_point ?? ""),
 });
 export const formToPayload = (f: EventFormValue) => ({
   title: f.title.trim(), city_slug: f.city_slug, category: f.category, category_other: f.category === "other" ? f.other.trim() : null,
@@ -58,6 +59,7 @@ export const formToPayload = (f: EventFormValue) => ({
   blurb: f.blurb.trim(), steps: f.steps.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 6),
   tags: f.tags.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 4),
   event_type: f.event_type.trim() || null, image_url: f.image_url.trim() || null, maps_url: f.maps_url.trim() || null,
+  address: f.address.trim() || null, landmark: f.landmark.trim() || null, meeting_point: f.meeting_point.trim() || null,
 });
 
 /** Same date rules as the database, so mistakes show up before saving. */
@@ -98,6 +100,9 @@ export function EventForm({ value, onChange, hosts, lockCity, hideHost }: { valu
       <div className="field"><label>Area *</label><input value={value.area} maxLength={60} onChange={(e) => set("area", e.target.value)} placeholder={value.city_slug === "jaipur" ? "e.g. C-Scheme" : "e.g. Prahlad Nagar"} /></div>
       <div className="field"><label>Exact location (Google Maps link)</label><input type="url" inputMode="url" value={value.maps_url} maxLength={500} placeholder="https://maps.app.goo.gl/…" onChange={(e) => set("maps_url", e.target.value)} aria-invalid={!!value.maps_url.trim() && !isMapsUrl(value.maps_url)} />
         <small className="muted">{value.maps_url.trim() && !isMapsUrl(value.maps_url) ? "⚠️ " + MAPS_HINT : "Optional. Only confirmed guests who have paid see it, in Your plans."}</small></div>
+      <div className="field"><label>Landmark <span className="hint">everyone sees it</span></label><input value={value.landmark} maxLength={120} placeholder="e.g. Opposite Law Garden, next to the metro exit" onChange={(e) => set("landmark", e.target.value)} /></div>
+      <div className="field"><label>Meeting point <span className="hint">everyone sees it</span></label><input value={value.meeting_point} maxLength={200} placeholder="e.g. Host waits at the entrance with a yellow meetra card" onChange={(e) => set("meeting_point", e.target.value)} /></div>
+      <div className="field span2"><label>Full address <span className="hint">only confirmed guests</span></label><input value={value.address} maxLength={200} placeholder="Venue name, floor, street" onChange={(e) => set("address", e.target.value)} /></div>
       <div className="field"><label>Starts *</label><input type="datetime-local" min={min} value={value.starts} onChange={(e) => { const v = e.target.value; onChange({ ...value, starts: v, ...(value.ends && value.ends <= v ? { ends: "" } : {}), ...(value.closes && v && new Date(v).getTime() - new Date(value.closes).getTime() < H4 ? { closes: "" } : {}) }); }} /></div>
       <div className="field"><label>Ends *</label><input type="datetime-local" min={value.starts || min} value={value.ends} onChange={(e) => set("ends", e.target.value)} /></div>
       <div className="field"><label>Booking closes</label><input type="datetime-local" min={min} max={closesMax} value={value.closes} onChange={(e) => set("closes", e.target.value)} />

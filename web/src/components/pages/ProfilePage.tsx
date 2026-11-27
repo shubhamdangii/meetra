@@ -46,6 +46,15 @@ function scoreParts(f: Form, avatar: string | null, phoneVerified: boolean, emai
 
 
 
+const HOUSE_RULES = [
+  "I'll be kind and include everyone at the table.",
+  "I'll be on time, or tell my host if I'm running late.",
+  "No pushy dating, selling or recruiting at plans.",
+  "I'll respect privacy: no photos or numbers shared without a yes.",
+  "If something feels off, I'll tell my host or the team.",
+  "The details in my profile are true.",
+];
+
 export default function ProfilePage() {
   const auth = useAuth();
   const { toast, city } = useApp();
@@ -94,6 +103,10 @@ export default function ProfilePage() {
     window.addEventListener("beforeunload", h); return () => window.removeEventListener("beforeunload", h);
   }, [dirty]);
 
+  // house rules: one tick per rule; all ticked = agreed (that's what's saved)
+  const [ticks, setTicks] = useState<boolean[]>(() => HOUSE_RULES.map(() => false));
+  useEffect(() => { if (loaded) setTicks(HOUSE_RULES.map(() => f.rules)); }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tick = (i: number, on: boolean) => { const t = ticks.map((x, j) => (j === i ? on : x)); setTicks(t); set("rules", t.every(Boolean)); };
   const parts = scoreParts(f, avatar, !!me?.phone_verified, !!me?.email_verified);
   const score = parts.reduce((s, p) => s + (p[2] ? p[1] : 0), 0);
   const todo = parts.filter((p) => !p[2]).sort((a, b) => b[1] - a[1]);
@@ -177,12 +190,24 @@ export default function ProfilePage() {
         <h1 style={{ fontSize: "clamp(40px,6vw,68px)" }}>Let hosts <span className="serif">know you.</span></h1>
         <p>The more you share, the higher your <b>priority score</b>. When a plan is popular, seats and waiting-list places go to the most complete profiles first.</p>
         {!auth.enabled && <div className="setup-note" style={{ marginTop: 16 }}><b>Preview only.</b> Login isn&apos;t switched on, so this form can&apos;t be saved.</div>}
-        <div className="progress" aria-hidden="true"><motion.i animate={{ width: `${score}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} /></div>
-        <small className="muted">{todo.length ? `Priority score ${score}/100 · biggest boosts: ${todo.slice(0, 4).map((p) => `${p[0]} +${p[1]}`).join(", ")}` : "Priority score 100/100 · top priority ✓"}</small>
-        <div className="badges">
-          {[[me?.phone_verified, "WhatsApp verified", "WhatsApp not verified"], [me?.email_verified, "Email verified", "Email not verified"], [score >= 70, `Score ${score}/100`, `Score ${score}/100`]].map(([on, y, n]) => (
-            <motion.span layout key={String(y)} className={`badge ${on ? "on" : "off"}`}>{on ? "✓ " + y : n}</motion.span>
-          ))}
+        <div className="ps">
+          <div className="ps-head">
+            <div className="ps-num"><motion.b key={score} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>{score}</motion.b><span>/100</span></div>
+            <div className="ps-meta"><b>Priority score</b><small>{score >= 100 ? "Top priority. Everything's done ✓" : score >= 70 ? "High priority. You're near the front." : `${70 - score} more points to reach high priority`}</small></div>
+          </div>
+          <div className="ps-bar" role="progressbar" aria-label="Priority score" aria-valuenow={score} aria-valuemin={0} aria-valuemax={100}>
+            <motion.i animate={{ width: `${score}%` }} transition={{ type: "spring", stiffness: 110, damping: 20 }} /><span className="ps-mark" title="High priority from 70" />
+          </div>
+          <div className="ps-verify">
+            {([["WhatsApp", !!me?.phone_verified, "#phone"], ["Email", !!me?.email_verified, "#email"]] as const).map(([l, ok, href]) => (
+              <a key={l} href={href} className={`ps-v ${ok ? "ok" : ""}`}><i aria-hidden="true">{ok ? "✓" : "!"}</i><span>{l}</span><b>{ok ? "Verified" : "Not verified"}</b></a>
+            ))}
+          </div>
+          <ul className="ps-checks" aria-label="Ways to raise your score">
+            {[...todo, ...parts.filter((p) => p[2])].map(([l, w, ok]) => (
+              <motion.li layout key={l} className={ok ? "ok" : ""}><i aria-hidden="true">{ok ? "✓" : ""}</i><span>{l[0].toUpperCase() + l.slice(1)}</span><b>+{w}</b></motion.li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -265,8 +290,17 @@ export default function ProfilePage() {
         </Reveal>
 
         <Reveal className="pcard">
-          <h2>House rules</h2><p className="muted">Be kind, be on time, no pushy dating or selling, respect everyone&apos;s privacy. <Link href="/about/#safety" style={{ textDecoration: "underline" }}>Read all rules</Link>.</p>
-          <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={f.rules} onChange={(e) => set("rules", e.target.checked)} /> I agree to the house rules and confirm the details above are true.</label>
+          <h2>House rules</h2><p className="muted">Tick each one to agree. <Link href="/safety/" style={{ textDecoration: "underline" }}>Read the full rules</Link></p>
+          <div className="hr-list" role="group" aria-label="House rules">
+            {HOUSE_RULES.map((rule, i) => (
+              <label key={i} className={`hr-item ${ticks[i] ? "on" : ""}`}>
+                <input type="checkbox" checked={ticks[i]} onChange={(e) => tick(i, e.target.checked)} />
+                <span className="hr-box" aria-hidden="true"><svg viewBox="0 0 24 24"><motion.path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" initial={false} animate={{ pathLength: ticks[i] ? 1 : 0 }} transition={{ duration: 0.25 }} /></svg></span>
+                <span className="hr-txt">{rule}</span>
+              </label>
+            ))}
+          </div>
+          <p className={`hr-sum ${f.rules ? "ok" : ""}`}>{f.rules ? "✓ You've agreed to the house rules (+10)" : `${ticks.filter(Boolean).length} of ${HOUSE_RULES.length} ticked`}</p>
         </Reveal>
 
         <div className="save-bar">

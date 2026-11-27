@@ -72,13 +72,24 @@ export function Quests({ q }: { q: ReturnType<typeof useQuestData> }) {
       <div className={`q-card ${promptDone && edit !== "prompt" ? "done" : ""}`}>
         <span className="q-tag">Quest 2 · 30 sec</span>
         <h3>Answer a prompt</h3>
-        {promptDone && edit !== "prompt" ? <div className="q-done"><blockquote><small>{promptText(d.prompt_q || PROMPTS[0], cityName)}</small>{d.prompt_a}</blockquote><button className="linkish" onClick={() => setEdit("prompt")}>Change</button></div> : <>
-          <div className="q-row">
-            <select value={pq} onChange={(e) => setPq(e.target.value)} aria-label="Prompt">{PROMPTS.map((p) => <option key={p} value={p}>{promptText(p, cityName)}</option>)}</select>
-            <button type="button" className="btn btn-white btn-sm" onClick={() => setPq(PROMPTS[(PROMPTS.indexOf(pq) + 1 + Math.floor(Math.random() * (PROMPTS.length - 1))) % PROMPTS.length])}>🎲 Spin</button>
+        {promptDone && edit !== "prompt" ? <div className="q-done q-quote"><blockquote><small>{promptText(d.prompt_q || PROMPTS[0], cityName)}</small><span>{d.prompt_a}</span></blockquote><button className="linkish" onClick={() => setEdit("prompt")}>Change</button></div> : <>
+          <p className="muted q-step"><b>1</b> Pick a prompt</p>
+          <div className="q-prompts" role="radiogroup" aria-label="Prompt">
+            {PROMPTS.map((p) => { const on = pq === p; return (
+              <button key={p} type="button" role="radio" aria-checked={on} className={on ? "on" : ""} onClick={() => setPq(p)}>
+                <i aria-hidden="true">{on ? "✓" : ""}</i><span>{promptText(p, cityName)}</span>
+              </button>); })}
           </div>
-          <textarea rows={2} maxLength={160} value={pa} placeholder="Keep it short and real…" onChange={(e) => setPa(e.target.value)} />
-          <button className="btn btn-ink btn-sm" disabled={busy || pa.trim().length < 3} onClick={(e) => save({ prompt_q: pq, prompt_a: pa.trim() }, e.currentTarget, "Prompt saved ✓ +10 XP")}>Save answer</button>
+          <p className="muted q-step"><b>2</b> Finish the line</p>
+          <div className="q-answer">
+            <small>{promptText(pq, cityName)}</small>
+            <textarea rows={2} maxLength={160} value={pa} placeholder="Keep it short and real…" onChange={(e) => setPa(e.target.value)} aria-label="Your answer" />
+            <span className="q-count">{pa.length}/160</span>
+          </div>
+          <div className="q-foot">
+            {promptDone && <button type="button" className="btn btn-white btn-sm" onClick={() => { setEdit(null); setPq(d.prompt_q || PROMPTS[0]); setPa(d.prompt_a ?? ""); }}>Cancel</button>}
+            <button className="btn btn-ink btn-sm" disabled={busy || pa.trim().length < 3} onClick={(e) => save({ prompt_q: pq, prompt_a: pa.trim() }, e.currentTarget, "Prompt saved ✓ +10 XP")}>Save answer</button>
+          </div>
         </>}
       </div>
     </section>
