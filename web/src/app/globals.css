@@ -1867,3 +1867,9 @@ button.lib-hostbtn.empty .lib-av{animation:lib-pulse 2.2s ease-in-out infinite}
 .ci-empty{display:grid;justify-items:center;gap:4px;text-align:center;padding:24px 14px;border:2px dashed #D9D3E8;border-radius:16px;color:var(--ink-2)}
 .ci-empty span{font-size:30px}
 .ci-empty small{font-size:13px}
+/* columns never grow past the screen because of a long name (1fr alone = minmax(auto,1fr)) */
+.lib>*{min-width:0}
+.lib-grid{grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr))}
+.lib-grid>*{min-width:0}
+.lib-cities span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:480px){.lib-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
