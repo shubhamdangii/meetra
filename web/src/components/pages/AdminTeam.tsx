@@ -73,6 +73,31 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
   const [inCount, total] = tally(plan);
   const sel = plans.find((p) => p.id === plan);
 
+  // at the door you want: this city, today, plans that actually have guests. Everything else is one tap away.
+  const { city: appCity } = useApp();
+  const cities = useMemo(() => [...new Set(sorted.map((p) => p.city))], [sorted]);
+  const days = useMemo(() => [-1, 0, 1].filter((d) => sorted.some((p) => p.day === d)), [sorted]);
+  const [cityF, setCityF] = useState<string>("all");
+  const [dayF, setDayF] = useState<number | null>(null);
+  const [showEmpty, setShowEmpty] = useState(false);
+  useEffect(() => { if (cities.includes(appCity)) setCityF(appCity); }, [appCity, cities]);
+  useEffect(() => { if (dayF === null && days.length) setDayF(days.includes(0) ? 0 : days[0]); }, [days, dayF]);
+  const inView = sorted.filter((p) => (cityF === "all" || p.city === cityF) && (dayF === null || p.day === dayF));
+  const isEmpty = (ref: string) => !!lists[ref] && tally(ref)[1] === 0;
+  const emptyN = inView.filter((p) => isEmpty(p.id)).length;
+  const shown = (showEmpty ? inView : inView.filter((p) => !isEmpty(p.id))).sort((a, b) => tally(b.id)[1] - tally(a.id)[1]);
+  const shownKey = shown.map((p) => p.id).join(",");
+  // keep the selected plan inside what's on screen (a scan can still jump to any plan)
+  useEffect(() => { if (shown.length && !shown.some((p) => p.id === plan) && !hit) setPlan(shown[0].id); }, [shownKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a scanned pass can belong to a plan outside the filters: bring that plan on screen
+  useEffect(() => {
+    if (!hit || hit.kind === "bad") return;
+    const p = sorted.find((x) => x.id === plan); if (!p) return;
+    if (cityF !== "all" && p.city !== cityF) setCityF(p.city);
+    if (dayF !== p.day) setDayF(p.day);
+  }, [hit]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dayName = (d: number) => (d === 0 ? "Today" : d === 1 ? "Tomorrow" : "Yesterday");
+
   // auto-hide a result after a few seconds so the next guest can be scanned
   useEffect(() => { if (!hit || hit.kind === "bad") return; const t = setTimeout(() => setHit(null), 3500); return () => clearTimeout(t); }, [hit]);
 
@@ -93,30 +118,52 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
           )}
         </AnimatePresence>
         <form className="ci-manual" onSubmit={(e) => { e.preventDefault(); if (code.trim()) onCode(code); setCode(""); }}>
-          <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="Or type the pass number, e.g. 00123" aria-label="Pass number" />
-          <button className="btn btn-ink btn-sm" type="submit">Check in</button>
+          <span className="ci-hash" aria-hidden="true">#</span>
+          <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="Pass number" aria-label="Pass number, for example 00123" />
+          <motion.button whileTap={{ scale: 0.95 }} className="ci-go" type="submit">Check in</motion.button>
         </form>
+
+        <div className="ci-filters">
+          {cities.length > 1 && <div className="ci-seg" role="radiogroup" aria-label="City">
+            {["all", ...cities].map((c) => { const on = cityF === c; return (
+              <button key={c} type="button" role="radio" aria-checked={on} className={on ? "on" : ""} onClick={() => setCityF(c)}>
+                {on && <motion.span layoutId="ci-city" className="bg" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
+                <span className="tx">{c === "all" ? "All" : cityName(c)}</span></button>); })}
+          </div>}
+          {days.length > 1 && <div className="ci-seg" role="radiogroup" aria-label="Day">
+            {days.map((d) => { const on = dayF === d; return (
+              <button key={d} type="button" role="radio" aria-checked={on} className={on ? "on" : ""} onClick={() => setDayF(d)}>
+                {on && <motion.span layoutId="ci-day" className="bg" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
+                <span className="tx">{dayName(d)}</span></button>); })}
+          </div>}
+        </div>
+
         <div className="ci-plans-head">
-          <b>{sorted.length} plan{sorted.length === 1 ? "" : "s"} at the door</b>
-          {sorted.length > 1 && <span className="ci-arrows">
-            <button type="button" aria-label="Previous plan" onClick={() => { const i = sorted.findIndex((p) => p.id === plan); setPlan(sorted[(i - 1 + sorted.length) % sorted.length].id); }}>‹</button>
-            <small>{sorted.findIndex((p) => p.id === plan) + 1}/{sorted.length}</small>
-            <button type="button" aria-label="Next plan" onClick={() => { const i = sorted.findIndex((p) => p.id === plan); setPlan(sorted[(i + 1) % sorted.length].id); }}>›</button>
-          </span>}
+          <b>{shown.length ? `${shown.length} plan${shown.length === 1 ? "" : "s"} with guests` : "No guests booked here"}</b>
+          {emptyN > 0 && <button type="button" className="ci-more" onClick={() => setShowEmpty((s) => !s)}>{showEmpty ? "Hide empty" : `+${emptyN} without guests`}</button>}
         </div>
-        <div className="ci-plans" role="tablist" aria-label="Plans at the door" ref={chipsRef}>
-          {sorted.map((p) => { const [a, b] = tally(p.id); return (
-            <button key={p.id} data-id={p.id} role="tab" aria-selected={p.id === plan} className={p.id === plan ? "on" : ""} onClick={() => setPlan(p.id)}>
-              <b>{p.title.split(" · ")[0]}</b><small>{relDay(p.date, today)} · {p.time} · {cityName(p.city)}</small>
-              <span className="n">{lists[p.id] ? `${a}/${b} in` : "…"}</span>
-            </button>); })}
-        </div>
-        <div className="ci-top">
-          <div className="ci-count"><b>{inCount}</b><span>/ {total} in</span><i style={{ width: total ? `${(inCount / total) * 100}%` : 0 }} /></div>
-          {sel && <Link className="btn btn-white btn-sm" href={eventUrl(sel)}>Plan page</Link>}
-        </div>
-        <div className="ci-list">
-          {!guests ? <div className="skeleton" style={{ minHeight: 80 }} /> : !guests.length ? <p className="muted">No confirmed guests yet. Approve requests in Seat requests.</p> : [...guests].sort((a, b) => Number(a.status === "attended") - Number(b.status === "attended")).map((g) => {
+        {shown.length > 0 && <div className="ci-plans" role="tablist" aria-label="Plans at the door" ref={chipsRef}>
+          {shown.map((p) => { const [a, b] = tally(p.id); const on = p.id === plan; return (
+            <motion.button layout key={p.id} data-id={p.id} role="tab" aria-selected={on} className={`${on ? "on" : ""}${lists[p.id] && !b ? " empty" : ""}`} onClick={() => setPlan(p.id)} whileTap={{ scale: 0.96 }}>
+              <b>{p.title.split(" · ")[0]}</b>
+              <small>{p.time}{cityF === "all" ? ` · ${cityName(p.city)}` : p.area ? ` · ${p.area}` : ""}</small>
+              <span className="ci-chipbar"><i style={{ width: b ? `${(a / b) * 100}%` : 0 }} /></span>
+              <span className="n">{lists[p.id] ? (b ? `${a}/${b} in` : "No guests") : "…"}</span>
+            </motion.button>); })}
+        </div>}
+
+        {sel && shown.some((p) => p.id === sel.id) && <div className="ci-panel">
+          <div className="ci-panel-top">
+            <span className="grow"><b>{sel.title.split(" · ")[0]}</b><small>{relDay(sel.date, today)} · {sel.time} · {sel.area ? `${sel.area}, ` : ""}{cityName(sel.city)}</small></span>
+            <Link className="ci-open" href={eventUrl(sel)} aria-label="Open plan page">↗</Link>
+          </div>
+          {total > 0 && <div className="ci-meter" aria-label={`${inCount} of ${total} guests checked in`}>
+            <b>{inCount}</b><span>of {total} in</span><small>{total - inCount ? `${total - inCount} to go` : "Everyone's in 🎉"}</small>
+            <i><motion.em animate={{ width: `${(inCount / total) * 100}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} /></i>
+          </div>}
+        </div>}
+        {(sel && shown.some((p) => p.id === sel.id)) && <div className="ci-list">
+          {!guests ? <div className="skeleton" style={{ minHeight: 80 }} /> : !guests.length ? <div className="ci-empty"><span aria-hidden="true">🪑</span><b>No confirmed guests yet</b><small>Approve requests in Seat requests and they show up here.</small></div> : [...guests].sort((a, b) => Number(a.status === "attended") - Number(b.status === "attended")).map((g) => {
             const inn = g.status === "attended";
             return (
               <div key={g.request_id} className={`ci-row ${inn ? "in" : ""}`}>
@@ -128,7 +175,7 @@ export function AdminCheckIn({ plans, guestsFn = "admin_plan_queue" }: { plans: 
               </div>
             );
           })}
-        </div>
+        </div>}
       </>}
     </motion.section>
   );
