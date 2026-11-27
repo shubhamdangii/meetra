@@ -8,7 +8,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "./AppProvider";
 import { useAuth } from "./AuthProvider";
 import { burstFrom } from "./fx";
-import { type AdminEvent, type AdminHost, type EventFormValue, blankEvent, eventToForm, formToPayload, validateEvent } from "./admin/Events";
+import { type AdminEvent, type AdminHost, type EventFormValue, type Repeat, AudiencePick, DayPartPick, RepeatPick, blankEvent, eventToForm, formToPayload, repeatDates, validateEvent } from "./admin/Events";
+import { SORT_ALL, SortBar, type SortF } from "./ui";
 import { CITIES, Chip, Modal, cityName, fmtDT, toLocalInput, useAsk } from "./admin/shared";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES, TEMPLATES } from "@/lib/data";
@@ -20,6 +21,7 @@ export type LibEvent = AdminEvent & { is_active?: boolean };
 type Card = {
   id: string; kind: "example" | "event"; title: string; city: string; area: string; emoji: string; image: string | null;
   sub: string; status?: string; active: boolean; ev?: LibEvent; form: EventFormValue; templateKey?: string;
+  cat: string; aud: string; part: "day" | "night";
   /** example plans: one card, one entry per city it runs in (area, price… can differ by city) */
   variants?: { city: string; area: string; form: EventFormValue }[];
 };
@@ -50,21 +52,23 @@ function exampleCards(cityFilter: string | null, hidden: Set<string>): Card[] {
       title: ov.title || t.title, category: catOk(t.cat), area: ov.area ?? "", price: String(ov.price ?? t.price ?? 0), price_type: t.priceType,
       seats: String(ov.seats || t.seats || 12), emoji: ov.emoji || t.emoji || "✨", blurb: ov.blurb || t.blurb || "", steps: (t.steps ?? []).join("\n"),
       tags: (t.tags ?? []).join(", "), event_type: TEMPLATE_TYPE[t.key] ?? "", image_url: img && img.startsWith(BASE + "/") ? img.slice(BASE.length) : img ?? "",
-      starts: to24(ov.time || t.time), ends: to24(ov.end || t.end),
+      starts: to24(ov.time || t.time), ends: to24(ov.end || t.end), audience: (t.tags ?? []).includes("Girls only") ? "women" : "mixed",
     });
     variants.push({ city, area: f.area, form: f });
   }
   if (!variants.length) continue;
   const v0 = variants[0];
   out.push({ id: `t:${t.key}`, kind: "example", title: v0.form.title, city: v0.city, area: v0.area, emoji: v0.form.emoji, image: img0, templateKey: t.key,
-    sub: t.days ? "Example plan · repeats weekly" : "Example plan · one-off", active: !hidden.has(t.key), form: v0.form, variants });
+    sub: t.days ? "Example plan · repeats weekly" : "Example plan · one-off", active: !hidden.has(t.key), form: v0.form, variants,
+    cat: v0.form.category, aud: v0.form.audience, part: Number(v0.form.starts.slice(0, 2)) < 17 ? "day" : "night" });
   }
   return out;
 }
 function eventCard(e: LibEvent): Card {
   return { id: `e:${e.id}`, kind: "event", title: e.title, city: e.city_slug, area: e.area, emoji: e.emoji, ev: e,
     image: imgSrc(e.image_url) ?? typeImages(e.event_type)[0] ?? null, sub: fmtDT(e.starts_at), status: e.display_status,
-    active: e.is_active !== false, form: eventToForm(e as LibEvent & Record<string, unknown>) };
+    active: e.is_active !== false, form: eventToForm(e as LibEvent & Record<string, unknown>),
+    cat: e.category, aud: e.audience ?? "mixed", part: (e.day_part as "day" | "night" | null) || (new Date(e.starts_at).getHours() < 17 ? "day" : "night") };
 }
 const tabOf = (c: Card): Tab => {
   if (c.kind === "example") return c.active ? "active" : "inactive";
@@ -83,7 +87,8 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
   const admin = mode === "admin";
   const [q, setQ] = useState(""); const [tab, setTab] = useState<Tab>("active");
   const [city, setCity] = useState(lockCity ?? "");
-  const [add, setAdd] = useState<{ card: Card; f: EventFormValue; date: string; repeat: number } | null>(null);
+  const [add, setAdd] = useState<{ card: Card; f: EventFormValue; date: string; rep: Repeat } | null>(null);
+  const [sort, setSort] = useState<SortF>(SORT_ALL);
   const [chooser, setChooser] = useState(false);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   useEffect(() => { if (newTick) setChooser(true); }, [newTick]);
@@ -97,7 +102,8 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
     return [...(events ?? []).filter((e) => !cf || e.city_slug === cf).map(eventCard), ...exampleCards(cf, hiddenKeys)];
   }, [events, hiddenKeys, city, lockCity]);
   const counts = useMemo(() => all.reduce((m, c) => { const t = tabOf(c); m[t] = (m[t] ?? 0) + 1; return m; }, {} as Record<Tab, number>), [all]);
-  const cards = all.filter((c) => tabOf(c) === tab && (!q || `${c.title} ${c.area} ${c.sub} ${(c.variants ?? []).map((v) => `${v.area} ${cityName(v.city)}`).join(" ")}`.toLowerCase().includes(q.toLowerCase())));
+  const sortOk = (c: Card) => (sort.cat === "all" || c.cat === sort.cat) && (sort.aud === "all" || c.aud === sort.aud) && (sort.part === "all" || c.part === sort.part);
+  const cards = all.filter((c) => tabOf(c) === tab && sortOk(c) && (!q || `${c.title} ${c.area} ${c.sub} ${(c.variants ?? []).map((v) => `${v.area} ${cityName(v.city)}`).join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const TABS: [Tab, string][] = admin ? [["active", "🟢 Active"], ["inactive", "⚪ Inactive"], ["waiting", "⏳ Waiting"], ["past", "🏁 Past"]] : [["active", "Events"], ["waiting", "⏳ Waiting"], ["past", "🏁 Past"]];
 
   /** Add a date in another city: copy that city's version of the plan (area, price…), keep the date and time already picked. */
@@ -112,20 +118,16 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
     const startT = (f.starts || "").slice(-5) || "19:00", endT = (f.ends || "").slice(-5) || "21:00";
     const date = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
     setErr(""); setChooser(false);
-    setAdd({ card, date, repeat: 1, f: { ...f, city_slug: lockCity ?? f.city_slug ?? card.city, starts: `${date}T${startT}`, ends: `${date}T${endT}`, closes: "", host_id: admin ? f.host_id : "", maps_url: f.maps_url ?? "" } });
+    setAdd({ card, date, rep: { days: [], weeks: 4 }, f: { ...f, city_slug: lockCity ?? f.city_slug ?? card.city, starts: `${date}T${startT}`, ends: `${date}T${endT}`, closes: "", host_id: admin ? f.host_id : "", maps_url: f.maps_url ?? "" } });
   }
   const setF = (patch: Partial<EventFormValue>) => add && setAdd({ ...add, f: { ...add.f, ...patch } });
   const setWhen = (date: string, st: string, en: string) => add && setAdd({ ...add, date, f: { ...add.f, starts: `${date}T${st}`, ends: `${date}T${en}`, closes: "" } });
-  const shift = (f: EventFormValue, weeks: number): EventFormValue => {
-    const mv = (v: string) => { const d = new Date(v); d.setDate(d.getDate() + 7 * weeks); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${v.slice(-5)}`; };
-    return { ...f, starts: mv(f.starts), ends: mv(f.ends), closes: "" };
-  };
 
   async function create(ev: React.MouseEvent<HTMLButtonElement>) {
     if (!add || !auth.client) return;
-    let f = add.f;
-    if (f.ends <= f.starts) { const e = new Date(f.ends); e.setDate(e.getDate() + 1); const p = (n: number) => String(n).padStart(2, "0"); f = { ...f, ends: `${e.getFullYear()}-${p(e.getMonth() + 1)}-${p(e.getDate())}T${f.ends.slice(-5)}` }; }
-    const dates = Array.from({ length: add.repeat }, (_, i) => shift(f, i));
+    const st = add.f.starts.slice(-5), en = add.f.ends.slice(-5);
+    const dates = repeatDates(add.date, add.rep).map((ymd) => ({ ...add.f, starts: `${ymd}T${st}`, ends: en <= st ? nextDay(`${ymd}T${en}`) : `${ymd}T${en}`, closes: "" }));
+    if (dates.length > 40) return setErr("That's more than 40 dates. Pick fewer days or weeks.");
     for (const d of dates) { const p = validateEvent(d); if (p) return setErr(p); }
     setErr(""); setBusy(true);
     const btn = ev.currentTarget; const sent: string[] = [];
@@ -134,7 +136,7 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
       const id = await auth.client.rpc(admin ? "admin_save_event_draft" : "host_save_event_draft", { p_id: null, p_payload: payload });
       if (id.error) { setBusy(false); setErr(`${sent.length ? `${sent.length} sent, then: ` : ""}${id.error.message}`); onChange?.(); return; }
       const no = admin
-        ? await auth.client.rpc("admin_submit_request", { p_entity: "event", p_action: "create", p_target: id.data, p_payload: null, p_note: `Added from the Event library (${add.card.title}${add.repeat > 1 ? `, weekly ×${add.repeat}` : ""})` })
+        ? await auth.client.rpc("admin_submit_request", { p_entity: "event", p_action: "create", p_target: id.data, p_payload: null, p_note: `Added from the Event library (${add.card.title}${dates.length > 1 ? `, ${dates.length} dates` : ""})` })
         : await auth.client.rpc("host_submit_event", { p_id: id.data, p_note: null });
       if (no.error) { setBusy(false); setErr(no.error.message); onChange?.(); return; }
       sent.push(String(no.data));
@@ -213,6 +215,7 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
         <input className="adm-search" placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search events" />
         {!lockCity && <select className="select" value={city} onChange={(e) => setCity(e.target.value)} aria-label="City"><option value="">All cities</option>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select>}
       </div>
+      <SortBar v={sort} onChange={setSort} id={`lib-${mode}`} />
       <div className="lib-tabs" role="tablist" aria-label="Event status">{TABS.map(([k, l]) => (
         <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>
           {tab === k && <motion.span layoutId={`lib-tab-${mode}`} className="lib-tab-bg" transition={spring} />}
@@ -349,9 +352,10 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
                   <span className="tx"><b>{cityName(c)}</b>{v?.area ? <small>{v.area}</small> : null}</span></button>;
               })}</div></div>}
             <div className="field"><label htmlFor="lib-cat">Category</label><select id="lib-cat" value={add.f.category} onChange={(e) => setF({ category: e.target.value })}>{cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}<option value="other">✦ Other</option></select></div>
-            <div className="field"><label htmlFor="lib-date">{add.repeat > 1 ? "First date *" : "Date *"}</label><input id="lib-date" type="date" min={new Date().toISOString().slice(0, 10)} value={add.date} onChange={(e) => setWhen(e.target.value, startT, endT)} /></div>
-            <div className="field"><label htmlFor="lib-rep">How often</label><select id="lib-rep" value={add.repeat} onChange={(e) => setAdd({ ...add, repeat: Number(e.target.value) })}>
-              <option value={1}>One-time (casual)</option>{[2, 3, 4, 6, 8].map((n) => <option key={n} value={n}>Repeat weekly · {n} weeks</option>)}</select></div>
+            <AudiencePick value={add.f.audience} onChange={(v) => setF({ audience: v })} />
+            <DayPartPick value={add.f.day_part} starts={add.f.starts} onChange={(v) => setF({ day_part: v })} />
+            <div className="field"><label htmlFor="lib-date">{add.rep.days.length ? "First date *" : "Date *"}</label><input id="lib-date" type="date" min={new Date().toISOString().slice(0, 10)} value={add.date} onChange={(e) => setWhen(e.target.value, startT, endT)} /></div>
+            <RepeatPick value={add.rep} firstYmd={add.date} onChange={(r) => setAdd({ ...add, rep: r })} />
             <div className="field-row dt-row span2">
               <div className="field"><label htmlFor="lib-st">Starts *</label><input id="lib-st" type="time" value={startT} onChange={(e) => setWhen(add.date, e.target.value, endT)} /></div>
               <div className="field"><label htmlFor="lib-en">Ends *</label><input id="lib-en" type="time" value={endT} onChange={(e) => setWhen(add.date, startT, e.target.value)} /></div>
@@ -362,11 +366,11 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
             {admin && <div className="field span2"><label htmlFor="lib-host">Host</label><select id="lib-host" value={add.f.host_id} onChange={(e) => setF({ host_id: e.target.value })}>
               <option value="">Not decided yet (shows &quot;Host announced soon&quot;)</option>{addHosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select></div>}
           </div>
-          <p className="muted" style={{ fontSize: 13 }}>{add.f.price_type === "free" ? "Free" : `₹${add.f.price} ${add.f.price_type}`} · {add.f.seats} seats · bookings close 4 hours before the start{add.repeat > 1 ? ` · ${add.repeat} dates, one week apart` : ""}</p>
+          <p className="muted" style={{ fontSize: 13 }}>{add.f.price_type === "free" ? "Free" : `₹${add.f.price} ${add.f.price_type}`} · {add.f.seats} seats · bookings close 4 hours before the start</p>
           {err && <p className="form-msg err" role="alert">{err}</p>}
           <div className="adm-row-end">
             <button className="btn btn-white btn-sm" onClick={() => setAdd(null)}>Close</button>
-            <button className="btn btn-ink btn-sm" disabled={busy} onClick={create}>{busy ? "Sending…" : `${add.repeat > 1 ? `Add ${add.repeat} dates` : "Add"} & send ${admin ? "for approval" : "to the team"}`}</button>
+            <button className="btn btn-ink btn-sm" disabled={busy} onClick={create}>{busy ? "Sending…" : `${repeatDates(add.date, add.rep).length > 1 ? `Add ${repeatDates(add.date, add.rep).length} dates` : "Add"} & send ${admin ? "for approval" : "to the team"}`}</button>
           </div>
         </>}
       </Modal>

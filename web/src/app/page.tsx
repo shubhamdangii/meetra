@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExplorePreview, Faces, HeroCount, HeroStack, Hosts, Moments, Ribbon, Stats, Steps, Wall } from "@/components/Home";
+import { ExplorePreview, Faces, HeroCount, HeroStack, Hosts, Moments, Stats, Strip, Steps, Wall } from "@/components/Home";
 import { Magnetic, WordReveal, Wavy } from "@/components/fx";
 import { Reveal } from "@/components/ui";
 import { NotHost } from "@/components/host/useIsHost";
@@ -37,6 +37,7 @@ export default function HomePage() {
         <HeroStack />
       </section>
 
+      <Strip />
       <ExplorePreview />
 
       <section className="wrap sec moments" style={{ paddingTop: 10 }}>
@@ -87,7 +88,6 @@ export default function HomePage() {
         </Reveal>
       </section></NotHost>
 
-      <section className="wrap rb-sec"><Ribbon /></section>
     </>
   );
 }

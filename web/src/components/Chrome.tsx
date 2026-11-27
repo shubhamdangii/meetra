@@ -293,7 +293,7 @@ export function Footer() {
           <div><h5>Explore</h5><Link href="/events/">Find a meetup</Link><Link href="/events/?when=weekend">This weekend</Link><Link href="/swipe/">Discover</Link><Link href="/past/">Past nights</Link></div>
           <div><h5>Games</h5>{FOOT_GAMES.map(([id, t]) => <Link key={id} href={`/game/?id=${id}`}>{t}</Link>)}<Link href="/games/" className="foot-more">All games →</Link></div>
           <div><h5>Help</h5><Link href="/safety/">Help &amp; safety</Link><Link href="/safety/#report">Report someone</Link><Link href="/safety/#faq">FAQ</Link><Link href="/about/">How it works</Link><Link href="/safety/#contact">Contact support</Link></div>
-          <div><h5>{CONFIG.brand}</h5><NotHost><Link href="/host/">Host a meetup</Link></NotHost><Link href="/partners/">For brands &amp; venues</Link><a href={CONFIG.instagram} target="_blank" rel="noopener noreferrer">Instagram</a><a href={CONFIG.whatsappCommunity} target="_blank" rel="noopener noreferrer">WhatsApp community</a><a href={`mailto:${CONFIG.email}`}>{CONFIG.email}</a></div>
+          <div><h5>{CONFIG.brand}</h5><NotHost><Link href="/host/">Host a meetup</Link></NotHost><Link href="/merch/">Merch · Drop 01</Link><Link href="/partners/">For brands &amp; venues</Link><a href={CONFIG.instagram} target="_blank" rel="noopener noreferrer">Instagram</a><a href={CONFIG.whatsappCommunity} target="_blank" rel="noopener noreferrer">WhatsApp community</a><a href={`mailto:${CONFIG.email}`}>{CONFIG.email}</a></div>
         </div>
         <motion.div className="wordmark" aria-hidden="true" initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.9 }}>
           {CONFIG.brand}<i>.</i>

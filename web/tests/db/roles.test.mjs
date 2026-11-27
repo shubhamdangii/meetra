@@ -150,6 +150,24 @@ try {
   r = await as(A.auth, "update public.custom_plans set category = 'bhakti' where id = $1 returning id", [LIVE]);
   ok("new types (bhajan & bhakti) are allowed", r.ok || /permission|policy/.test(r.err ?? ""), r.err);
 
+  console.log("\nEvents · day / night and new types");
+  r = await as(A.auth, "select public.admin_save_event_draft(null, $1::jsonb) v", [JSON.stringify({ title: "QA_bhajan", city_slug: "jaipur", category: "bhakti", starts_at: iso(90), ends_at: iso(92), area: "QA", price: 0, price_type: "free", seats: 10, audience: "mixed", day_part: "night" })]);
+  ok("admin creates a Bhajan & Bhakti event marked as a night event", r.ok && (await q1("select category, day_part from public.custom_plans where id = $1", [r.row?.v]))?.day_part === "night", r.err);
+  r = await as(A.auth, "select public.admin_save_event_draft(null, $1::jsonb) v", [JSON.stringify({ title: "QA_bad", city_slug: "jaipur", category: "games", starts_at: iso(90), ends_at: iso(92), area: "QA", price: 0, price_type: "free", seats: 10, day_part: "evening" })]);
+  ok("an unknown day/night value is refused", !r.ok, r.err);
+
+  console.log("\nMerch · join the drop");
+  r = await as(M.auth, "select public.join_merch_drop('board-games-tote', 'Bone', 'One size')"); ok("member joins a drop", r.ok, r.err);
+  r = await as(M.auth, "select public.join_merch_drop('board-games-tote', 'Ink', 'One size')"); ok("…joining again just updates the colour (no duplicate)", r.ok && (await q1("select count(*)::int n, max(colour) c from public.merch_interest where item = 'board-games-tote' and user_id = $1", [M.uid]))?.c === "Ink", r.err);
+  r = await as(M.auth, "select count(*)::int n from public.merch_interest"); ok("member sees only their own drops", r.ok && r.row.n === 1, r.err);
+  r = await as(H.auth, "select count(*)::int n from public.merch_interest where user_id = $1", [M.uid]); ok("another member can't see them", r.ok && r.row.n === 0, r.err);
+  r = await as(M.auth, "insert into public.merch_interest (user_id, item, colour, size) values ($1, 'x-item', 'Bone', 'M')", [M.uid]); ok("nobody writes the table directly", !r.ok);
+  r = await as(M.auth, "select public.join_merch_drop('board-games-tote', 'Bone', 'XXXL')"); ok("an unknown size is refused", !r.ok);
+  r = await as("anon", "select public.join_merch_drop('board-games-tote', 'Bone', 'M')"); ok("visitors must log in to join", !r.ok);
+  r = await as(M.auth, "select * from public.admin_merch_interest()"); ok("members can't read the demand report", !r.ok);
+  r = await as(A.auth, "select count(*)::int n from public.admin_merch_interest()"); ok("the team sees demand per piece, colour and size", r.ok, r.err);
+  r = await as(M.auth, "select public.leave_merch_drop('board-games-tote')"); ok("member leaves the drop", r.ok && (await q1("select count(*)::int n from public.merch_interest where user_id = $1", [M.uid])).n === 0, r.err);
+
   console.log("\nEvent library · who can hide example plans");
   r = await as(A.auth, "select public.admin_hide_template('quiz-night', true)"); ok("main admin sets an example plan inactive", r.ok, r.err);
   ok("…and it's in the hidden list everyone reads", (await as("anon", "select count(*)::int n from public.hidden_templates where key = 'quiz-night'")).row?.n === 1);

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { useAuth } from "../AuthProvider";
 import { burstFrom } from "../fx";
-import { EventForm, type EventFormValue, blankEvent, eventToForm, formToPayload, useEventExtras, validateEvent } from "../admin/Events";
+import { EventForm, type EventFormValue, type Repeat, RepeatPick, blankEvent, eventToForm, expandRepeat, formToPayload, useEventExtras, validateEvent } from "../admin/Events";
 import { WhoComing } from "../EventBits";
 import { DiaryUploader } from "../Diary";
 import { EventLibrary } from "../EventLibrary";
@@ -49,6 +49,7 @@ export function HostDesk({ host }: { host: MyHost }) {
   const [form, setForm] = useState<{ id: number | null; f: EventFormValue } | null>(null);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const [door, setDoor] = useState(false);
+  const [rep, setRep] = useState<Repeat>({ days: [], weeks: 4 });
   const [libOpen, setLibOpen] = useState(false); const [newTick, setNewTick] = useState(0);
   const pickOrCreate = () => { setLibOpen(true); setNewTick((n) => n + 1); };
 
@@ -81,6 +82,21 @@ export function HostDesk({ host }: { host: MyHost }) {
     const p = validateEvent(form.f); if (p) return setErr(p);
     setErr(""); setBusy(true);
     const btn = ev.currentTarget;
+    // a new event repeated on several days (alarm-style): one draft per date
+    const dates = form.id ? [form.f] : expandRepeat(form.f, rep);
+    if (dates.length > 1) {
+      for (const g of dates) { const q = validateEvent(g); if (q) { setBusy(false); return setErr(`${g.starts.slice(0, 10)}: ${q}`); } }
+      let ok = 0;
+      for (const g of dates) {
+        const did = await call<number>("host_save_event_draft", { p_id: null, p_payload: formToPayload(g) });
+        if (!did) break;
+        if (send && !(await call<string>("host_submit_event", { p_id: did, p_note: null }))) break;
+        ok++;
+      }
+      setBusy(false);
+      if (ok) { burstFrom(btn, ["🎉", "✨", "🙌"], 14); toast(`${ok} of ${dates.length} dates ${send ? "sent to the team" : "saved as drafts"} ✓`); setForm(null); setRep({ days: [], weeks: 4 }); load(); }
+      return;
+    }
     const id = await call<number>("host_save_event_draft", { p_id: form.id, p_payload: formToPayload(form.f) });
     if (id && send) {
       const no = await call<string>("host_submit_event", { p_id: id, p_note: null });
@@ -187,6 +203,7 @@ export function HostDesk({ host }: { host: MyHost }) {
         {form && <>
           <p className="adm-note">Saved as a draft first. Nothing is public until the team approves it.</p>
           <EventForm value={form.f} onChange={(f) => setForm({ ...form, f })} hosts={[]} lockCity hideHost />
+          {!form.id && <div className="adm-form"><RepeatPick value={rep} firstYmd={form.f.starts.slice(0, 10)} onChange={setRep} /></div>}
           {err && <p className="form-msg err" role="alert">{err}</p>}
           <div className="adm-row-end">
             <button className="btn btn-white btn-sm" onClick={() => setForm(null)}>Close</button>

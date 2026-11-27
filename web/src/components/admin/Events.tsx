@@ -14,7 +14,7 @@ import { useAuth } from "../AuthProvider";
 import { useEffect } from "react";
 
 /** Type, photo and exact location live outside the public event lists: load them for the events the caller manages. */
-export type EventExtras = { id: number; event_type: string | null; image_url: string | null; maps_url: string | null; is_active?: boolean; address?: string | null; landmark?: string | null; meeting_point?: string | null };
+export type EventExtras = { id: number; event_type: string | null; image_url: string | null; maps_url: string | null; is_active?: boolean; address?: string | null; landmark?: string | null; meeting_point?: string | null; audience?: string; day_part?: string | null };
 export function useEventExtras(ids: number[] | null) {
   const auth = useAuth();
   const [map, setMap] = useState<Map<number, EventExtras>>(new Map());
@@ -31,25 +31,25 @@ export type AdminEvent = {
   starts_at: string; ends_at: string; booking_closes_at: string; area: string; price: number; price_type: string; seats: number;
   emoji: string; blurb: string; steps: string[]; tags: string[]; status: string; display_status: string;
   confirmed: number; pending: number; waitlisted: number; pending_req: string | null; cancel_reason: string | null; created_by_name: string | null; updated_at: string;
-  category_other?: string | null; audience?: string; event_type?: string | null; image_url?: string | null; maps_url?: string | null; is_active?: boolean; address?: string | null; landmark?: string | null; meeting_point?: string | null;
+  category_other?: string | null; audience?: string; day_part?: string | null; event_type?: string | null; image_url?: string | null; maps_url?: string | null; is_active?: boolean; address?: string | null; landmark?: string | null; meeting_point?: string | null;
 };
 export type AdminHost = { id: number; name: string; city_slug: string; status: string };
 
 export type EventFormValue = {
   title: string; city_slug: string; category: string; other: string; host_id: string; starts: string; ends: string; closes: string; area: string;
   price: string; price_type: string; seats: string; emoji: string; blurb: string; steps: string; tags: string;
-  event_type: string; image_url: string; maps_url: string; address: string; landmark: string; meeting_point: string; audience: string;
+  event_type: string; image_url: string; maps_url: string; address: string; landmark: string; meeting_point: string; audience: string; day_part: string;
 };
 const H4 = 4 * 3600e3;   // bookings close at least 4 hours before the start
 export const blankEvent = (city = "jaipur"): EventFormValue => ({ title: "", city_slug: city, category: "food", other: "", host_id: "", starts: "", ends: "", closes: "", area: "",
-  price: "99", price_type: "reservation", seats: "12", emoji: "✨", blurb: "", steps: "", tags: "", event_type: "", image_url: "", maps_url: "", address: "", landmark: "", meeting_point: "", audience: "mixed" });
+  price: "99", price_type: "reservation", seats: "12", emoji: "✨", blurb: "", steps: "", tags: "", event_type: "", image_url: "", maps_url: "", address: "", landmark: "", meeting_point: "", audience: "mixed", day_part: "" });
 export const eventToForm = (e: Partial<AdminEvent> & Record<string, unknown>): EventFormValue => ({
   title: String(e.title ?? ""), city_slug: String(e.city_slug ?? "jaipur"), category: String(e.category ?? "food"), other: String(e.category_other ?? ""), host_id: e.host_id != null ? String(e.host_id) : "",
   starts: toLocalInput(e.starts_at as string), ends: toLocalInput(e.ends_at as string), closes: toLocalInput(e.booking_closes_at as string), area: String(e.area ?? ""),
   price: String(e.price ?? 0), price_type: String(e.price_type ?? "reservation"), seats: String(e.seats ?? 12), emoji: String(e.emoji ?? "✨"),
   blurb: String(e.blurb ?? ""), steps: ((e.steps as string[]) ?? []).join("\n"), tags: ((e.tags as string[]) ?? []).join(", "),
   event_type: String(e.event_type ?? ""), image_url: String(e.image_url ?? ""), maps_url: String(e.maps_url ?? ""),
-  address: String(e.address ?? ""), landmark: String(e.landmark ?? ""), meeting_point: String(e.meeting_point ?? ""), audience: String((e as { audience?: string }).audience ?? "mixed"),
+  address: String(e.address ?? ""), landmark: String(e.landmark ?? ""), meeting_point: String(e.meeting_point ?? ""), audience: String((e as { audience?: string }).audience ?? "mixed"), day_part: String((e as { day_part?: string | null }).day_part ?? ""),
 });
 export const formToPayload = (f: EventFormValue) => ({
   title: f.title.trim(), city_slug: f.city_slug, category: f.category, category_other: f.category === "other" ? f.other.trim() : null,
@@ -59,7 +59,7 @@ export const formToPayload = (f: EventFormValue) => ({
   blurb: f.blurb.trim(), steps: f.steps.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 6),
   tags: f.tags.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 4),
   event_type: f.event_type.trim() || null, image_url: f.image_url.trim() || null, maps_url: f.maps_url.trim() || null,
-  address: f.address.trim() || null, landmark: f.landmark.trim() || null, meeting_point: f.meeting_point.trim() || null, audience: f.audience || "mixed",
+  address: f.address.trim() || null, landmark: f.landmark.trim() || null, meeting_point: f.meeting_point.trim() || null, audience: f.audience || "mixed", day_part: f.day_part || null,
 });
 
 /** Same date rules as the database, so mistakes show up before saving. */
@@ -81,6 +81,86 @@ export function validateEvent(f: EventFormValue, opts: { allowPastStart?: boolea
   return null;
 }
 
+/** Who can come: mixed / girls only / boys only. */
+export function AudiencePick({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="field"><label>Who can come</label>
+      <div className="aud-pick" role="radiogroup" aria-label="Who can come">{([["mixed", "👫 Mixed"], ["women", "👩 Girls only"], ["men", "👨 Boys only"]] as const).map(([k, l]) => (
+        <button key={k} type="button" role="radio" aria-checked={value === k} className={value === k ? "on" : ""} onClick={() => onChange(k)}>{l}</button>))}</div>
+    </div>
+  );
+}
+/** Day or night event. Picked automatically from the start time until someone chooses. */
+export function DayPartPick({ value, starts, onChange }: { value: string; starts: string; onChange: (v: string) => void }) {
+  const auto = starts && /T\d\d:/.test(starts) ? (Number(starts.slice(11, 13)) < 17 ? "day" : "night") : "";
+  const cur = value || auto;
+  return (
+    <div className="field"><label>Day or night</label>
+      <div className="aud-pick" role="radiogroup" aria-label="Day or night">{([["day", "☀️ Day event"], ["night", "🌙 Night event"]] as const).map(([k, l]) => (
+        <button key={k} type="button" role="radio" aria-checked={cur === k} className={cur === k ? "on" : ""} onClick={() => onChange(k)}>{l}</button>))}</div>
+      <small className="muted">{value ? "Chosen by you." : auto ? "Picked from the start time. Tap to change." : "Set from the start time."}</small>
+    </div>
+  );
+}
+
+/* ---------- repeat: pick weekdays like an alarm, for how many weeks ---------- */
+export const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+export const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export type Repeat = { days: number[]; weeks: number };
+/** Every date from the first date on that falls on a chosen weekday, within the number of weeks. No days chosen = just the first date. */
+export function repeatDates(firstYmd: string, r: Repeat): string[] {
+  if (!firstYmd) return [];
+  if (!r.days.length) return [firstYmd];
+  const [y, m, d] = firstYmd.split("-").map(Number);
+  const start = new Date(y, m - 1, d), out: string[] = [];
+  const p = (n: number) => String(n).padStart(2, "0");
+  for (let i = 0; i < r.weeks * 7; i++) {
+    const x = new Date(start); x.setDate(start.getDate() + i);
+    if (r.days.includes(x.getDay())) out.push(`${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`);
+  }
+  return out.length ? out : [firstYmd];
+}
+/** The form copied onto every repeat date (same start/end time; an end before the start means it ends the next day). */
+export function expandRepeat(f: EventFormValue, r: Repeat): EventFormValue[] {
+  if (!f.starts) return [f];
+  const st = f.starts.slice(11, 16), en = (f.ends || f.starts).slice(11, 16), first = f.starts.slice(0, 10);
+  const firstEndDay = (f.ends || f.starts).slice(0, 10);
+  const nextDayEnd = firstEndDay > first;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return repeatDates(first, r).map((ymd) => {
+    if (ymd === first) return f;
+    const e = new Date(`${ymd}T${en}`); if (nextDayEnd) e.setDate(e.getDate() + 1);
+    return { ...f, starts: `${ymd}T${st}`, ends: `${e.getFullYear()}-${p(e.getMonth() + 1)}-${p(e.getDate())}T${en}`, closes: "" };
+  });
+}
+
+export function RepeatPick({ value, onChange, firstYmd }: { value: Repeat; onChange: (r: Repeat) => void; firstYmd: string }) {
+  const n = repeatDates(firstYmd, value).length;
+  const toggle = (i: number) => onChange({ ...value, days: value.days.includes(i) ? value.days.filter((x) => x !== i) : [...value.days, i].sort() });
+  const preset = (days: number[]) => onChange({ ...value, days });
+  return (
+    <div className="field span2 rep">
+      <label>Repeat</label>
+      <div className="rep-days" role="group" aria-label="Repeat on these days">
+        {WEEKDAYS.map((w, i) => (
+          <button key={i} type="button" aria-pressed={value.days.includes(i)} aria-label={WEEKDAY_NAMES[i]} className={value.days.includes(i) ? "on" : ""} onClick={() => toggle(i)}>{w}</button>
+        ))}
+      </div>
+      <div className="rep-row">
+        <div className="rep-presets">
+          <button type="button" className={!value.days.length ? "on" : ""} onClick={() => preset([])}>Once</button>
+          <button type="button" className={value.days.length === 7 ? "on" : ""} onClick={() => preset([0, 1, 2, 3, 4, 5, 6])}>Every day</button>
+          <button type="button" className={value.days.join() === "1,2,3,4,5" ? "on" : ""} onClick={() => preset([1, 2, 3, 4, 5])}>Weekdays</button>
+          <button type="button" className={value.days.join() === "0,6" ? "on" : ""} onClick={() => preset([0, 6])}>Weekends</button>
+        </div>
+        {value.days.length > 0 && <label className="rep-weeks">for <select value={value.weeks} onChange={(e) => onChange({ ...value, weeks: Number(e.target.value) })} aria-label="Number of weeks">
+          {[1, 2, 3, 4, 6, 8, 12].map((w) => <option key={w} value={w}>{w} week{w > 1 ? "s" : ""}</option>)}</select></label>}
+      </div>
+      <small className="muted">{value.days.length ? `${n} date${n === 1 ? "" : "s"}: ${value.days.map((d) => WEEKDAY_NAMES[d]).join(", ")}, starting from the first date. Each one goes for approval.` : "One date only. Tap days above to repeat, like an alarm."}</small>
+    </div>
+  );
+}
+
 export function EventForm({ value, onChange, hosts, lockCity, hideHost }: { value: EventFormValue; onChange: (f: EventFormValue) => void; hosts: AdminHost[]; lockCity?: boolean; hideHost?: boolean }) {
   const set = (k: keyof EventFormValue, v: string) => onChange({ ...value, [k]: v, ...(k === "city_slug" ? { host_id: "" } : {}) });
   const cityHosts = hosts.filter((h) => h.city_slug === value.city_slug && h.status === "active");
@@ -92,8 +172,8 @@ export function EventForm({ value, onChange, hosts, lockCity, hideHost }: { valu
       <div className="field span2"><label>Title *</label><input value={value.title} maxLength={100} onChange={(e) => set("title", e.target.value)} placeholder="Sunday Board Games Brunch" /></div>
       <div className="field"><label>City *</label><select value={value.city_slug} disabled={lockCity} onChange={(e) => set("city_slug", e.target.value)}>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select></div>
       <div className="field"><label>Category *</label><select value={value.category} onChange={(e) => set("category", e.target.value)}>{CATS.map((c) => { const k = cats.find((x) => x.id === c); return <option key={c} value={c}>{k ? `${k.icon} ${k.label}` : c}</option>; })}<option value="other">✦ Other (write your own)</option></select></div>
-      <div className="field"><label>Who can come</label><div className="aud-pick" role="radiogroup" aria-label="Who can come">{([["mixed", "👫 Mixed"], ["women", "👩 Girls only"], ["men", "👨 Boys only"]] as const).map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={value.audience === k} className={value.audience === k ? "on" : ""} onClick={() => set("audience", k)}>{l}</button>)}</div>
-        <small className="muted">{value.starts ? (Number(value.starts.slice(11, 13)) < 17 ? "☀️ Shows as a day plan (starts before 5 pm)" : "🌙 Shows as a night plan (starts 5 pm or later)") : "Day or night is set from the start time."}</small></div>
+      <AudiencePick value={value.audience} onChange={(v) => set("audience", v)} />
+      <DayPartPick value={value.day_part} starts={value.starts} onChange={(v) => set("day_part", v)} />
       {value.category === "other" && <div className="field"><label>Your category *</label><input value={value.other} maxLength={40} placeholder="e.g. Poetry, Chess, Gardening" onChange={(e) => set("other", e.target.value)} autoFocus /></div>}
       {!hideHost && <div className="field"><label>Host</label><select value={value.host_id} onChange={(e) => set("host_id", e.target.value)}>
         <option value="">Not decided yet (shows "Host announced soon")</option>{cityHosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
@@ -126,10 +206,12 @@ const FILTERS = ["all", "draft", "pending", "active", "completed", "cancelled"] 
 export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => void }) {
   const ev = useRpc<AdminEvent[]>("admin_events");
   const hs = useRpc<AdminHost[]>("admin_hosts");
-  const call = useCall(); const { ask, ui } = useAsk(); const { reloadCustom } = useApp() as ReturnType<typeof useApp> & { reloadCustom?: () => void };
+  const call = useCall(); const { ask, ui } = useAsk(); const { reloadCustom, toast } = useApp() as ReturnType<typeof useApp> & { reloadCustom?: () => void };
   const [view, setView] = useState<"cards" | "list">("cards"); const [newTick, setNewTick] = useState(0);
   const [city, setCity] = useState(""); const [host, setHost] = useState(""); const [st, setSt] = useState<(typeof FILTERS)[number]>("all"); const [qq, setQ] = useState("");
   const [edit, setEdit] = useState<{ mode: "new" | "draft" | "change"; ev?: AdminEvent; f: EventFormValue } | null>(null);
+  const [rep, setRep] = useState<Repeat>({ days: [], weeks: 4 });
+  useEffect(() => { if (edit?.mode !== "new") setRep({ days: [], weeks: 4 }); }, [edit?.mode]);
   const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const [hist, setHist] = useState<AdminEvent | null>(null);
   const [openEv, setOpen] = useState<AdminEvent | null>(null);
@@ -157,6 +239,22 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
       const no = await call<string>("admin_submit_request", { p_entity: "event", p_action: "update", p_target: edit.ev.id, p_payload: diff, p_note: note }, undefined);
       setBusy(false); if (!no) return;
       setEdit(null); refresh(); goApprovals(no); return;
+    }
+    // a new event repeated on several days (alarm-style): one draft per date, each sent for approval
+    const more = edit.mode === "new" ? expandRepeat(edit.f, rep).slice(1) : [];
+    if (more.length) {
+      for (const g of more) { const p = validateEvent(g); if (p) { setBusy(false); return setErr(`${g.starts.slice(0, 10)}: ${p}`); } }
+      const note = submitAfter ? await ask(`Send ${more.length + 1} dates for approval`, "Note for the other admin", { ok: "Send for approval" }) : "";
+      if (note === null) return setBusy(false);
+      let sent = 0; let first: string | undefined;
+      for (const g of [edit.f, ...more]) {
+        const did = await call<number>("admin_save_event_draft", { p_id: null, p_payload: formToPayload(g) }, undefined);
+        if (!did) break;
+        if (submitAfter) { const no = await call<string>("admin_submit_request", { p_entity: "event", p_action: "create", p_target: did, p_payload: null, p_note: note || `Repeat: ${more.length + 1} dates` }, undefined); if (!no) break; first ??= no; }
+        sent++;
+      }
+      setBusy(false); toast(`${sent} of ${more.length + 1} dates ${submitAfter ? "sent for approval" : "saved as drafts"} ✓`);
+      setEdit(null); refresh(); if (first) goApprovals(first); return;
     }
     const id = await call<number>("admin_save_event_draft", { p_id: edit.mode === "draft" ? edit.ev!.id : null, p_payload: payload }, submitAfter ? undefined : "Draft saved ✓ (not live)");
     if (!id) return setBusy(false);
@@ -252,6 +350,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
           {edit.mode === "change" && <p className="adm-note">The live event stays as it is until the other admin approves this change.</p>}
           {edit.mode !== "change" && <p className="adm-note">Drafts are never shown on the website. Send it for approval when ready.</p>}
           <EventForm value={edit.f} onChange={(f) => setEdit({ ...edit, f })} hosts={hosts} lockCity={edit.mode === "change"} />
+          {edit.mode === "new" && <div className="adm-form"><RepeatPick value={rep} firstYmd={edit.f.starts.slice(0, 10)} onChange={setRep} /></div>}
           {err && <p className="form-msg err" role="alert">{err}</p>}
           <div className="adm-row-end">
             <button className="btn btn-white btn-sm" onClick={() => setEdit(null)}>Close</button>

@@ -24,7 +24,15 @@ export const CATEGORIES: any = [
   { id: "trips",  label: "Trips",         icon: "🏕️" },
   { id: "chai",   label: "Chai",          icon: "☕" },
   { id: "tech",   label: "Tech",          icon: "💻" },
-  { id: "bhakti", label: "Bhajan & Bhakti", icon: "🪔" }
+  { id: "bhakti", label: "Bhajan & Bhakti", icon: "🪔" },
+  { id: "fitness", label: "Fitness & yoga", icon: "🧘" },
+  { id: "music",  label: "Music",         icon: "🎶" },
+  { id: "dance",  label: "Dance",         icon: "💃" },
+  { id: "comedy", label: "Comedy",        icon: "😂" },
+  { id: "books",  label: "Books",         icon: "📚" },
+  { id: "workshop", label: "Workshops",   icon: "🛠️" },
+  { id: "networking", label: "Networking", icon: "🤝" },
+  { id: "volunteer", label: "Volunteering", icon: "🌱" }
 ];
 
 /* Poster colour sets: [background, accent] */

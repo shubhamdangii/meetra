@@ -10,7 +10,7 @@ import { CONFIG } from "@/lib/config";
 
 export const cityName = (c: string | null | undefined) => (c ? CONFIG.cities[c]?.name ?? c : "");
 export const CITIES = Object.keys(CONFIG.cities);
-export const CATS = ["food", "chai", "sports", "games", "tech", "bhakti", "night", "outing", "art", "film", "trips"] as const;
+export const CATS = ["food", "chai", "sports", "fitness", "games", "tech", "bhakti", "music", "dance", "comedy", "books", "workshop", "networking", "volunteer", "night", "outing", "art", "film", "trips"] as const;
 
 export const fmtDT = (s: string | null | undefined) => {
   if (!s) return "–";

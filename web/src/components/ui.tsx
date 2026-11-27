@@ -70,20 +70,48 @@ export function SaveButton({ id, label = false, className = "" }: { id: string; 
   );
 }
 
+/* Lines in the same `group` (e.g. every card title on the page) share one size, so cards look even.
+   A line that needs to go below the group's `floor` shrinks on its own; it never drags the whole group down. */
+const FIT_GROUPS = new Map<string, { els: Set<HTMLElement>; floor: number }>();
+const FIT_PENDING = new Set<string>();
+function fitGroup(g: string) {
+  if (FIT_PENDING.has(g)) return; FIT_PENDING.add(g);
+  requestAnimationFrame(() => {
+    FIT_PENDING.delete(g);
+    const grp = FIT_GROUPS.get(g); if (!grp) return;
+    let size = Infinity;
+    grp.els.forEach((el) => { const n = Number(el.dataset.fit); if (n >= grp.floor) size = Math.min(size, n); });
+    grp.els.forEach((el) => { const n = Number(el.dataset.fit); el.style.fontSize = `${n < size ? n : size === Infinity ? n : size}px`; });
+  });
+}
+
 /** One line, always: the text shrinks (down to `min` px) until it fits its box, on every screen size. */
-export function FitLine({ as: Tag = "span", className = "", min = 11, children }: { as?: "span" | "h3" | "b" | "p" | "div"; className?: string; min?: number; children: React.ReactNode }) {
+export function FitLine({ as: Tag = "span", className = "", min = 10, group, floor = 0, children }: { as?: "span" | "h3" | "b" | "p" | "div"; className?: string; min?: number; group?: string; floor?: number; children: React.ReactNode }) {
   const ref = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
+    if (group) { const g = FIT_GROUPS.get(group) ?? { els: new Set<HTMLElement>(), floor }; g.els.add(el); FIT_GROUPS.set(group, g); }
+    let last = -1;
     const fit = () => {
+      const w = el.clientWidth; if (w === last) return; last = w;   // only when the box width changes (not on our own font change)
       el.style.fontSize = "";
       let fs = parseFloat(getComputedStyle(el).fontSize);
-      while (el.scrollWidth > el.clientWidth + 0.5 && fs > min) { fs -= 0.5; el.style.fontSize = `${fs}px`; }
+      // real text width (sub-pixel), not scrollWidth: a 0.4px overflow still shows "…"
+      const rg = document.createRange(); rg.selectNodeContents(el);
+      const over = () => rg.getBoundingClientRect().width > el.getBoundingClientRect().width - 0.75;
+      while (over() && fs > min) { fs -= 0.5; el.style.fontSize = `${fs}px`; }
+      el.dataset.fit = String(fs);
+      if (group) fitGroup(group);
     };
     fit();
     const ro = new ResizeObserver(fit); ro.observe(el);
-    return () => ro.disconnect();
-  }, [children, min]);
+    // the web font arrives after the first paint and makes text wider: measure again once it's in
+    let alive = true;
+    const refit = () => { if (alive) { last = -1; fit(); } };
+    document.fonts?.ready.then(refit);
+    document.fonts?.addEventListener?.("loadingdone", refit);
+    return () => { alive = false; document.fonts?.removeEventListener?.("loadingdone", refit); ro.disconnect(); if (group) { FIT_GROUPS.get(group)?.els.delete(el); fitGroup(group); } };
+  }, [children, min, group, floor]);
   const T = Tag as React.ElementType;
   return <T ref={ref} className={`fit1 ${className}`}>{children}</T>;
 }
@@ -108,17 +136,15 @@ export function EventCard({ e, index = 0, extra }: { e: MeetEvent; index?: numbe
       {e.tags.length > 0 && <div className="tagrow">{e.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
       <div className="card-body">
         {extra}
-        <FitLine className="when">{e.time} · {e.area}{city === "all" ? " · " + CONFIG.cities[e.city].name : ""}</FitLine>
-        <FitLine as="h3" min={13}>{e.title}</FitLine>
-        <FitLine className={`by ${hostTba(e) ? "tba" : ""}`}>{hostTba(e) ? "🎙️ " : ""}{hostLine(e)}</FitLine>
-        <div className="price">
-          <FitLine><b>{priceShort(e)}</b> {priceLabel(e)}</FitLine>
-          {left === 0 && <span className="seats-left">Waitlist</span>}
+        <FitLine group="card-when" floor={10.5} min={9} className="when"><b>{e.time}</b><i aria-hidden="true">·</i>{e.area}{city === "all" ? ` · ${CONFIG.cities[e.city].name}` : ""}</FitLine>
+        <span className="card-tt" title={e.title}><FitLine group="card-title" floor={13.5} min={12} as="h3">{e.title.split(" · ")[0]}</FitLine></span>
+        <FitLine group="card-by" floor={11} className={`by ${hostTba(e) ? "tba" : ""}`}><span className="by-ic" aria-hidden="true">{hostTba(e) ? "🎙️" : "✓"}</span>{hostLine(e)}</FitLine>
+        <div className="card-foot">
+          <FitLine group="card-price" floor={11} className="cf-price"><b>{priceShort(e)}</b><span>{priceLabel(e)}</span></FitLine>
+          {st !== "open" ? <FitLine group="card-stats" floor={10.5} as="p" className="card-stats closed"><b>{st === "ended" ? "🏁 Event ended" : "🔒 Registration closed"}</b></FitLine> :
+          <FitLine group="card-stats" floor={10.5} as="p" className={`card-stats${low ? " low" : ""}${left === 0 ? " full" : ""}`}><i className="dot" aria-hidden="true" /><b>{left === 0 ? "Full · join the waitlist" : `${left} of ${e.seats} seats left`}</b>
+            {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</FitLine>}
         </div>
-        {st !== "open" ? <FitLine as="p" className="card-stats closed"><b>{st === "ended" ? "🏁 Event ended" : "🔒 Registration closed"}</b></FitLine> :
-        <FitLine as="p" className={`card-stats${low ? " low" : ""}`}><b>{left === 0 ? "Full · join the waitlist" : `${left} of ${e.seats} seats left`}</b>
-          {cnt && cnt.approved_seats > 0 && <> · {cnt.approved_seats} accepted</>}
-          {cnt && cnt.waitlisted > 0 && <> · {cnt.waitlisted} waiting</>}</FitLine>}
       </div>
       <Link className="card-link" href={eventUrl(e)} aria-label={e.title} />
     </motion.article>
@@ -161,7 +187,7 @@ export type SortF = { cat: string; aud: string; part: string };
 export const SORT_ALL: SortF = { cat: "all", aud: "all", part: "all" };
 export const sortOk = (e: MeetEvent, f: SortF) =>
   (f.cat === "all" || e.cat === f.cat) && (f.aud === "all" || e.audience === f.aud) && (f.part === "all" || dayPart(e) === f.part);
-export function SortBar({ v, onChange, withCat = true }: { v: SortF; onChange: (f: SortF) => void; withCat?: boolean }) {
+export function SortBar({ v, onChange, withCat = true, id }: { v: SortF; onChange: (f: SortF) => void; withCat?: boolean; id?: string }) {
   const set = (k: keyof SortF, x: string) => { onChange({ ...v, [k]: x }); buzz(); };
   return (
     <div className="sort-bar" role="group" aria-label="Sort plans">
@@ -174,7 +200,7 @@ export function SortBar({ v, onChange, withCat = true }: { v: SortF; onChange: (
       <div className="seg sort-part" role="radiogroup" aria-label="Day or night">
         {([["all", "Any time"], ["day", "☀️ Day"], ["night", "🌙 Night"]] as const).map(([k, l]) => (
           <button key={k} type="button" role="radio" aria-checked={v.part === k} className={v.part === k ? "on" : ""} onClick={() => set("part", k)}>
-            {v.part === k && <motion.span layoutId={`part-on-${withCat ? "a" : "b"}`} className="seg-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}<span>{l}</span>
+            {v.part === k && <motion.span layoutId={`part-on-${id ?? (withCat ? "a" : "b")}`} className="seg-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}<span>{l}</span>
           </button>
         ))}
       </div>

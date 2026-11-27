@@ -103,19 +103,20 @@ export function Faces() {
   );
 }
 
-/* ---------- closing ribbon above the footer: a slim 3D conveyor of words with glowing orbs (transform-only animation) ---------- */
-const RIBBON = ["Come alone", "Leave with a group chat", "Jaipur", "Hosted every day", "Ahmedabad", "No awkward small talk", "Real people, real nights"];
-export function Ribbon() {
-  // two identical groups, each wider than any screen, scrolled by exactly one group: seamless
-  const group: string[] = []; while (group.length < 14) group.push(...RIBBON);
+/* ---------- the purple strip under the hero: one violet band, tilted 6°, upcoming plans scrolling by ----------
+   Two identical groups, each wider than any screen, move left by exactly one group: the loop never shows a gap. */
+export function Strip() {
+  const { upcoming, inCity } = useApp();
+  const items = [...new Set(upcoming.filter(inCity).slice(0, 30).map((e) => `${e.emoji} ${e.title.split(" · ")[0]}`))].slice(0, 12);
+  const list = items.length ? items : ["🍝 Introverts' Dinner", "🎲 Board Games & Chai", "🌄 Sunrise Trek", "🧠 Quiz Night", "🎤 Open Mic"];
+  const group: string[] = []; while (group.length < 14) group.push(...list);
   return (
-    <div className="rb" aria-hidden="true">
-      <div className="rb-3d">
-        <div className="rb-track">
-          {[0, 1].map((g) => <div key={g} className="rb-group">{group.map((w, i) => <span key={i} className={`rb-w w${i % 3}`}>{w}<i className="rb-orb" /></span>)}</div>)}
+    <div className="strip-wrap" aria-hidden="true">
+      <div className="strip">
+        <div className="strip-track" style={{ ["--strip-dur" as string]: `${group.length * 4.5}s` }}>
+          {[0, 1].map((g) => <div key={g} className="strip-group">{group.map((t, i) => <span key={i}>{t}</span>)}</div>)}
         </div>
       </div>
-      <span className="rb-sheen" />
     </div>
   );
 }
