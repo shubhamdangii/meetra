@@ -38,63 +38,100 @@ export default function HostProfilePage() {
   const dist = [5, 4, 3, 2, 1].map((s) => [s, p.reviews.filter((r) => r.rating === s).length] as const);
   const past = p.events.filter((e) => !e.upcoming && e.status === "approved");
 
+  const hosted = p.events.filter((e) => e.status === "approved").length;
+  const cityLabel = CONFIG.cities[p.city]?.name ?? p.city;
+  const cover = p.gallery[0] ?? null;
+  const avg = count ? Number(p.avg_rating) : null;
+  const share = async () => {
+    const url = window.location.href;
+    try { if (navigator.share) await navigator.share({ title: `${p.name} on ${CONFIG.brand}`, url }); else { await navigator.clipboard.writeText(url); } } catch { /* cancelled */ }
+  };
   return (
-    <div className="wrap hp">
-      <section className="hp-head">
-        <motion.div initial={{ scale: 0.6, rotate: -8, opacity: 0 }} animate={{ scale: 1, rotate: -3, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}>
-          <HostPhoto h={p} className="hp-av" />
-        </motion.div>
-        <div>
-          <span className="eyebrow">{CONFIG.brand} host · {CONFIG.cities[p.city]?.name ?? p.city}</span>
-          <h1>{p.name} <span className="verified">✓</span></h1>
-          <div className="hp-rating">
-            {count ? <><b>★ {Number(p.avg_rating).toFixed(1)}</b><span>/ 5 · {count} review{count > 1 ? "s" : ""}</span></> : <span className="muted">New host · no reviews yet</span>}
+    <div className="hp2">
+      <section className="hp2-cover" style={cover ? { backgroundImage: `linear-gradient(180deg,rgba(22,18,43,.15),rgba(22,18,43,.65)),url(${cover})` } : undefined} aria-hidden="true">
+        <span className="hp2-orb a" /><span className="hp2-orb b" />
+      </section>
+      <div className="wrap">
+        <section className="hp2-head">
+          <motion.div className="hp2-photo" initial={{ scale: 0.85, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 220, damping: 18 }}>
+            <HostPhoto h={p} className="hp2-av" />
+            <span className="hp2-tick" title="Verified by the meetra team" aria-label="Verified host">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l2.6 1.9 3.2-.2 1 3.1 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3.1-3.2-.2L12 22.5l-2.6-1.9-3.2.2-1-3.1L2.6 15.8l1-3.1-1-3.1 2.6-1.9 1-3.1 3.2.2z" fill="#2F7BFF" /><path d="M7.5 12.3l3 3 6-6.3" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </span>
+          </motion.div>
+          <div className="hp2-id">
+            <span className="hp2-eyebrow">{CONFIG.brand} host · {cityLabel}</span>
+            <h1>{p.name}</h1>
+            <p className="hp2-verified">Verified host · checked by the {CONFIG.brand} team</p>
           </div>
-          {(() => { const hosted = p.events.filter((e) => e.status === "approved").length; const s = (n: number, w: string) => `${w}${n === 1 ? "" : "s"}`;
-            return <div className="hp-stats"><span><b>{hosted}</b>{s(hosted, "plan")} hosted</span><span><b>{upcoming.length}</b>coming up</span><span><b>{count}</b>{s(count, "review")}</span></div>; })()}
-          {p.bio && <p className="hp-bio">{p.bio}</p>}
-        </div>
-      </section>
-
-      {p.gallery.length > 0 && (
-        <section className="sec" style={{ paddingTop: 10 }}>
-          <h2 className="hp-h">Gallery</h2>
-          <PhotoStrip photos={p.gallery.map((src) => ({ src }))} label={`Photos from ${p.name}'s meetups`} />
+          <div className="hp2-cta">
+            {upcoming.length > 0 && <a className="btn btn-sun btn-sm" href="#plans">See plans</a>}
+            <button type="button" className="btn btn-white btn-sm" onClick={share}>Share ↗</button>
+          </div>
         </section>
-      )}
 
-      <section className="sec" style={{ paddingTop: 10 }}>
-        <h2 className="hp-h">Plans with {p.name}</h2>
-        {upcoming.length ? <div className="grid">{upcoming.map((e, i) => <EventCard key={e.id} e={e} index={i} />)}</div>
-          : <p className="muted">No upcoming plans right now. Check back soon.</p>}
-      </section>
+        <section className="hp2-stats" aria-label="Host stats">
+          {([
+            [avg ? avg.toFixed(1) : "New", avg ? `rating · ${count} review${count > 1 ? "s" : ""}` : "no reviews yet", "★"],
+            [String(hosted), hosted === 1 ? "plan hosted" : "plans hosted", "🎙️"],
+            [String(upcoming.length), "coming up", "📅"],
+            [cityLabel, "home city", "📍"],
+          ] as const).map(([v, l, ic], i) => (
+            <motion.div key={l} className="hp2-stat" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.06 }}>
+              <span aria-hidden="true">{ic}</span><b>{v}</b><small>{l}</small>
+            </motion.div>
+          ))}
+        </section>
 
-      <section className="sec" style={{ paddingTop: 10 }}>
-        <h2 className="hp-h">What guests said</h2>
-        {count > 0 && (
-          <div className="hp-dist" aria-label="Rating breakdown">{dist.map(([s, n]) => (
-            <div key={s}><span>{s}★</span><div><motion.i initial={{ width: 0 }} whileInView={{ width: `${(n / count) * 100}%` }} viewport={{ once: true }} transition={{ duration: 0.6 }} /></div><small>{n}</small></div>
-          ))}</div>
+        {p.bio && <section className="hp2-bio"><h2>About {p.name.split(" ")[0]}</h2><p>{p.bio}</p></section>}
+
+        <section className="hp2-sec" id="plans">
+          <div className="hp2-h"><h2>Upcoming plans</h2>{upcoming.length > 0 && <span>{upcoming.length}</span>}</div>
+          {upcoming.length ? <div className="grid">{upcoming.map((e, i) => <EventCard key={e.id} e={e} index={i} />)}</div>
+            : <div className="hp2-empty"><span aria-hidden="true">🗓️</span><b>No plans on the calendar right now.</b><p>New dates are added every week. <Link href="/events/">Browse all plans →</Link></p></div>}
+        </section>
+
+        {p.gallery.length > 0 && (
+          <section className="hp2-sec">
+            <div className="hp2-h"><h2>From {p.name.split(" ")[0]}&apos;s tables</h2><span>{p.gallery.length}</span></div>
+            <PhotoStrip photos={p.gallery.map((src) => ({ src }))} label={`Photos from ${p.name}'s meetups`} />
+          </section>
         )}
-        {count ? (
-          <ul className="hp-reviews">{p.reviews.map((r, i) => (
-            <Reveal key={i} delay={Math.min(i, 5) * 0.05}><li>
-              <div className="top"><b>{r.first_name}</b><span className="st">{"★".repeat(r.rating)}<i>{"★".repeat(5 - r.rating)}</i></span></div>
-              {r.comment && <p>“{r.comment}”</p>}
-              <small>{r.event ?? "meetra plan"} · {new Date(r.at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</small>
-            </li></Reveal>
-          ))}</ul>
-        ) : <p className="muted">Reviews show up here after guests who were checked in rate the plan.</p>}
-      </section>
 
-      {past.length > 0 && (
-        <section className="sec" style={{ paddingTop: 10 }}>
-          <h2 className="hp-h">Event-wise ratings</h2>
-          <div className="tbl-wrap"><table><thead><tr><th>Plan</th><th>Date</th><th>Rating</th></tr></thead>
-            <tbody>{past.map((e) => <tr key={e.plan_ref}><td>{e.emoji} {e.title}</td><td>{new Date(e.starts_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</td>
-              <td>{e.reviews ? `★ ${Number(e.avg_rating).toFixed(1)} (${e.reviews})` : "–"}</td></tr>)}</tbody></table></div>
+        <section className="hp2-sec">
+          <div className="hp2-h"><h2>Reviews</h2>{count > 0 && <span>{count}</span>}</div>
+          {count ? (
+            <div className="hp2-rev">
+              <div className="hp2-sum">
+                <b>{avg!.toFixed(1)}</b>
+                <span className="st" aria-hidden="true">{"★".repeat(Math.round(avg!))}<i>{"★".repeat(5 - Math.round(avg!))}</i></span>
+                <small>{count} review{count > 1 ? "s" : ""} from checked-in guests</small>
+                <div className="hp-dist" aria-label="Rating breakdown">{dist.map(([st, n]) => (
+                  <div key={st}><span>{st}★</span><div><motion.i initial={{ width: 0 }} whileInView={{ width: `${(n / count) * 100}%` }} viewport={{ once: true }} transition={{ duration: 0.6 }} /></div><small>{n}</small></div>
+                ))}</div>
+              </div>
+              <ul className="hp2-list">{p.reviews.map((r, i) => (
+                <Reveal key={i} delay={Math.min(i, 5) * 0.05}><li>
+                  <div className="top"><span className="hp2-ini" aria-hidden="true">{(r.first_name || "?")[0]}</span><b>{r.first_name}</b><span className="st">{"★".repeat(r.rating)}<i>{"★".repeat(5 - r.rating)}</i></span></div>
+                  {r.comment && <p>&ldquo;{r.comment}&rdquo;</p>}
+                  <small>{r.event ?? `${CONFIG.brand} plan`} · {new Date(r.at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</small>
+                </li></Reveal>
+              ))}</ul>
+            </div>
+          ) : <div className="hp2-empty"><span aria-hidden="true">💬</span><b>No reviews yet.</b><p>Only guests who were checked in at a plan can leave a review.</p></div>}
         </section>
-      )}
+
+        {past.length > 0 && (
+          <section className="hp2-sec">
+            <div className="hp2-h"><h2>Past plans</h2><span>{past.length}</span></div>
+            <ul className="hp2-past">{past.map((e) => (
+              <li key={e.plan_ref}><span className="em" aria-hidden="true">{e.emoji}</span><div><b>{e.title}</b><small>{new Date(e.starts_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</small></div>
+                <span className="rt">{e.reviews ? <>★ {Number(e.avg_rating).toFixed(1)} <small>({e.reviews})</small></> : <small>No ratings</small>}</span></li>
+            ))}</ul>
+          </section>
+        )}
+      </div>
     </div>
   );
+
 }

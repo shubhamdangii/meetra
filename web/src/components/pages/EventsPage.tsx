@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
-import { Chips, Empty, EventCard } from "../ui";
+import { Chips, Empty, EventCard, SORT_ALL, SortBar, type SortF, sortOk } from "../ui";
 import { CATEGORIES } from "@/lib/data";
 import { DOW, PRICE_BANDS, type MeetEvent, addDays, cityName, fmtDay, hostNames, priceOk, relDay } from "@/lib/events";
 import { NotHost } from "../host/useIsHost";
@@ -23,6 +23,7 @@ export default function EventsPage() {
   const [price, setPrice] = useState(PRICE_BANDS.some(([v]) => v === params.get("price")) ? (params.get("price") as string) : "all");
   const [date, setDate] = useState<string | null>(null);
   const [shownDays, setShownDays] = useState(when === "all" ? 7 : 28);
+  const [sort, setSort] = useState<SortF>(SORT_ALL);
   const [view, setView] = useState<"list" | "map">(params.get("view") === "map" ? "map" : "list");
 
   const setParam = (k: string, v: string) => {
@@ -36,7 +37,7 @@ export default function EventsPage() {
     week: e.day <= 6, next: e.day > 6 && e.day <= 13, later: e.day > 13 } as Record<string, boolean>)[when];
   const priceFits = (e: MeetEvent) => priceOk(e, price);
   const base = useMemo(() => upcoming.filter(inCity), [upcoming, inCity]);
-  const list = base.filter((e) => (cat === "all" || e.cat === cat) && whenOk(e) && priceFits(e) && (!date || fmtDay(e.date) === date)
+  const list = base.filter((e) => (cat === "all" || e.cat === cat) && sortOk(e, { ...sort, cat: "all" }) && whenOk(e) && priceFits(e) && (!date || fmtDay(e.date) === date)
     && (!q || `${e.title} ${e.area} ${hostNames(e)} ${e.cat}`.toLowerCase().includes(q.toLowerCase())));
 
   const byDay = new Map<string, MeetEvent[]>();
@@ -83,6 +84,7 @@ export default function EventsPage() {
         })}
       </div>
       <Chips value={cat} onChange={(id) => setParam("cat", id)} counts={ready ? counts : undefined} />
+      <SortBar v={sort} onChange={setSort} withCat={false} />
       <div className="ex-bar">
         <span className="muted" style={{ fontSize: 13 }}>{ready ? `${list.length} plan${list.length === 1 ? "" : "s"}` : ""}{view === "map" ? " · approximate areas, exact spots stay private" : ""}</span>
         <div className="seg" role="tablist" aria-label="View">

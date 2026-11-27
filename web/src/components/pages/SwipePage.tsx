@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppProvider";
 import { deviceId, useAuth } from "../AuthProvider";
-import { Poster } from "../ui";
+import { Poster, SORT_ALL, SortBar, type SortF, sortOk } from "../ui";
 import { burst, buzz } from "../fx";
 import { type MeetEvent, eventUrl, hostLine, hostNames, priceLabel, priceShort, relDay, bookingState } from "@/lib/events";
 import { store } from "@/lib/store";
@@ -58,7 +58,8 @@ export default function SwipePage() {
   useEffect(() => { setUndo([]); }, [city]);
 
   // Every date of every plan still taking requests in the chosen city (same list as Explore minus closed ones), soonest first.
-  const deck = useMemo(() => upcoming.filter(inCity).filter((e) => bookingState(e) === "open"), [upcoming, inCity]);
+  const [sort, setSort] = useState<SortF>(SORT_ALL);
+  const deck = useMemo(() => upcoming.filter(inCity).filter((e) => bookingState(e) === "open" && sortOk(e, sort)), [upcoming, inCity, sort]);
   const left = deck.filter((e) => !swipes[e.id]);
   const top = left[0];
 
@@ -97,6 +98,7 @@ export default function SwipePage() {
           <div><span className="eyebrow">Discover</span><h1>Swipe your <span className="serif">week.</span></h1></div>
           <span className="muted" style={{ fontWeight: 700, fontSize: 14 }}>{ready && deck.length ? `${Math.min(deck.length - left.length + 1, deck.length)} of ${deck.length}` : ""}</span>
         </div>
+        <SortBar v={sort} onChange={setSort} withCat={true} />
 
         <div className="deck" style={!left.length && ready ? { height: "auto" } : undefined} aria-live="polite">
           {!ready && <div className="skeleton" style={{ position: "absolute", inset: 0 }} />}

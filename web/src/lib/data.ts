@@ -21,7 +21,10 @@ export const CATEGORIES: any = [
   { id: "outing", label: "City outings",  icon: "🗺️" },
   { id: "art",    label: "Art",           icon: "🎨" },
   { id: "film",   label: "Film",          icon: "🎬" },
-  { id: "trips",  label: "Trips",         icon: "🏕️" }
+  { id: "trips",  label: "Trips",         icon: "🏕️" },
+  { id: "chai",   label: "Chai",          icon: "☕" },
+  { id: "tech",   label: "Tech",          icon: "💻" },
+  { id: "bhakti", label: "Bhajan & Bhakti", icon: "🪔" }
 ];
 
 /* Poster colour sets: [background, accent] */
@@ -149,7 +152,7 @@ export const TEMPLATES: any = [
     cities: { jaipur: { area: "Vaishali Nagar" }, ahmedabad: { area: "Satellite" } } },
 
   { key: "women-brunch", title: "Women-only Sunday Brunch", cat: "food", days: [0], time: "11 am", end: "1 pm",
-    price: 99, priceType: "reservation", seats: 12, emoji: "🥞", pal: 1, pattern: "dots", tags: ["Women only"],
+    price: 99, priceType: "reservation", seats: 12, emoji: "🥞", pal: 1, pattern: "dots", tags: ["Girls only"],
     blurb: "A relaxed brunch table just for women, new to the city or just new to the group.",
     steps: ["Coffee and quick intros", "Brunch and long conversations", "Optional café-hop after"],
     cities: { jaipur: { area: "C-Scheme" }, ahmedabad: { area: "Vastrapur" } } },

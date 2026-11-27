@@ -6,7 +6,7 @@ import { useApp } from "./AppProvider";
 import { burstFrom, buzz, useTilt } from "./fx";
 import { CONFIG } from "@/lib/config";
 import { CATEGORIES } from "@/lib/data";
-import { DOW, MON, type MeetEvent, bookingState, eventUrl, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
+import { DOW, MON, type MeetEvent, bookingState, dayPart, eventUrl, hostLine, hostNames, hostTba, palette, priceLabel, priceShort } from "@/lib/events";
 import { usePlanCount } from "@/lib/eventMedia";
 
 export const ease = [0.2, 0.8, 0.2, 1] as const;
@@ -153,5 +153,31 @@ export function WhatsAppDone({ text, heading, link }: { text: string; heading: s
       <a className="btn btn-sun btn-block" href={link} target="_blank" rel="noopener noreferrer">Send on WhatsApp →</a>
       <p className="fine" style={{ marginTop: 8 }}>{text.split("\n")[0]}</p>
     </motion.div>
+  );
+}
+
+/* ---------- sorting events: type, who can come, day or night (Discover + Explore) ---------- */
+export type SortF = { cat: string; aud: string; part: string };
+export const SORT_ALL: SortF = { cat: "all", aud: "all", part: "all" };
+export const sortOk = (e: MeetEvent, f: SortF) =>
+  (f.cat === "all" || e.cat === f.cat) && (f.aud === "all" || e.audience === f.aud) && (f.part === "all" || dayPart(e) === f.part);
+export function SortBar({ v, onChange, withCat = true }: { v: SortF; onChange: (f: SortF) => void; withCat?: boolean }) {
+  const set = (k: keyof SortF, x: string) => { onChange({ ...v, [k]: x }); buzz(); };
+  return (
+    <div className="sort-bar" role="group" aria-label="Sort plans">
+      {withCat && <select className="select" value={v.cat} aria-label="Type of plan" onChange={(e) => set("cat", e.target.value)}>
+        {(CATEGORIES as { id: string; label: string; icon: string }[]).map((c) => <option key={c.id} value={c.id}>{c.id === "all" ? "All types" : `${c.icon} ${c.label}`}</option>)}
+      </select>}
+      <select className="select" value={v.aud} aria-label="Who can come" onChange={(e) => set("aud", e.target.value)}>
+        <option value="all">Everyone</option><option value="mixed">👫 Mixed</option><option value="women">👩 Girls only</option><option value="men">👨 Boys only</option>
+      </select>
+      <div className="seg sort-part" role="radiogroup" aria-label="Day or night">
+        {([["all", "Any time"], ["day", "☀️ Day"], ["night", "🌙 Night"]] as const).map(([k, l]) => (
+          <button key={k} type="button" role="radio" aria-checked={v.part === k} className={v.part === k ? "on" : ""} onClick={() => set("part", k)}>
+            {v.part === k && <motion.span layoutId={`part-on-${withCat ? "a" : "b"}`} className="seg-bg" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}<span>{l}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

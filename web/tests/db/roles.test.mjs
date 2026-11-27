@@ -136,6 +136,20 @@ try {
   ok("can't switch off an event with confirmed guests (cancel it instead)", !r.ok && /confirmed seat/.test(r.err), r.err);
   r = await as(A.auth, "select public.admin_set_event_active($1, false, 'QA')", [-1]); ok("unknown event is refused", !r.ok);
 
+  console.log("\nEvents · girls only / boys only");
+  await c.query("update public.custom_plans set audience = 'women' where id = $1", [LIVE]);
+  const askSeat = (who) => as(who.auth, "insert into public.plan_requests (plan_ref, status, party_size) select $1, 'pending', 1 where $2::uuid is not null", [liveRef, who.uid]);
+  await c.query("update public.user_private set gender = null where user_id = $1", [H.uid]);
+  r = await askSeat(H); ok("girls-only plan asks members without a gender to add it", !r.ok && /Add your gender/.test(r.err), r.err);
+  await c.query("update public.user_private set gender = 'man' where user_id = $1", [H.uid]);
+  r = await askSeat(H); ok("girls-only plan refuses a man", !r.ok && /for girls only/.test(r.err), r.err);
+  await c.query("update public.user_private set gender = 'woman' where user_id = $1", [H.uid]);
+  r = await askSeat(H); ok("girls-only plan accepts a woman", r.ok, r.err);
+  r = await as(A.auth, "select public.admin_save_event_draft($1, $2::jsonb) v", [LIVE, JSON.stringify({ audience: "everyone" })]);
+  ok("an unknown audience value is refused", !r.ok, r.err);
+  r = await as(A.auth, "update public.custom_plans set category = 'bhakti' where id = $1 returning id", [LIVE]);
+  ok("new types (bhajan & bhakti) are allowed", r.ok || /permission|policy/.test(r.err ?? ""), r.err);
+
   console.log("\nEvent library · who can hide example plans");
   r = await as(A.auth, "select public.admin_hide_template('quiz-night', true)"); ok("main admin sets an example plan inactive", r.ok, r.err);
   ok("…and it's in the hidden list everyone reads", (await as("anon", "select count(*)::int n from public.hidden_templates where key = 'quiz-night'")).row?.n === 1);

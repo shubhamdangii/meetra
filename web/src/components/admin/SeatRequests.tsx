@@ -109,30 +109,47 @@ export function SeatRequests({ cities }: { cities: string[] }) {
         <button className="btn btn-white btn-sm" onClick={load} aria-label="Refresh">↻</button>
       </div>
       {!rows ? <div className="skeleton" style={{ minHeight: 160 }} /> : !list.length ? <Empty>No seat requests match these filters.</Empty> : (
-        <div className="tbl-wrap"><table className="sr-table">
-          <thead><tr><th>#</th><th>Member</th>{!event && <th>Event</th>}<th>Requested</th><th>Score</th><th>Contact</th><th>Seats</th><th>Payment</th><th>Status</th><th /></tr></thead>
-          <tbody>{pg.items.map((r, i) => {
-            const e = evOf(r);
-            return (
-              <tr key={r.request_id}>
-                <td className="sr-no">{list.length - (pg.from - 1 + i)}</td>
+        <div className="rq-list">{pg.items.map((r, i) => {
+          const e = evOf(r);
+          const ab = about.get(r.request_id);
+          const free = e && (e.priceType === "free" || e.price === 0);
+          const pay = r.paid_at ? (r.refund_status === "refunded" ? ["ref", "Refunded"] : r.refund_status === "pending" ? ["ref", "Refunding"] : r.refund_status === "failed" ? ["bad", "Refund failed"] : ["ok", `Paid ${rupees(r.paid_amount)}`]) : free ? ["ok", "Free"] : ["no", "Not paid"];
+          const stLabel = r.status === "waitlisted" ? "Waiting list" : r.status === "attended" ? "Checked in" : r.status[0].toUpperCase() + r.status.slice(1);
+          return (
+            <motion.article key={r.request_id} className={`rq s-${r.status}`} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.03 }}>
+              <div className="rq-top">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <td><div className="who">{r.avatar_url ? <img src={r.avatar_url} alt="" /> : <span className="ph">{(r.display_name || "?")[0]}</span>}<div><b>{r.full_name || r.display_name}</b><br /><small className="muted">{r.occupation}{r.icebreaker ? ` · “${r.icebreaker.slice(0, 40)}”` : ""}</small>{about.get(r.request_id)?.three_words?.length ? <small className="who-words">{about.get(r.request_id)!.three_words.join(" · ")}</small> : null}</div></div></td>
-                {!event && <td><button className="linkish" style={{ textAlign: "left" }} onClick={() => setEvent(r.plan_ref)}>{e ? e.title : r.plan_ref}</button><br /><small className="muted">{e ? `${relDay(e.date, today)} · ${e.time}` : r.plan_date} · {cityName(r.city_slug)} · {hostOf(r)}</small></td>}
-                <td style={{ whiteSpace: "nowrap" }}>{fmtDT(r.requested_at)}</td>
-                <td><span className="score-pill">{r.profile_score}</span><br /><small className="muted">{r.phone_verified ? "WA ✓ " : ""}{r.email_verified ? "Email ✓" : ""}</small></td>
-                <td style={{ whiteSpace: "nowrap" }}>{r.phone ? <a href={`https://wa.me/${r.phone.replace("+", "")}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>{r.phone}</a> : <span className="muted">no phone</span>}<br />
-                  {r.instagram_url && <a href={r.instagram_url} target="_blank" rel="noopener noreferrer">Instagram </a>}{r.linkedin_url && <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer">LinkedIn</a>}</td>
-                <td className="num">{r.party_size}</td>
-                <td style={{ whiteSpace: "nowrap" }}>{r.paid_at ? <span className={`pay-chip ${r.refund_status ? "ref" : "ok"}`}>{r.refund_status === "refunded" ? "↩ Refunded" : r.refund_status === "pending" ? "↩ Refunding" : r.refund_status === "failed" ? "⚠️ Refund failed" : "💳 Paid"} {rupees(r.paid_amount)}</span> : (() => { const ev = evOf(r); return ev && (ev.priceType === "free" || ev.price === 0) ? <span className="pay-chip ok">Free</span> : <span className="pay-chip no">Not paid</span>; })()}</td>
-                <td><span className={`st ${r.status}`}>{r.status === "waitlisted" ? "waiting list" : r.status === "attended" ? "checked in ✓" : r.status}</span></td>
-                <td><div className="acts">{r.status !== "attended" && r.status !== "cancelled" && (["approved", "waitlisted", "declined"] as const).filter((s) => s !== r.status).map((s) => (
-                  <button key={s} onClick={() => setTo(r, s)}>{{ approved: "Approve", waitlisted: "Waitlist", declined: "Decline" }[s]}</button>
-                ))}</div></td>
-              </tr>
-            );
-          })}</tbody>
-        </table></div>
+                {r.avatar_url ? <img className="rq-av" src={r.avatar_url} alt="" /> : <span className="rq-av ph">{(r.display_name || "?")[0]}</span>}
+                <div className="rq-id"><b>{r.full_name || r.display_name}{r.party_size > 1 ? <em> +1</em> : null}</b><small>{r.occupation || "No occupation added"}</small></div>
+                <span className={`rq-st ${r.status}`}>{stLabel}</span>
+              </div>
+              {!event && <button type="button" className="rq-event" onClick={() => setEvent(r.plan_ref)}><b>{e ? e.title.split(" · ")[0] : r.plan_ref}</b><span>{e ? `${relDay(e.date, today)} · ${e.time}` : r.plan_date} · {cityName(r.city_slug)} · {hostOf(r)}</span></button>}
+              <dl className="rq-facts">
+                <div><dt>Requested</dt><dd>{fmtDT(r.requested_at)}</dd></div>
+                <div><dt>Profile</dt><dd><span className="score-pill">{r.profile_score}</span></dd></div>
+                <div><dt>Verified</dt><dd>{r.phone_verified ? "WhatsApp ✓" : "WhatsApp ✕"}{r.email_verified ? " · Email ✓" : ""}</dd></div>
+                <div><dt>Payment</dt><dd><span className={`pay-chip ${pay[0]}`}>{pay[1]}</span></dd></div>
+              </dl>
+              {(ab?.three_words?.length || r.icebreaker || ab?.prompt_a) ? <div className="rq-about">
+                {ab?.three_words?.length ? <div className="rq-words">{ab.three_words.map((w) => <span key={w}>{w}</span>)}</div> : null}
+                {r.icebreaker ? <p>&ldquo;{r.icebreaker}&rdquo;</p> : ab?.prompt_a ? <p>&ldquo;{ab.prompt_a}&rdquo;</p> : null}
+              </div> : null}
+              <div className="rq-foot">
+                <div className="rq-contact">
+                  {r.phone ? <a href={`https://wa.me/${r.phone.replace("+", "")}`} target="_blank" rel="noopener noreferrer">WhatsApp</a> : <span className="muted">No phone</span>}
+                  {r.instagram_url && <a href={r.instagram_url} target="_blank" rel="noopener noreferrer">Instagram</a>}
+                  {r.linkedin_url && <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer">LinkedIn</a>}
+                </div>
+                {r.status !== "attended" && r.status !== "cancelled" && <div className="rq-acts">
+                  {r.status !== "approved" && <motion.button whileTap={{ scale: 0.95 }} className="ok" onClick={() => setTo(r, "approved")}>Approve</motion.button>}
+                  {r.status !== "waitlisted" && <motion.button whileTap={{ scale: 0.95 }} onClick={() => setTo(r, "waitlisted")}>Waitlist</motion.button>}
+                  {r.status !== "declined" && <motion.button whileTap={{ scale: 0.95 }} className="no" onClick={() => setTo(r, "declined")}>Decline</motion.button>}
+                </div>}
+              </div>
+              <span className="rq-no" aria-label={`Request ${list.length - (pg.from - 1 + i)}`}>#{list.length - (pg.from - 1 + i)}</span>
+            </motion.article>
+          );
+        })}</div>
       )}
       <Pager pg={pg} />
     </motion.section>

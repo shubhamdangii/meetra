@@ -361,7 +361,7 @@ function BeforeYouGo({ e, city, payNote, confirmed }: { e: MeetEvent; city: stri
   const facts: [string, string, React.ReactNode][] = [
     ["⏰", "When", <>{fmtDay(e.date)}, {e.time}{e.end ? ` to ${e.end}` : ""}. Arrive 10 minutes early.</>],
     ["💸", "Price", <><b>{priceShort(e)} {priceLabel(e)}.</b> {payNote}{e.priceType === "reservation" ? ` The reservation is non-refundable once confirmed.` : ""}</>],
-    ["👥", "Who can come", <>{e.tags.includes("Women only") ? "Women only, 18+." : "Everyone 18+."} Most people come alone, that&apos;s the point.</>],
+    ["👥", "Who can come", <>{e.audience === "women" ? "Girls only, 18+." : e.audience === "men" ? "Boys only, 18+." : "Everyone 18+, mixed group."} Most people come alone, that&apos;s the point.</>],
     ["↩️", "Cancelling", "Can't make it? Cancel early so someone on the waiting list gets your seat. If we cancel, you get a full refund."],
     ["🆘", "Help on the day", <>Your host is there start to finish. <Link href="/safety/">Help &amp; safety</Link></>],
   ];
