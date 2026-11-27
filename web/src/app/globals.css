@@ -1817,3 +1817,15 @@ button.lib-hostbtn.empty .lib-av{animation:lib-pulse 2.2s ease-in-out infinite}
   .lib-tools button span:first-child{font-size:15px;line-height:1.2}
 }
 @media (prefers-reduced-motion:reduce){.lib-card:hover .lib-img img{transform:none}.lib-add::after,button.lib-hostbtn.empty .lib-av,.lib-pending .dot{animation:none;transition:none}}
+/* one example plan = one card; the cities it runs in as pills, city picked while adding a date */
+.lib-cities{display:flex;flex-wrap:wrap;gap:5px}
+.lib-cities span{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:#F3EFFF;color:var(--violet);white-space:nowrap}
+.lib-lbl{display:block;font-size:13px;font-weight:800;margin-bottom:6px}
+.lib-citypick{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:2px solid var(--ink);border-radius:16px;background:#fff}
+.lib-citypick button{position:relative;border:0;background:none;font:inherit;padding:9px 8px;border-radius:12px;cursor:pointer;color:var(--ink-2);min-width:0;-webkit-tap-highlight-color:transparent}
+.lib-citypick button.on{color:var(--ink)}
+.lib-citypick .bg{position:absolute;inset:0;background:var(--sun);border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--ink)}
+.lib-citypick .tx{position:relative;display:grid;gap:1px;text-align:center}
+.lib-citypick b{font-size:15px}
+.lib-citypick small{font-size:11.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:480px){.lib-cities span{font-size:10.5px;padding:2px 7px}}

@@ -20,6 +20,8 @@ export type LibEvent = AdminEvent & { is_active?: boolean };
 type Card = {
   id: string; kind: "example" | "event"; title: string; city: string; area: string; emoji: string; image: string | null;
   sub: string; status?: string; active: boolean; ev?: LibEvent; form: EventFormValue; templateKey?: string;
+  /** example plans: one card, one entry per city it runs in (area, price… can differ by city) */
+  variants?: { city: string; area: string; form: EventFormValue }[];
 };
 type Tab = "active" | "inactive" | "waiting" | "past";
 const to24 = (label: string) => {
@@ -36,10 +38,13 @@ const catOk = (c: string) => (cats.some((x) => x.id === c) ? c : "other");
 
 function exampleCards(cityFilter: string | null, hidden: Set<string>): Card[] {
   const out: Card[] = [];
-  for (const t of TEMPLATES as any[]) for (const [city, ov] of Object.entries<any>(t.cities ?? {})) {
+  for (const t of TEMPLATES as any[]) {
+  const variants: NonNullable<Card["variants"]> = []; let img0: string | null = null;
+  for (const [city, ov] of Object.entries<any>(t.cities ?? {})) {
     if (cityFilter && city !== cityFilter) continue;
     if (!CONFIG.cities[city]?.live) continue;
     const img = ov.image || t.image || eventImages(t.key)[0] || null;
+    img0 ??= img;
     const f = blankEvent(city);
     Object.assign(f, {
       title: ov.title || t.title, category: catOk(t.cat), area: ov.area ?? "", price: String(ov.price ?? t.price ?? 0), price_type: t.priceType,
@@ -47,8 +52,12 @@ function exampleCards(cityFilter: string | null, hidden: Set<string>): Card[] {
       tags: (t.tags ?? []).join(", "), event_type: TEMPLATE_TYPE[t.key] ?? "", image_url: img && img.startsWith(BASE + "/") ? img.slice(BASE.length) : img ?? "",
       starts: to24(ov.time || t.time), ends: to24(ov.end || t.end),
     });
-    out.push({ id: `t:${t.key}:${city}`, kind: "example", title: f.title, city, area: f.area, emoji: f.emoji, image: img, templateKey: t.key,
-      sub: t.days ? "Example plan · repeats weekly" : "Example plan · one-off", active: !hidden.has(t.key), form: f });
+    variants.push({ city, area: f.area, form: f });
+  }
+  if (!variants.length) continue;
+  const v0 = variants[0];
+  out.push({ id: `t:${t.key}`, kind: "example", title: v0.form.title, city: v0.city, area: v0.area, emoji: v0.form.emoji, image: img0, templateKey: t.key,
+    sub: t.days ? "Example plan · repeats weekly" : "Example plan · one-off", active: !hidden.has(t.key), form: v0.form, variants });
   }
   return out;
 }
@@ -88,15 +97,22 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
     return [...(events ?? []).filter((e) => !cf || e.city_slug === cf).map(eventCard), ...exampleCards(cf, hiddenKeys)];
   }, [events, hiddenKeys, city, lockCity]);
   const counts = useMemo(() => all.reduce((m, c) => { const t = tabOf(c); m[t] = (m[t] ?? 0) + 1; return m; }, {} as Record<Tab, number>), [all]);
-  const cards = all.filter((c) => tabOf(c) === tab && (!q || `${c.title} ${c.area} ${c.sub}`.toLowerCase().includes(q.toLowerCase())));
+  const cards = all.filter((c) => tabOf(c) === tab && (!q || `${c.title} ${c.area} ${c.sub} ${(c.variants ?? []).map((v) => `${v.area} ${cityName(v.city)}`).join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const TABS: [Tab, string][] = admin ? [["active", "🟢 Active"], ["inactive", "⚪ Inactive"], ["waiting", "⏳ Waiting"], ["past", "🏁 Past"]] : [["active", "Events"], ["waiting", "⏳ Waiting"], ["past", "🏁 Past"]];
 
+  /** Add a date in another city: copy that city's version of the plan (area, price…), keep the date and time already picked. */
+  function pickCity(c: string) {
+    if (!add || add.f.city_slug === c) return;
+    const v = add.card.variants?.find((x) => x.city === c);
+    setAdd({ ...add, f: v ? { ...v.form, category: add.f.category, starts: add.f.starts, ends: add.f.ends, closes: "", city_slug: c, host_id: "", maps_url: "" } : { ...add.f, city_slug: c, host_id: "" } });
+  }
   function openAdd(card: Card) {
-    const f = { ...card.form };
+    const want = lockCity ?? (city || null);
+    const f = { ...((want && card.variants?.find((v) => v.city === want)?.form) || card.form) };
     const startT = (f.starts || "").slice(-5) || "19:00", endT = (f.ends || "").slice(-5) || "21:00";
     const date = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
     setErr(""); setChooser(false);
-    setAdd({ card, date, repeat: 1, f: { ...f, city_slug: lockCity ?? card.city, starts: `${date}T${startT}`, ends: `${date}T${endT}`, closes: "", host_id: admin ? f.host_id : "", maps_url: f.maps_url ?? "" } });
+    setAdd({ card, date, repeat: 1, f: { ...f, city_slug: lockCity ?? f.city_slug ?? card.city, starts: `${date}T${startT}`, ends: `${date}T${endT}`, closes: "", host_id: admin ? f.host_id : "", maps_url: f.maps_url ?? "" } });
   }
   const setF = (patch: Partial<EventFormValue>) => add && setAdd({ ...add, f: { ...add.f, ...patch } });
   const setWhen = (date: string, st: string, en: string) => add && setAdd({ ...add, date, f: { ...add.f, starts: `${date}T${st}`, ends: `${date}T${en}`, closes: "" } });
@@ -230,7 +246,9 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
                 </div>
                 <div className="lib-body">
                   <b className="lib-title">{c.title}</b>
-                  <span className="lib-meta"><span aria-hidden="true">📍</span><span>{c.area ? `${c.area}, ` : ""}{cityName(c.city)}</span></span>
+                  {c.variants && c.variants.length > 1
+                    ? <span className="lib-cities" aria-label={`Runs in ${c.variants.map((v) => cityName(v.city)).join(" and ")}`}>{c.variants.map((v) => <span key={v.city} title={v.area}>📍 {cityName(v.city)}</span>)}</span>
+                    : <span className="lib-meta"><span aria-hidden="true">📍</span><span>{c.area ? `${c.area}, ` : ""}{cityName(c.city)}</span></span>}
                   {e && (canTools ? (
                     <button type="button" className={`lib-hostbtn${e.host_name ? "" : " empty"}`} onClick={() => setHostFor(e)} aria-label={e.host_name ? `Host: ${e.host_name}. Change host` : "Assign a host"}>
                       <span className="lib-av" aria-hidden="true">{e.host_name ? initials(e.host_name) : "+"}</span>
@@ -319,7 +337,13 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
         {add && <>
           <p className="adm-note">Title, description, photo, price and seats are copied from this event. {admin ? "The other admin approves it before it goes live." : "The team approves it before it goes live."}</p>
           <div className="adm-form lib-when">
-            {admin && !lockCity && <div className="field"><label htmlFor="lib-city">City</label><select id="lib-city" value={add.f.city_slug} onChange={(e) => setF({ city_slug: e.target.value, host_id: "" })}>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select></div>}
+            {admin && !lockCity && <div className="field span2"><span className="lib-lbl" id="lib-city-l">Which city? *</span>
+              <div className="lib-citypick" role="radiogroup" aria-labelledby="lib-city-l">{CITIES.filter((c) => CONFIG.cities[c]?.live).map((c) => {
+                const on = add.f.city_slug === c; const v = add.card.variants?.find((x) => x.city === c);
+                return <button key={c} type="button" role="radio" aria-checked={on} className={on ? "on" : ""} onClick={() => pickCity(c)}>
+                  {on && <motion.span layoutId="lib-city-bg" className="bg" transition={spring} />}
+                  <span className="tx"><b>{cityName(c)}</b>{v?.area ? <small>{v.area}</small> : null}</span></button>;
+              })}</div></div>}
             <div className="field"><label htmlFor="lib-cat">Category</label><select id="lib-cat" value={add.f.category} onChange={(e) => setF({ category: e.target.value })}>{cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}<option value="other">✦ Other</option></select></div>
             <div className="field"><label htmlFor="lib-date">{add.repeat > 1 ? "First date *" : "Date *"}</label><input id="lib-date" type="date" min={new Date().toISOString().slice(0, 10)} value={add.date} onChange={(e) => setWhen(e.target.value, startT, endT)} /></div>
             <div className="field"><label htmlFor="lib-rep">How often</label><select id="lib-rep" value={add.repeat} onChange={(e) => setAdd({ ...add, repeat: Number(e.target.value) })}>
