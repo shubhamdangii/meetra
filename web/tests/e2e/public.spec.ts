@@ -20,15 +20,27 @@ for (const path of ["", "events/", "past/", "games/", "partners/", "swipe/", "ho
   });
 }
 
-test("point 7 · 'Real people, real nights' carousel scrolls sideways", async ({ page }) => {
+test("point 7 · 'Real people, real nights' pins and slides to the last photo before the page moves on", async ({ page }) => {
   await page.goto(""); await settle(page);
-  const track = page.locator("section.moments .gallery-track");
-  await track.scrollIntoViewIfNeeded();
-  const box = await track.evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth, vw: innerWidth }));
-  expect(box.cw).toBeLessThanOrEqual(box.vw + 40);          // the strip fits the screen…
-  expect(box.sw).toBeGreaterThan(box.cw + 100);              // …and has more photos to the side
-  const moved = await track.evaluate(async (el) => { el.scrollLeft = 400; await new Promise((r) => setTimeout(r, 300)); return el.scrollLeft; });
-  expect(moved).toBeGreaterThan(100);
+  const r = await page.evaluate(async () => {
+    const pin = document.querySelector("section.moments .pin") as HTMLElement, sticky = pin.firstElementChild as HTMLElement, track = pin.querySelector(".pin-track") as HTMLElement;
+    const frame = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+    const x = () => new DOMMatrix(getComputedStyle(track).transform).m41;
+    const go = async (y: number) => { window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior }); await frame(); await frame(); };
+    const top = parseFloat(getComputedStyle(sticky).top);
+    const start = pin.getBoundingClientRect().top + scrollY - top, len = pin.offsetHeight - sticky.offsetHeight;
+    await go(start - 200); const before = x();
+    await go(start + len / 2); const mid = x(), midTop = Math.round(sticky.getBoundingClientRect().top);
+    await go(start + len - 2); const end = x(), lastRight = (track.lastElementChild as HTMLElement).getBoundingClientRect().right;
+    await go(start + len / 3); const back = x();
+    return { before, mid, midTop, top, end, lastRight, vw: innerWidth, back, docW: document.documentElement.scrollWidth };
+  });
+  expect(r.before).toBe(0);                            // nothing moves before the section arrives
+  expect(r.midTop).toBe(Math.round(r.top));            // pinned while the photos slide
+  expect(r.mid).toBeLessThan(-50);
+  expect(r.lastRight).toBeLessThanOrEqual(r.vw + 2);   // the last photo is fully on screen when the page carries on
+  expect(r.back).toBeGreaterThan(r.end);               // scrolling back up slides them back
+  expect(r.docW).toBeLessThanOrEqual(r.vw);            // no sideways page scroll
 });
 
 test("point 11 · photo strip section doesn't touch the sections around it", async ({ page }) => {
@@ -42,14 +54,16 @@ test("point 11 · photo strip section doesn't touch the sections around it", asy
   expect(gap.border).toBe("0px");
 });
 
+const lastThursday = () => { for (let d = -2; d > -9; d--) if (new Date(Date.now() + 5.5 * 36e5 + d * 864e5).getUTCDay() === 4) return d; return -7; };
 test("points 3/12/13 · a past date shows 'ended', no request button, and offers the next date", async ({ page }) => {
-  await page.goto(`event/?id=salsa-ahmedabad-${istYmd(-7)}`); await settle(page);
+  const past = lastThursday();
+  await page.goto(`event/?id=salsa-ahmedabad-${istYmd(past)}`); await settle(page);
   await expect(page.locator(".status-card.s-closed")).toContainText(/ended/i);
   await expect(page.locator("#book button[type=submit]")).toHaveCount(0);
   await expect(page.locator(".status-card a", { hasText: /Next date/ })).toBeVisible();
   // the link opens a different (future) date, which takes requests
   await page.locator(".status-card a", { hasText: /Next date/ }).click(); await settle(page);
-  expect(page.url()).not.toContain(istYmd(-7));
+  expect(page.url()).not.toContain(istYmd(past));
   await expect(page.locator("#book button[type=submit]")).toBeVisible();
 });
 
@@ -127,7 +141,7 @@ test("point 15 · every game has a retro cover that loads", async ({ page }) => 
   await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 400) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } });
   await page.waitForTimeout(1500);
   const covers = await page.evaluate(() => [...document.querySelectorAll("img.game-cover, .party-cover img")].map((i) => ({ src: (i as HTMLImageElement).src, ok: (i as HTMLImageElement).naturalWidth > 0 })));
-  expect(covers.length).toBe(21);
+  expect(covers.length).toBe(22);
   expect(covers.filter((c) => !c.ok).map((c) => c.src)).toEqual([]);
 });
 
