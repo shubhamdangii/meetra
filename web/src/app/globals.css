@@ -1873,3 +1873,8 @@ button.lib-hostbtn.empty .lib-av{animation:lib-pulse 2.2s ease-in-out infinite}
 .lib-grid>*{min-width:0}
 .lib-cities span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:480px){.lib-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* the library column is exactly the screen width; the tab bar scrolls inside it instead of widening it */
+.lib{grid-template-columns:minmax(0,1fr)}
+.lib-tabs{width:auto;justify-self:start;max-width:100%}
+.ci{min-width:0}
+.ci-filters,.ci-seg{min-width:0;max-width:100%}
