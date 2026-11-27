@@ -321,7 +321,10 @@ export default function EventPage() {
                   {auth.enabled && (
                     <div className="priority">
                       <b>Seats go to the most complete profiles first.</b>
-                      {score == null ? "Fill in your profile after logging in to move up the list." : <>Your profile score: <span className="score-pill">{score}/100</span> {score < 100 ? <Link href="/profile/">Add details to move up →</Link> : "Top priority ✓"}</>}
+                      {score == null ? <span>Fill in your profile after logging in to move up the list.</span> : <>
+                        <span>Your profile score: <span className="score-pill">{score}/100</span></span>
+                        {score < 100 ? <Link href="/profile/">Add details to move up →</Link> : <span>Top priority ✓</span>}
+                      </>}
                     </div>
                   )}
                   <p className="fine">{!auth.enabled ? "Opens WhatsApp with your request. Your host confirms there, then you pay. Only your host sees your number."

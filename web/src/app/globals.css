@@ -1665,3 +1665,61 @@ input[type=date]::-webkit-date-and-time-value,input[type=datetime-local]::-webki
 .hd-lib>summary::-webkit-details-marker{display:none}
 .hd-lib[open]>summary{margin-bottom:10px}
 @media (max-width:480px){.lib-grid{grid-template-columns:1fr 1fr;gap:8px}.lib-acts{flex-direction:column}.lib-body b{font-size:14px}}
+/* sheets/modals: never taller than the visible screen (vh includes the area behind the phone's address bar, which hid the ✕) */
+.adm-modal{max-height:92vh;max-height:calc(100dvh - 24px - env(safe-area-inset-top, 0px))}
+.adm-modal-head{position:sticky;top:0;z-index:2;background:var(--cream,#FFF7EC);border-radius:20px 20px 0 0}
+.adm-modal-body{padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px))}
+.nt-done{margin-top:10px}
+
+/* ---------- landing marquee: two criss-crossing tilted strips, seamless loop ---------- */
+.mq-wrap{position:relative;height:150px;overflow:hidden;margin:6px 0 10px}
+.mq{position:absolute;left:-25%;width:150%;top:50%;border-block:2px solid var(--ink);overflow:hidden;white-space:nowrap;padding:11px 0;font-weight:800;font-size:19px;letter-spacing:-.02em}
+.mq-a{background:var(--violet);color:#fff;transform:translateY(-50%) rotate(-4deg);z-index:2;box-shadow:0 6px 0 rgba(22,18,43,.25)}
+.mq-b{background:var(--sun);color:var(--ink);transform:translateY(-50%) rotate(3deg);z-index:1}
+.mq-track{display:flex;width:max-content;animation:mq var(--mq-dur,70s) linear infinite}
+.mq-track.rev{animation-direction:reverse}
+.mq-group{display:flex;flex-shrink:0}
+.mq-group span{display:inline-flex;align-items:center;gap:30px;padding-right:30px}
+.mq-a .mq-group span::after{content:"✦";color:var(--sun)}
+.mq-b .mq-group span::after{content:"✺";color:var(--pink)}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (max-width:720px){
+  .mq-wrap{height:190px;margin:0}
+  .mq{font-size:16px;padding:9px 0}
+  .mq-a{transform:translateY(-50%) rotate(-14deg)}
+  .mq-b{transform:translateY(-50%) rotate(11deg)}
+}
+@media (prefers-reduced-motion:reduce){.mq-track{animation-duration:240s}}
+
+/* request card: profile score notice, one line each */
+.priority{display:flex;flex-direction:column;align-items:flex-start;gap:6px;line-height:1.35}
+.priority>*{display:block}
+.priority .score-pill{display:inline-block}
+/* admin on desktop: nothing hidden sideways — tabs and filters wrap; wide tables show a real scrollbar */
+@media (min-width:721px){
+  .adm-tabs{flex-wrap:wrap;overflow:visible;margin-left:0;margin-right:0;padding-left:0;padding-right:0}
+  .adm-seg{flex-wrap:wrap}
+  .adm-bar{flex-wrap:wrap}
+  .adm-root .tbl-wrap{overflow-x:auto;scrollbar-width:thin}
+  .adm-root .tbl-wrap::-webkit-scrollbar{height:10px}
+  .adm-root .tbl-wrap::-webkit-scrollbar-thumb{background:#CFC8E0;border-radius:999px}
+}
+
+/* event library: active switch, inactive cards, chooser, recent activity */
+.lib-card.off{opacity:.62;filter:grayscale(.6)}
+.lib-switch{position:absolute;right:8px;bottom:8px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:inherit;font-size:12px;font-weight:800;cursor:pointer;min-height:32px}
+.lib-switch i{width:30px;height:18px;border-radius:999px;background:#d6d3e0;position:relative;transition:background .2s}
+.lib-switch i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .2s}
+.lib-switch.on i{background:#22a35a}
+.lib-switch.on i::after{transform:translateX(12px)}
+.lib-more{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.lib-more .btn{flex:1 1 auto}
+.lib-host{width:100%;min-height:38px;font-size:14px}
+.lib-choose{display:grid;gap:12px}
+@media (min-width:560px){.lib-choose{grid-template-columns:1fr 1fr}}
+.lib-choose button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:16px;border:2px solid var(--ink);border-radius:16px;background:#fff;color:var(--ink);font:inherit;cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
+.lib-choose button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.lib-choose span{font-size:28px}
+.lib-choose small{opacity:.7;line-height:1.35}
+.ev-act{margin-top:18px;padding:14px;border:2px solid var(--ink);border-radius:16px;background:#fff}
+.ev-act-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}

@@ -14,7 +14,7 @@ import { useAuth } from "../AuthProvider";
 import { useEffect } from "react";
 
 /** Type, photo and exact location live outside the public event lists: load them for the events the caller manages. */
-export type EventExtras = { id: number; event_type: string | null; image_url: string | null; maps_url: string | null };
+export type EventExtras = { id: number; event_type: string | null; image_url: string | null; maps_url: string | null; is_active?: boolean };
 export function useEventExtras(ids: number[] | null) {
   const auth = useAuth();
   const [map, setMap] = useState<Map<number, EventExtras>>(new Map());
@@ -31,7 +31,7 @@ export type AdminEvent = {
   starts_at: string; ends_at: string; booking_closes_at: string; area: string; price: number; price_type: string; seats: number;
   emoji: string; blurb: string; steps: string[]; tags: string[]; status: string; display_status: string;
   confirmed: number; pending: number; waitlisted: number; pending_req: string | null; cancel_reason: string | null; created_by_name: string | null; updated_at: string;
-  category_other?: string | null; event_type?: string | null; image_url?: string | null; maps_url?: string | null;
+  category_other?: string | null; event_type?: string | null; image_url?: string | null; maps_url?: string | null; is_active?: boolean;
 };
 export type AdminHost = { id: number; name: string; city_slug: string; status: string };
 
@@ -120,7 +120,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
   const ev = useRpc<AdminEvent[]>("admin_events");
   const hs = useRpc<AdminHost[]>("admin_hosts");
   const call = useCall(); const { ask, ui } = useAsk(); const { reloadCustom } = useApp() as ReturnType<typeof useApp> & { reloadCustom?: () => void };
-  const [view, setView] = useState<"cards" | "list">("cards");
+  const [view, setView] = useState<"cards" | "list">("cards"); const [newTick, setNewTick] = useState(0);
   const [city, setCity] = useState(""); const [host, setHost] = useState(""); const [st, setSt] = useState<(typeof FILTERS)[number]>("all"); const [qq, setQ] = useState("");
   const [edit, setEdit] = useState<{ mode: "new" | "draft" | "change"; ev?: AdminEvent; f: EventFormValue } | null>(null);
   const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
@@ -160,7 +160,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
     setBusy(false); setEdit(null); refresh();
   }
 
-  async function act(e: AdminEvent, what: "submit" | "cancel" | "delete" | "discard") {
+  async function act(e: AdminEvent, what: "submit" | "cancel" | "discard") {
     if (what === "discard") { if (await call("admin_discard_draft", { p_id: e.id }, "Draft discarded")) refresh(); return; }
     if (what === "submit") {
       const problem = validateEvent(eventToForm(e)); if (problem) return setErr(problem), setEdit({ mode: "draft", ev: withX(e), f: eventToForm(withX(e)) });
@@ -173,9 +173,6 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
       const no = await call<string>("admin_submit_request", { p_entity: "event", p_action: "cancel", p_target: e.id, p_payload: { reason }, p_note: reason });
       if (no) { refresh(); goApprovals(no); } return;
     }
-    const note = await ask(`Remove "${e.title}"?`, "Why remove it? (it is kept in history, never erased)", { required: true, ok: "Request removal" }); if (!note) return;
-    const no = await call<string>("admin_submit_request", { p_entity: "event", p_action: "delete", p_target: e.id, p_payload: {}, p_note: note });
-    if (no) { refresh(); goApprovals(no); }
   }
 
   return (
@@ -185,11 +182,13 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
         <button role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>☰ Manage list</button>
       </div>
       {view === "cards" ? <>
-        <div className="adm-bar"><button className="btn btn-sun btn-sm" onClick={() => { setErr(null); setEdit({ mode: "new", f: blankEvent("ahmedabad") }); }}>＋ New event from scratch</button></div>
-        <EventLibrary mode="admin" events={ev.data ? ev.data.map(withX) : null} onChange={refresh} goApprovals={goApprovals} />
+        <EventLibrary mode="admin" events={ev.data ? ev.data.map(withX) : null} hosts={hosts} onChange={refresh} goApprovals={goApprovals} newTick={newTick}
+          onCreateNew={() => { setErr(null); setEdit({ mode: "new", f: blankEvent(city || "ahmedabad") }); }}
+          onEdit={(e, m) => { setErr(null); setEdit({ mode: m, ev: e, f: eventToForm(e as AdminEvent & Record<string, unknown>) }); }} />
+        <EventActivity />
       </> : <>
       <div className="adm-bar">
-        <button className="btn btn-sun btn-sm" onClick={() => { setErr(null); setEdit({ mode: "new", f: blankEvent(city || "jaipur") }); }}>＋ New event</button>
+        <button className="btn btn-sun btn-sm" onClick={() => { setView("cards"); setNewTick((n) => n + 1); }}>＋ New event</button>
         <input className="adm-search" placeholder="Search title, area, host…" value={qq} onChange={(e) => setQ(e.target.value)} />
         <select className="select" value={city} onChange={(e) => { setCity(e.target.value); setHost(""); }} aria-label="City"><option value="">All cities</option>{CITIES.map((c) => <option key={c} value={c}>{cityName(c)}</option>)}</select>
         <select className="select" value={host} onChange={(e) => setHost(e.target.value)} aria-label="Host"><option value="">All hosts</option><option value="team">Host not decided yet</option>
@@ -208,7 +207,7 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
                 <td><button className="adm-link" onClick={() => setOpen(e)}>{e.emoji} {e.title}</button>{e.pending_req && <><br /><button className="adm-link small" onClick={() => goApprovals(e.pending_req!)}>⏳ {e.pending_req}</button></>}</td>
                 <td>{cityName(e.city_slug)}<br /><small className="muted">{e.host_name ?? "Host TBA"}</small></td>
                 <td style={{ whiteSpace: "nowrap" }}>{fmtDT(e.starts_at)}</td>
-                <td><Chip s={e.display_status} /></td>
+                <td><Chip s={withX(e).is_active === false && e.display_status === "active" ? "inactive" : e.display_status} /></td>
                 <td style={{ minWidth: 110 }}><div className="adm-occ"><div><i style={{ width: `${pct}%` }} /></div><small><b>{e.confirmed}/{e.seats}</b> · {e.pending} pending</small></div></td>
                 <td><button className="adm-cta" onClick={() => setOpen(e)}>Open →</button></td>
               </tr>
@@ -235,7 +234,6 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
                     <button onClick={() => { setOpen(null); act(e, "submit"); }}>Send for approval</button><button onClick={() => { setOpen(null); act(e, "discard"); }}>Discard</button></>}
                   {e.display_status === "active" && !e.pending_req && <><button onClick={() => { setErr(null); setOpen(null); setEdit({ mode: "change", ev: withX(e), f: eventToForm(withX(e)) }); }}>Request change</button>
                     <button onClick={() => { setOpen(null); act(e, "cancel"); }}>Request cancel</button></>}
-                  {["active", "completed", "cancelled"].includes(e.display_status) && !e.pending_req && <button onClick={() => { setOpen(null); act(e, "delete"); }}>Request removal</button>}
                   {e.status !== "draft" && e.status !== "pending" && <Link href={`/event/?id=${e.plan_ref}`}>View on site</Link>}
                   {["active", "completed"].includes(e.display_status) && new Date(e.starts_at).getTime() - Date.now() < 3600e3 && <><DiaryUploader planRef={e.plan_ref} /><Link href={`/past/?diary=${e.plan_ref}`}>Photo diary</Link></>}
                   <button onClick={() => { setOpen(null); setHist(e); }}>History</button>
@@ -258,6 +256,22 @@ export function AdminEvents({ goApprovals }: { goApprovals: (req?: string) => vo
       <Modal open={!!hist} onClose={() => setHist(null)} wide title={`History: ${hist?.title ?? ""}`}>{hist && <EventHistory id={hist.id} />}</Modal>
       {ui}
     </motion.section>
+  );
+}
+
+/** Last few admin actions on events (who switched, rescheduled, assigned a host…). The full log is in the Activity tab. */
+function EventActivity() {
+  const a = useRpc<{ id: number; at: string; who: string | null; action: string; summary: string; details: Record<string, unknown> | null }[]>("admin_activity", { p_entity: "event", p_limit: 8 });
+  return (
+    <section className="ev-act">
+      <div className="ev-act-head"><b>🕘 Recent event activity</b><button className="btn btn-white btn-sm" onClick={a.reload} aria-label="Refresh activity">↻</button></div>
+      {!a.data ? <div className="skeleton" style={{ minHeight: 80 }} /> : !a.data.length ? <p className="muted">Nothing yet.</p> : (
+        <ol className="adm-timeline">{a.data.map((r) => {
+          const why = r.details && typeof r.details.reason === "string" ? r.details.reason : null;
+          return <li key={r.id}><span className={`dot a-${r.action}`} /><div><b>{r.summary}</b><small>{fmtDT(r.at)} · {r.who ?? "system"}{why ? ` · "${why}"` : ""}</small></div></li>;
+        })}</ol>
+      )}
+    </section>
   );
 }
 

@@ -149,7 +149,10 @@ export default function ProfilePage() {
     };
     if (!me.phone_verified) pri.phone = phoneVal;                 // verified values are locked
     if (!me.email_verified) pri.email = f.email.trim().toLowerCase() || null;
-    const [r1, r2] = await Promise.all([auth.client.from("users").update(pub).eq("id", me.id), auth.client.from("user_private").update(pri).eq("user_id", me.id)]);
+    // one after the other, then one final score recompute (two parallel saves could leave a stale score everywhere else)
+    const r1 = await auth.client.from("users").update(pub).eq("id", me.id);
+    const r2 = r1.error ? { error: null } : await auth.client.from("user_private").update(pri).eq("user_id", me.id);
+    if (!r1.error && !r2.error) await auth.client.rpc("refresh_my_profile");
     setSaving(false);
     const err = r1.error || r2.error;
     if (err) return setMsg({ text: /18 or older/.test(err.message) ? "You must be 18 or older to join." : "Couldn't save: " + err.message, ok: false });

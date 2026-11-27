@@ -117,13 +117,32 @@ try {
   r = await as(B.auth, "select public.admin_decide_request($1, true, 'ok')", [rid]); ok("the other admin approves it", r.ok, r.err);
   ok("approved event is live", (await q1("select status from public.custom_plans where id = $1", [draft.row?.v])).status === "approved");
 
+  console.log("\nEvents · Active / Inactive switch (no delete)");
+  const LIVE = draft.row?.v; const liveRef = (await q1("select plan_ref from public.custom_plans where id = $1", [LIVE])).plan_ref;
+  r = await as(H.auth, "select public.admin_set_event_active($1, false, 'QA')", [LIVE]); ok("host can't switch an event off", !r.ok && /Main admins only/.test(r.err), r.err);
+  r = await as(SUB.auth, "select public.admin_set_event_active($1, false, 'QA')", [LIVE]); ok("sub-admin can't switch an event off", !r.ok, r.err);
+  r = await as(M.auth, "select public.admin_set_event_active($1, false, 'QA')", [LIVE]); ok("member can't switch an event off", !r.ok, r.err);
+  r = await as(M.auth, "update public.custom_plans set is_active = false where id = $1 returning id", [LIVE]); ok("member can't flip the column directly", !r.ok || !r.rows.length);
+  r = await as(A.auth, "select public.admin_set_event_active($1, false, 'QA_reason')", [LIVE]); ok("main admin sets it inactive", r.ok, r.err);
+  ok("…the row stays (nothing deleted) and is inactive", (await q1("select is_active, deleted_at from public.custom_plans where id = $1", [LIVE]))?.is_active === false);
+  ok("…and it's in the activity log with the reason", (await q1("select details->>'reason' r from public.audit_log where entity = 'event' and entity_id = $1 and action = 'deactivated' order by id desc limit 1", [String(LIVE)]))?.r === "QA_reason");
+  r = await as(M.auth, "insert into public.plan_requests (plan_ref, status, party_size) select $1, 'pending', 1 where $2::uuid is not null", [liveRef, M.uid]);
+  ok("member can't request an inactive event", !r.ok && /isn't open/.test(r.err), r.err);
+  r = await as(A.auth, "select public.admin_set_event_active($1, true, null)", [LIVE]); ok("main admin sets it active again", r.ok, r.err);
+  r = await as(M.auth, "insert into public.plan_requests (plan_ref, status, party_size) select $1, 'pending', 1 where $2::uuid is not null", [liveRef, M.uid]);
+  ok("…and members can request it again", r.ok, r.err);
+  await c.query("update public.plan_requests set status = 'approved' where plan_ref = $1 and user_id = $2", [liveRef, M.uid]);
+  r = await as(A.auth, "select public.admin_set_event_active($1, false, 'QA')", [LIVE]);
+  ok("can't switch off an event with confirmed guests (cancel it instead)", !r.ok && /confirmed seat/.test(r.err), r.err);
+  r = await as(A.auth, "select public.admin_set_event_active($1, false, 'QA')", [-1]); ok("unknown event is refused", !r.ok);
+
   console.log("\nEvent library · who can hide example plans");
-  r = await as(A.auth, "select public.admin_hide_template('quiz-night', true)"); ok("main admin hides an example plan", r.ok, r.err);
+  r = await as(A.auth, "select public.admin_hide_template('quiz-night', true)"); ok("main admin sets an example plan inactive", r.ok, r.err);
   ok("…and it's in the hidden list everyone reads", (await as("anon", "select count(*)::int n from public.hidden_templates where key = 'quiz-night'")).row?.n === 1);
   r = await as(A.auth, "select public.admin_hide_template('quiz-night', false)");
-  ok("main admin restores it", r.ok && (await q1("select count(*)::int n from public.hidden_templates where key = 'quiz-night'")).n === 0, r.err);
-  r = await as(H.auth, "select public.admin_hide_template('quiz-night', true)"); ok("host can't delete events", !r.ok && /Main admins only/.test(r.err), r.err);
-  r = await as(SUB.auth, "select public.admin_hide_template('quiz-night', true)"); ok("sub-admin can't delete events", !r.ok, r.err);
+  ok("main admin sets it active again", r.ok && (await q1("select count(*)::int n from public.hidden_templates where key = 'quiz-night'")).n === 0, r.err);
+  r = await as(H.auth, "select public.admin_hide_template('quiz-night', true)"); ok("host can't switch example plans off", !r.ok && /Main admins only/.test(r.err), r.err);
+  r = await as(SUB.auth, "select public.admin_hide_template('quiz-night', true)"); ok("sub-admin can't switch example plans off", !r.ok, r.err);
   r = await as(M.auth, "insert into public.hidden_templates (key) values ('x')"); ok("member can't write the hidden list directly", !r.ok);
   r = await as(H.auth, "select public.host_save_event_draft(null, $1::jsonb) v", [JSON.stringify({ title: "QA_lib", category: "games", starts_at: iso(80), ends_at: iso(82), area: "QA", price: 99, price_type: "reservation", seats: 8, event_type: "Boards & Chai" })]);
   ok("host adds an event from a card (draft, their own event)", r.ok && (await q1("select host_id from public.custom_plans where id = $1", [r.row?.v]))?.host_id === H_ID, r.err);

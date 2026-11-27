@@ -51,8 +51,8 @@ export default function Page() {
         <div className="faq-big"><span className="eyebrow">The small print</span><h2 style={{ marginTop: 10 }}>Terms &amp; <span className="serif">privacy.</span></h2></div>
         <div id="privacy">
           <Acc q="Payments & refunds">Seat reservations are paid after your seat is confirmed and are non-refundable once paid. If we cancel a plan, you get a full refund.</Acc>
-          <Acc q="What we store">Your profile and requests are stored securely with our database provider (Supabase). Private details are visible only to you, the hosts of plans you request, and our team. Saved plans and swipes are also kept in your own browser.</Acc>
-          <Acc q="Age">All plans are for adults 18 and over.</Acc>
+          <Acc q="What we store">Your profile and requests are stored securely, protected by industry-standard encryption and strict access controls. Private details are visible only to you, the hosts of plans you request, and our team. Saved plans and swipes are also kept in your own browser.</Acc>
+          <Acc q="Age (18+ only)">You must be 18 or older to create an account, request a seat or host. Your date of birth is checked when you add it, and we may ask for ID at the door.</Acc>
           <p className="fine">Replace this section with your full terms and privacy policy before launch.</p>
         </div>
       </section>

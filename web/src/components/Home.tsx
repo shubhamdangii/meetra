@@ -107,9 +107,19 @@ export function Marquee() {
   const { upcoming, inCity } = useApp();
   const items = [...new Set(upcoming.filter(inCity).slice(0, 24).map((e) => `${e.emoji} ${e.title.split(" · ")[0]}`))].slice(0, 12);
   const list = items.length ? items : ["🍝 Introverts' Dinner", "🎲 Board Games & Chai", "🌄 Sunrise Trek", "🧠 Quiz Night", "🎤 Open Mic"];
+  // each group is long enough to cover the widest screen; two identical groups scroll by exactly one group → no gap, ever
+  const group: string[] = []; while (group.length < 16) group.push(...list);
+  const strip = (cls: string, rev = false) => (
+    <div className={`mq ${cls}`}>
+      <div className={`mq-track${rev ? " rev" : ""}`} style={{ ["--mq-dur" as string]: `${group.length * 4.2}s` }}>
+        {[0, 1].map((g) => <div key={g} className="mq-group">{group.map((t, i) => <span key={i}>{t}</span>)}</div>)}
+      </div>
+    </div>
+  );
   return (
-    <div className="marquee" aria-hidden="true">
-      <div className="marquee-track">{[...list, ...list].map((t, i) => <span key={i}>{t}</span>)}</div>
+    <div className="mq-wrap" aria-hidden="true">
+      {strip("mq-a")}
+      {strip("mq-b", true)}
     </div>
   );
 }

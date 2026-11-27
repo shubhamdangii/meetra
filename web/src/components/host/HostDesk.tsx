@@ -49,6 +49,8 @@ export function HostDesk({ host }: { host: MyHost }) {
   const [form, setForm] = useState<{ id: number | null; f: EventFormValue } | null>(null);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const [door, setDoor] = useState(false);
+  const [libOpen, setLibOpen] = useState(false); const [newTick, setNewTick] = useState(0);
+  const pickOrCreate = () => { setLibOpen(true); setNewTick((n) => n + 1); };
 
   const load = useCallback(async () => {
     if (!auth.client) return;
@@ -63,7 +65,7 @@ export function HostDesk({ host }: { host: MyHost }) {
   useEffect(() => {
     const u = new URL(window.location.href);
     if (u.searchParams.get("new") === "1") {
-      setForm({ id: null, f: blankEvent(host.city_slug) });
+      pickOrCreate();
       u.searchParams.delete("new"); window.history.replaceState(null, "", u.toString());
     }
   }, [host.city_slug]);
@@ -125,7 +127,7 @@ export function HostDesk({ host }: { host: MyHost }) {
       </motion.div>
 
       <div className="hd-actions">
-        <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun" onClick={() => { setErr(""); setForm({ id: null, f: blankEvent(host.city_slug) }); }}>＋ Propose an event</motion.button>
+        <motion.button whileTap={{ scale: 0.96 }} className="btn btn-sun" onClick={pickOrCreate}>＋ Propose an event</motion.button>
         {doorPlans.length > 0 && <button className="btn btn-ink" onClick={() => setDoor((d) => !d)}>{door ? "Hide door" : "📷 Door check-in"}</button>}
       </div>
       <AnimatePresence>{door && doorPlans.length > 0 && (
@@ -134,9 +136,10 @@ export function HostDesk({ host }: { host: MyHost }) {
         </motion.div>
       )}</AnimatePresence>
 
-      <details className="hd-lib">
+      <details className="hd-lib" open={libOpen} onToggle={(e) => setLibOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary>📚 Event library: add any event with your own date</summary>
-        <EventLibrary mode="host" city={host.city_slug} onChange={load}
+        <EventLibrary mode="host" city={host.city_slug} onChange={load} newTick={newTick}
+          onCreateNew={() => { setErr(""); setForm({ id: null, f: blankEvent(host.city_slug) }); }}
           events={(events ?? []).map((e) => ({ ...e, ...(extras.get(e.id) ?? {}), host_id: host.id, host_name: host.name, waitlisted: 0, pending_req: e.req_status === "pending" ? e.req_no : null, cancel_reason: null, created_by_name: null, updated_at: e.starts_at }) as unknown as AdminEvent)} />
       </details>
       <ol className="hd-how">

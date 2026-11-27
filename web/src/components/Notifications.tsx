@@ -91,6 +91,7 @@ export function NotificationsSheet({ open, onClose, n }: { open: boolean; onClos
             </li>
           ))}</ul>
         )}
+        <button type="button" className="btn btn-white btn-sm btn-block nt-done" onClick={onClose}>Done</button>
       </div>
     </Modal>
   );

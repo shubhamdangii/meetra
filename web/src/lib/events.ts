@@ -52,7 +52,7 @@ export type CustomPlan = {
   id: number; city_slug: string; title: string; category: string; starts_on: string; time_label: string; end_label: string | null;
   area: string; price: number; price_type: MeetEvent["priceType"]; seats: number; emoji: string; blurb: string;
   steps: string[]; tags: string[]; host_name: string | null; status: string;
-  plan_ref: string; host_id: number | null; category_other?: string | null; event_type?: string | null; image_url?: string | null; starts_at: string; ends_at: string; booking_closes_at: string; deleted_at: string | null; cancel_reason: string | null;
+  plan_ref: string; host_id: number | null; category_other?: string | null; event_type?: string | null; image_url?: string | null; starts_at: string; ends_at: string; booking_closes_at: string; deleted_at: string | null; cancel_reason: string | null; is_active?: boolean;
 };
 const PATTERNS = ["dots", "grid", "rings", "stripes", "sun", "waves"];
 export const customPlanId = (c: Pick<CustomPlan, "id" | "city_slug" | "starts_on"> & { plan_ref?: string }) => c.plan_ref || `x${c.id}-${c.city_slug}-${c.starts_on.replace(/-/g, "")}`;
@@ -91,7 +91,7 @@ export function buildEvents(today: Date, custom: CustomPlan[] = [], hidden: Set<
     });
   });
   custom.forEach((c) => {
-    if (c.status !== "approved" || c.deleted_at || !CONFIG.cities[c.city_slug]) return;
+    if (c.status !== "approved" || c.deleted_at || c.is_active === false || !CONFIG.cities[c.city_slug]) return;
     const [y, m, dd] = c.starts_on.split("-").map(Number);
     const d = new Date(y, m - 1, dd);
     const id = customPlanId(c);

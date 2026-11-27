@@ -167,7 +167,7 @@ export default function LoginPage() {
               </motion.section>
             )}
           </AnimatePresence>
-          <p className="fine" style={{ marginTop: 20 }}>By continuing you agree to our <Link href="/about/#terms" style={{ textDecoration: "underline" }}>terms</Link> and <Link href="/about/#safety" style={{ textDecoration: "underline" }}>house rules</Link>. We never post anything or message your contacts.</p>
+          <p className="fine" style={{ marginTop: 20 }}>By continuing you confirm you&apos;re 18 or older and agree to our <Link href="/about/#terms" style={{ textDecoration: "underline" }}>terms</Link> and <Link href="/about/#safety" style={{ textDecoration: "underline" }}>house rules</Link>. We never post anything or message your contacts.</p>
         </motion.div>
       </div>
     </div>
@@ -179,7 +179,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 function EmailBox() {
   const auth = useAuth();
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
-  const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [show, setShow] = useState(false);
+  const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [show, setShow] = useState(false); const [adult, setAdult] = useState(false);
   const [busy, setBusy] = useState(false); const [note, setNote] = useState<{ t: string; ok: boolean } | null>(null);
 
   async function submit(ev: React.FormEvent) {
@@ -195,6 +195,7 @@ function EmailBox() {
         if (error) setNote({ t: /confirm/i.test(error.message) ? "Please confirm your email first. Check your inbox (and spam) for our link." : /invalid/i.test(error.message) ? "Wrong email or password. Forgot it? Tap \"Forgot password\"." : error.message, ok: false });
         // success → the login page sees the new session and sends you on
       } else if (mode === "signup") {
+        if (!adult) { setBusy(false); return setNote({ t: "Please confirm you're 18 or older to create an account.", ok: false }); }
         const { data, error } = await auth.client.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: absUrl("/login/") } });
         if (error) setNote({ t: /already|registered/i.test(error.message) ? "This email already has an account. Log in instead." : error.message, ok: false });
         else if (data.user && (data.user.identities?.length ?? 1) === 0) setNote({ t: "This email already has an account. Log in instead (or use Google if you signed up with it).", ok: false });
@@ -218,6 +219,7 @@ function EmailBox() {
       {mode !== "forgot" && <div className="field"><label htmlFor="pw">Password</label>
         <div className="pw-wrap"><input id="pw" type={show ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} minLength={8} placeholder={mode === "signup" ? "At least 8 characters" : ""} required />
           <button type="button" className="pw-eye" onClick={() => setShow((x) => !x)} aria-label={show ? "Hide password" : "Show password"}>{show ? "Hide" : "Show"}</button></div></div>}
+      {mode === "signup" && <label className="check" style={{ margin: "4px 0 10px" }}><input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} /> I&apos;m 18 or older and agree to the <Link href="/about/#terms" style={{ textDecoration: "underline" }}>terms</Link></label>}
       <motion.button whileTap={{ scale: 0.97 }} className="btn btn-ink btn-block" type="submit" disabled={busy}>
         {busy ? "Please wait…" : mode === "login" ? "Log in →" : mode === "signup" ? "Create account →" : "Send reset link →"}
       </motion.button>
@@ -232,7 +234,8 @@ function EmailBox() {
 
 function NewPassword({ onDone }: { onDone: () => void }) {
   const auth = useAuth(); const { toast } = useApp();
-  const [pw, setPw] = useState(""); const [pw2, setPw2] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   async function save(ev: React.FormEvent) {
     ev.preventDefault();
     if (pw.length < 8) return setErr("Password must be at least 8 characters.");
