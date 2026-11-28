@@ -81,6 +81,7 @@ export async function resetQa(db, { dryRun = false, log = console.log } = {}) {
   const steps = [
     ["requests", "plan_requests", "plan_ref = any($1) or user_id = any($2)", [refs, qaUserIds]],
     ["locations", "event_locations", "plan_id = any($1)", [planIds]],
+    ["host reviews", "host_reviews", "event_id = any($1) or plan_ref = any($2) or user_id = any($3)", [planIds, refs, qaUserIds]],
     ["audit rows", "audit_log", "(entity_id = any($1)) or actor_id = any($2)", [[...planIds.map(String), ...refs], qaUserIds]],
     ["change requests", "admin_requests", "maker_id = any($1) or checker_id = any($1)", [qaUserIds]],
     ["admin notifications", "admin_notifications", "user_id = any($1)", [qaUserIds]],
