@@ -18,11 +18,19 @@ const isIos = () => typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test
 /** Mount once (in the layout). */
 export function PwaSetup() {
   useEffect(() => {
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") navigator.serviceWorker.register(`${BASE}/sw.js`, { scope: `${BASE}/` }).catch(() => {});
+    // updateViaCache "none": the phone never reuses its 10-minute copy of sw.js. Check for a new worker now and every time the app is brought back to the front.
+    let stopChecks = () => {};
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+      navigator.serviceWorker.register(`${BASE}/sw.js`, { scope: `${BASE}/`, updateViaCache: "none" }).then((reg) => {
+        const check = () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); };
+        check(); document.addEventListener("visibilitychange", check);
+        stopChecks = () => document.removeEventListener("visibilitychange", check);
+      }).catch(() => {});
+    }
     const onBip = (e: Event) => { e.preventDefault(); deferred = e as BIP; ping(); };
     const onInstalled = () => { deferred = null; ping(); };
     window.addEventListener("beforeinstallprompt", onBip); window.addEventListener("appinstalled", onInstalled);
-    return () => { window.removeEventListener("beforeinstallprompt", onBip); window.removeEventListener("appinstalled", onInstalled); };
+    return () => { stopChecks(); window.removeEventListener("beforeinstallprompt", onBip); window.removeEventListener("appinstalled", onInstalled); };
   }, []);
   return null;
 }

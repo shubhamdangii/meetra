@@ -32,3 +32,18 @@ function flatten(segDir, parent, prefix) {
 walk(out);
 // GitHub Pages: don't run Jekyll (it would hide folders starting with "_", like _next).
 fs.writeFileSync(path.join(out, ".nojekyll"), "");
+
+// Stamp the service worker with this deploy's id ("<unix seconds>-<commit>") so every deploy gets a new worker and a fresh cache.
+// public/sw.js holds the placeholder; run twice on the same folder is fine (already stamped is left alone).
+const swFile = path.join(out, "sw.js");
+if (fs.existsSync(swFile)) {
+  const src = fs.readFileSync(swFile, "utf8");
+  const stamp = `${Math.floor(Date.now() / 1000)}-${(process.env.GITHUB_SHA || "local").slice(0, 7)}`;
+  const stamped = src.replace('"__BUILD__"', JSON.stringify(stamp));
+  if (stamped.includes("__BUILD__") || !/const BUILD = "\d+-[0-9a-z]+"/.test(stamped)) {
+    console.error("fix-export: sw.js has no build stamp. Expected: const BUILD = \"__BUILD__\"; in public/sw.js");
+    process.exit(1);
+  }
+  if (stamped !== src) fs.writeFileSync(swFile, stamped);
+  console.log("sw.js stamped " + stamp);
+}
