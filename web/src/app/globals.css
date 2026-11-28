@@ -1171,9 +1171,10 @@ html,body{overflow-x:clip}
 .dash-occ .bar{grid-column:1/2;height:10px;background:#F1EEF6;border-radius:99px;overflow:hidden}
 .dash-occ .bar i{display:block;height:100%;background:#6C4CF5;border-radius:4px}.dash-occ .bar i.full{background:#1BB78A}
 .dash-occ .v{font-size:12.5px;white-space:nowrap}
-.dash-pipe{list-style:none;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.dash-pipe{list-style:none;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
 .dash-pipe li{background:#F6F3FB;border-radius:12px;padding:8px 6px;text-align:center;display:grid;gap:2px}
 .dash-pipe b{font-size:22px}.dash-pipe span{font-size:11px;color:var(--ink-2);line-height:1.15}
+@media (max-width:520px){.dash-pipe{gap:4px}.dash-pipe li{padding:8px 2px}.dash-pipe b{font-size:19px}.dash-pipe span{font-size:9.5px;letter-spacing:-.2px;overflow-wrap:anywhere}}
 .dash-big b{font-size:44px;letter-spacing:-.04em;line-height:1}.dash-big span{display:block;font-size:13px;color:var(--ink-2)}
 .dash-mini{display:flex;gap:12px;font-size:13px;margin-top:6px}
 /* member: rate host + host rating on event page */

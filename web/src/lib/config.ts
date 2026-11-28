@@ -38,8 +38,8 @@ export const CONFIG: {
      ❌ NEVER put the "service_role" / "secret" key, the database password
         or any payment key in this file or anywhere in this repo.
      Leave both empty and login stays switched off. */
-  supabaseUrl: "https://eqzwolwhecotwiphmjrd.supabase.co",          // e.g. "https://abcdefgh.supabase.co"
-  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxendvbHdoZWNvdHdpcGhtanJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMzcwMDQsImV4cCI6MjExMDgxMzAwNH0.vLSh3R25fNUzIN9UJ_VMlrd1KU_PWATJyQzy03HO-5w",      // e.g. "eyJhbGciOi…" or "sb_publishable_…"
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://eqzwolwhecotwiphmjrd.supabase.co",          // e.g. "https://abcdefgh.supabase.co"
+  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxendvbHdoZWNvdHdpcGhtanJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMzcwMDQsImV4cCI6MjExMDgxMzAwNH0.vLSh3R25fNUzIN9UJ_VMlrd1KU_PWATJyQzy03HO-5w",      // e.g. "eyJhbGciOi…" or "sb_publishable_…"
   loginWithGoogle: true,
   vapidPublicKey: "BD0VsBuhWW5t20gjGrNrx9CPhYd1as12jZESKk93XrUdIWD_uWhnyMU90-i79-6F8T9NBgOS4EqKefNG7KS2Cl8", // public half of the admin push key (safe to share; the private half is a Supabase secret)
   loginWithWhatsApp: false, // true once the Meta WhatsApp number is connected (see SETUP-LOGIN.md)

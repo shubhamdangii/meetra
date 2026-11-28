@@ -6,7 +6,7 @@ import { CountUp } from "../fx";
 import { Chip, Empty, Stars, cityName, fmtDT, useRpc } from "./shared";
 
 type Dash = {
-  events: Record<"active" | "upcoming" | "ongoing" | "completed" | "draft" | "pending" | "cancelled", number>;
+  events: Record<"active" | "inactive" | "upcoming" | "ongoing" | "completed" | "draft" | "pending" | "cancelled", number>;
   by_city: { city: string; name: string; active: number; completed: number; cancelled: number; requests: number; confirmed: number }[];
   requests: Record<"total" | "pending" | "approved" | "attended" | "waitlisted" | "declined" | "cancelled" | "confirmed_seats", number>;
   approvals: Record<"pending" | "waiting_for_me" | "approved" | "rejected", number>;
@@ -123,7 +123,7 @@ function Occupancy({ rows }: { rows: Dash["occupancy"] }) {
 }
 
 function Pipeline({ e }: { e: Dash["events"] }) {
-  const steps: [string, number][] = [["Draft", e.draft], ["Pending approval", e.pending], ["Active", e.active], ["Completed", e.completed], ["Cancelled", e.cancelled]];
+  const steps: [string, number][] = [["Draft", e.draft], ["Pending approval", e.pending], ["Active", e.active], ["Inactive", e.inactive ?? 0], ["Completed", e.completed], ["Cancelled", e.cancelled]];
   return <ol className="dash-pipe">{steps.map(([l, n]) => <li key={l}><b>{n}</b><span>{l}</span></li>)}</ol>;
 }
 

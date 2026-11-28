@@ -31,6 +31,11 @@ const statusText = (s: string) => (STATUS as Record<string, readonly [string, st
 
 const MOBILE_STATUS: Record<string, string> = { pending: "⏳ Requested", approved: "✅ You're in", waitlisted: "🕒 On waiting list", declined: "Not this time", attended: "✅ Checked in" };
 
+// real events (added by hosts or the team) have keys like x123; title matching is for them only, never for sample plans
+const isReal = (x: { key: string }) => /^x\d+$/.test(x.key);
+const normTitle = (t: string) => t.split(" · ")[0].trim().toLowerCase();
+const sameTitle = (a: string, b: string) => normTitle(a) === normTitle(b);
+
 export default function EventPage() {
   const params = useSearchParams();
   const { ready, customLoaded, byId, upcoming, today, addRequest, toast, confirm } = useApp();
@@ -44,8 +49,8 @@ export default function EventPage() {
     const key = rawId.replace(/-\d{8}$/, "");
     return upcoming.find((x) => `${x.key}-${x.city}` === key);
   }, [rawId, byId, upcoming]);
-  // the next date of the same plan (each date is its own event: its own requests and statuses)
-  const nextDate = useMemo(() => (e ? upcoming.find((x) => x.key === e.key && x.city === e.city && x.id !== e.id && x.date > e.date && bookingState(x) === "open") : undefined), [e, upcoming]);
+  // the next date of the same plan: same sample key, or same title in the same city for real events (each date is its own event: its own requests and statuses)
+  const nextDate = useMemo(() => (e ? upcoming.filter((x) => x.city === e.city && x.id !== e.id && x.date > e.date && (x.key === e.key || (isReal(x) && isReal(e) && sameTitle(x.title, e.title))) && bookingState(x) === "open").sort((a, b) => a.date.getTime() - b.date.getTime())[0] : undefined), [e, upcoming]);
   // Tab title ("Introverts' Dinner · Jaipur · meetra"). Set after Next applies its own page title.
   useEffect(() => {
     if (!e) return;
