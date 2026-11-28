@@ -1,7 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
 
 // Logged-out visitor checks on the live site. Logged-in roles are covered by tests/db (rules) and manual checks.
 const istYmd = (offsetDays: number) => new Date(Date.now() + 5.5 * 36e5 + offsetDays * 864e5).toISOString().slice(0, 10).replace(/-/g, "");
+// The 4 tests marked "QA site" need real events, which only exist on the QA copy of the site (meetra-test, seeded with QA_ events).
+// Run them with:  BASE_URL=http://localhost:3100/meetra/ npx playwright test   (the /qa command does this).
+const QA_SITE = /localhost:3100/.test(process.env.BASE_URL ?? "");
+const qaEnv = (k: string) => fs.readFileSync(path.resolve(__dirname, "../../../.secrets/test-supabase.env"), "utf8").split("\n").map((l) => l.trim()).find((l) => l.startsWith(k + "="))!.slice(k.length + 1);
+async function qaPlanRef(title: string) {
+  const r = await fetch(`${qaEnv("TEST_SUPABASE_URL")}/rest/v1/custom_plans?select=plan_ref&deleted_at=is.null&order=starts_at.asc&title=eq.${encodeURIComponent(title)}`, { headers: { apikey: qaEnv("TEST_SUPABASE_ANON_KEY") } });
+  const j = (await r.json()) as { plan_ref: string }[]; if (!j[0]) throw new Error("QA event missing: " + title);
+  return j[0].plan_ref;
+}
 const errors = (page: Page) => {
   const list: string[] = [];
   page.on("pageerror", (e) => list.push("pageerror: " + e.message));
@@ -54,30 +65,35 @@ test("point 11 · photo strip section doesn't touch the sections around it", asy
   expect(gap.border).toBe("0px");
 });
 
-const lastThursday = () => { for (let d = -2; d > -9; d--) if (new Date(Date.now() + 5.5 * 36e5 + d * 864e5).getUTCDay() === 4) return d; return -7; };
-test("points 3/12/13 · a past date shows 'ended', no request button, and offers the next date", async ({ page }) => {
-  const past = lastThursday();
-  await page.goto(`event/?id=salsa-ahmedabad-${istYmd(past)}`); await settle(page);
+test("points 3/12/13 · a past date shows 'ended', no request button, and offers the next date (QA site)", async ({ page }) => {
+  test.skip(!QA_SITE, "needs the QA_Past event from the QA seed");
+  await page.goto(`event/?id=${await qaPlanRef("QA_Past event")}`); await settle(page);
   await expect(page.locator(".status-card.s-closed")).toContainText(/ended/i);
   await expect(page.locator("#book button[type=submit]")).toHaveCount(0);
   await expect(page.locator(".status-card a", { hasText: /Next date/ })).toBeVisible();
   // the link opens a different (future) date, which takes requests
+  const before = page.url();
   await page.locator(".status-card a", { hasText: /Next date/ }).click(); await settle(page);
-  expect(page.url()).not.toContain(istYmd(past));
+  expect(page.url()).not.toBe(before);
   await expect(page.locator("#book button[type=submit]")).toBeVisible();
 });
 
-test("point 12 · lists mark events whose booking has closed", async ({ page }) => {
+test("point 12 · lists mark events whose booking has closed (QA site)", async ({ page }) => {
+  test.skip(!QA_SITE, "needs the QA_Booking closed event from the QA seed");
   await page.goto("events/"); await settle(page);
-  const states = await page.evaluate(() => [...document.querySelectorAll(".card")].map((c) => ({ closed: c.classList.contains("card-closed"), badge: !!c.querySelector(".closed-badge"), text: c.querySelector(".card-stats")?.textContent ?? "" })));
+  const states = await page.evaluate(() => [...document.querySelectorAll(".card")].map((c) => ({ title: c.querySelector("h3, .card-title, b")?.textContent ?? "", closed: c.classList.contains("card-closed"), badge: !!c.querySelector(".closed-badge"), text: c.querySelector(".card-stats")?.textContent ?? "" })));
   expect(states.length).toBeGreaterThan(0);
   for (const s of states) {
-    expect(s.closed).toBe(s.badge);                                   // greyed ⇔ badge
+    expect(s.closed).toBe(s.badge);                                   // greyed <=> badge
     if (s.closed) expect(s.text).toMatch(/closed|ended/i); else expect(s.text).toMatch(/seats left|Full/);
   }
+  // and the seeded cases really are marked the right way
+  expect(states.filter((s) => s.closed).length, "QA_Booking closed should be shown as closed").toBeGreaterThanOrEqual(1);
+  expect(states.filter((s) => !s.closed).length, "open QA events should not be shown as closed").toBeGreaterThanOrEqual(1);
 });
 
-test("point 6 · map zooms with double-tap and pinch, and pans", async ({ page }, info) => {
+test("point 6 · map zooms with double-tap and pinch, and pans (QA site)", async ({ page }, info) => {
+  test.skip(!QA_SITE, "needs QA events with an area so the map has pins");
   await page.goto("events/?view=map"); await settle(page);
   const map = page.locator(".amap").first(); await map.scrollIntoViewIfNeeded();
   const zoom = () => map.evaluate((el) => Number((el.querySelector(".amap-tile") as HTMLImageElement)?.src.split("/").at(-3)));
@@ -126,11 +142,12 @@ test("point 9 · partner form validates empty input", async ({ page }) => {
   await expect(page.locator(".form-msg.err")).toBeVisible();
 });
 
-test("point 14 · swipe deck has every open plan (same count as Explore minus closed ones)", async ({ page }) => {
+test("point 14 · swipe deck has every open plan (same count as Explore minus closed ones) (QA site)", async ({ page }) => {
+  test.skip(!QA_SITE, "needs the QA events");
   await page.goto("events/"); await settle(page);
   const total = Number((await page.locator(".ex-bar span.muted").first().textContent())?.match(/(\d+) plan/)?.[1]);
   const closed = await page.locator(".card.card-closed").count();   // only today's plans can be closed
-  expect(total).toBeGreaterThan(30);
+  expect(total).toBeGreaterThanOrEqual(8);   // the QA seed has at least 8 upcoming Ahmedabad events (was 30+ sample plans)
   await page.goto("swipe/"); await settle(page);
   const deck = Number((await page.getByText(/^\d+ of \d+$/).first().textContent())?.split(" of ")[1]);
   expect(deck).toBe(total - closed);
