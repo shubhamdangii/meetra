@@ -1,11 +1,12 @@
-// Builds a static copy of the site that talks to meetra-test (NOT the live project) into web/out.
-// Run: node tests/qa/build-test-site.mjs   (secrets are read from .secrets, never printed)
+// Builds a local static copy of the current code into web/out, pointed at the live Supabase project
+// (the only project; URL and public anon key come from src/lib/config.ts). Nothing is printed that is secret.
+// Run: node tests/qa/build-test-site.mjs
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readEnv, guard } from "../seed/seed.mjs";
+import { guard, liveConfig } from "../seed/seed.mjs";
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const env = readEnv(path.join(web, "../.secrets/test-supabase.env"));
-guard(env.TEST_SUPABASE_URL, env);
-console.log("building the site against meetra-test (ref " + new URL(env.TEST_SUPABASE_URL).host.split(".")[0] + ")...");
-execSync("npm run build", { cwd: web, stdio: "inherit", env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: env.TEST_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: env.TEST_SUPABASE_ANON_KEY } });
+const live = liveConfig();
+guard(live.url);
+console.log("building the local site against the Supabase project (ref " + new URL(live.url).host.split(".")[0] + ")...");
+execSync("npm run build", { cwd: web, stdio: "inherit", env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: live.url, NEXT_PUBLIC_SUPABASE_ANON_KEY: live.anonKey } });

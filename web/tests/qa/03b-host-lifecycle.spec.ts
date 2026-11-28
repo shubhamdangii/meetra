@@ -1,7 +1,9 @@
-import { test, expect, settle, stateFile, planRef, field, dtLocal, tenv, type Page } from "./fixtures";
+import { test, expect, NOTIFIES_REAL_ADMINS, settle, stateFile, planRef, field, dtLocal, tenv, type Page } from "./fixtures";
+
+test.skip(true, NOTIFIES_REAL_ADMINS);   // a host request alerts every main admin; see TESTING.md
 
 /**
- * Host lifecycle on meetra-test.
+ * Host lifecycle (NOT run on live: it notifies real admins).
  *  - create an event from scratch (this is the path that must work for every host)
  *  - add a new date to an existing event, send it to the team, the team approves it, it goes live
  *  - withdraw a waiting request

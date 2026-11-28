@@ -1,7 +1,7 @@
-import { test, expect, settle, stateFile, planRef, type Page } from "./fixtures";
+import { test, expect, NOTIFIES_REAL_ADMINS, settle, stateFile, planRef, type Page } from "./fixtures";
 
 /**
- * Admin desk on meetra-test, using seeded QA events:
+ * Admin desk, using seeded QA events:
  * set an event inactive and active again, see the effect for a user, assign a host, check the dashboard counts.
  */
 test.describe.configure({ mode: "serial" });
@@ -56,13 +56,14 @@ test.describe("admin switches an event inactive and active", () => {
 });
 
 test.describe("admin assigns a host (maker-checker: the other admin must approve)", () => {
+  test.skip(true, NOTIFIES_REAL_ADMINS);   // submitting alerts every main admin; point 29 only checks the option appears
   test.use({ storageState: stateFile("admin") });
   test("admin picks QA_Host for an event without a host; the change is sent for approval", async ({ page }) => {
     await openLibrary(page);
     const c = card(page, EVENT);
     await expect(c).toBeVisible();
     await c.getByRole("button", { name: /Assign a host/ }).click();
-    await page.locator(".adm-modal-bg").getByRole("button", { name: /QA_Host/ }).first().click();
+    await page.locator(".adm-modal-bg").getByRole("button", { name: /QA_host/ }).first().click();
     await expect(toast(page)).toContainText(/sent ✓/, { timeout: 15_000 });
     await expect(toast(page)).not.toContainText("⚠️");
   });

@@ -1,61 +1,366 @@
 {
   "_help": "Maps every feature x role to the tests that prove it. match = regex on 'file > title'. A checklist item is ticked only when ALL matching tests passed on ALL devices that ran them.",
   "features": [
-    { "area": "Access", "feature": "Typing private URLs (admin, saved, profile, ticket, host) while logged out shows no private data", "role": "logged-out", "match": "01-access.*logged out" },
-    { "area": "Access", "feature": "Member typing /admin/ or /host/ is turned away", "role": "user", "match": "01-access.*normal member" },
-    { "area": "Access", "feature": "Host typing /admin/ is turned away", "role": "host", "match": "01-access.*host typing" },
-    { "area": "Navigation", "feature": "Account menu shows the right items (Admin desk)", "role": "admin", "match": "02-nav.*admin account menu" },
-    { "area": "Navigation", "feature": "Account menu shows the right items (City desk)", "role": "sub-admin", "match": "02-nav.*subadmin account menu" },
-    { "area": "Navigation", "feature": "Account menu shows the right items (Add a plan)", "role": "host", "match": "02-nav.*host account menu" },
-    { "area": "Navigation", "feature": "Account menu shows the right items (no team items)", "role": "user", "match": "02-nav.*user account menu" },
-    { "area": "Navigation", "feature": "Mobile bottom bar (Home, Explore, My plans, Account)", "role": "admin", "match": "02-nav.*admin sees the mobile bottom bar" },
-    { "area": "Navigation", "feature": "Mobile bottom bar (Home, Explore, My plans, Account)", "role": "sub-admin", "match": "02-nav.*subadmin sees the mobile bottom bar" },
-    { "area": "Navigation", "feature": "Mobile bottom bar (Home, Explore, My plans, Account)", "role": "host", "match": "02-nav.*host sees the mobile bottom bar" },
-    { "area": "Navigation", "feature": "Mobile bottom bar (Home, Explore, My plans, Account)", "role": "user", "match": "02-nav.*user sees the mobile bottom bar" },
-    { "area": "Navigation", "feature": "Logout, then log in as a different role (menu, bottom bar, data follow the new role)", "role": "admin -> user -> host", "match": "02-nav.*logout, then log in" },
-    { "area": "Host", "feature": "Create a brand-new event from scratch", "role": "host", "match": "03a-host-create.*from scratch \\(title" },
-    { "area": "Host", "feature": "Create an event with the optional Maps link", "role": "host", "match": "03a-host-create.*Maps link" },
-    { "area": "Host", "feature": "Add a new date to an existing event and send it to the team", "role": "host", "match": "03b-host-lifecycle.*adds a new date" },
-    { "area": "Host", "feature": "A waiting request is not public yet", "role": "host/user", "match": "03b-host-lifecycle.*not public yet" },
-    { "area": "Host", "feature": "Team approves the new date (Approvals)", "role": "admin", "match": "03b-host-lifecycle.*finds it under Approvals" },
-    { "area": "Host", "feature": "Approved date goes live in Explore", "role": "user", "match": "03b-host-lifecycle.*goes live|03b-host-lifecycle.*Explore now lists" },
-    { "area": "Host", "feature": "Host desk lists own events only", "role": "host", "match": "07-host-guests.*lists the host's own events" },
-    { "area": "Host", "feature": "Host sees who is coming to own event (count and photos, no names)", "role": "host", "match": "07-host-guests.*shows who is coming" },
-    { "area": "Host", "feature": "Host cannot see another host's event or guests", "role": "host", "match": "07-host-guests.*cannot read another host" },
-    { "area": "User", "feature": "Free event offers a request form with no payment", "role": "user", "match": "04-user.*free event page offers" },
-    { "area": "User", "feature": "Empty name does not send a request (sad path)", "role": "user", "match": "04-user.*empty name" },
-    { "area": "User", "feature": "Request a seat; double click sends once; refresh keeps it pending", "role": "user", "match": "04-user.*sends the request" },
-    { "area": "User", "feature": "Team approves the seat request (Seat requests)", "role": "admin", "match": "04-user.*finds the request under Seat requests|04-user.*admin sees the request" },
-    { "area": "User", "feature": "Notification and \"You're in\" after approval", "role": "user", "match": "04-user.*gets a notification" },
-    { "area": "User", "feature": "Cancel the booking from Your plans", "role": "user", "match": "04-user.*cancels the booking" },
-    { "area": "User", "feature": "Past plans list with the host review prompt", "role": "user", "match": "04-user.*Past plans" },
-    { "area": "User", "feature": "Past event page says it ended and takes no request", "role": "user", "match": "04-user.*past event page" },
-    { "area": "Admin", "feature": "Set an event inactive, hidden from users, set active again", "role": "admin", "match": "05-admin.*(sets the event inactive|inactive event is hidden|sets it active again)" },
-    { "area": "Admin", "feature": "Assign a host (sent for the other admin's approval)", "role": "admin", "match": "05-admin.*assigns|05-admin.*waits under Approvals" },
-    { "area": "Admin", "feature": "Dashboard counts an inactive event correctly", "role": "admin", "match": "05b-admin-dashboard" },
-    { "area": "Sub-admin", "feature": "City desk shows only the city tools", "role": "sub-admin", "match": "06-subadmin.*city desk.*city tools|06-subadmin.*the desk is called" },
-    { "area": "Sub-admin", "feature": "Sees only own-city requests; cannot change another city's event", "role": "sub-admin", "match": "06-subadmin.*(only Ahmedabad|through the API)" },
-    { "area": "Sub-admin", "feature": "Main admin can see the other city", "role": "admin", "match": "06-subadmin.*main admin can see" },
-    { "area": "Public", "feature": "Public pages load without errors or sideways scroll (9 pages)", "role": "logged-out", "match": "public\\.spec.*page /.*loads without errors", "suite": "e2e" },
-    { "area": "Public", "feature": "Past date shows 'ended', no request button, offers the next date", "role": "logged-out", "match": "public\\.spec.*past date shows", "suite": "e2e" },
-    { "area": "Public", "feature": "Lists mark events whose booking has closed", "role": "logged-out", "match": "public\\.spec.*lists mark events", "suite": "e2e" },
-    { "area": "Public", "feature": "Map zooms and pans", "role": "logged-out", "match": "public\\.spec.*map zooms", "suite": "e2e" },
-    { "area": "Public", "feature": "Swipe deck matches Explore", "role": "logged-out", "match": "public\\.spec.*swipe deck", "suite": "e2e" },
-    { "area": "Public", "feature": "Other public checks (gallery, host form, menus, games, deep link)", "role": "logged-out", "match": "public\\.spec.*(point 7|point 11|point 8|point 9|point 15|deep link)", "suite": "e2e" },
-    { "area": "Public", "feature": "Landing page loads, no console errors (deployed site)", "role": "logged-out", "match": "landing\\.spec", "suite": "smoke" }
+    {
+      "area": "Access",
+      "feature": "Typing private URLs (admin, saved, profile, ticket, host) while logged out shows no private data",
+      "role": "logged-out",
+      "match": "01-access.*logged out"
+    },
+    {
+      "area": "Access",
+      "feature": "Member typing /admin/ or /host/ is turned away",
+      "role": "user",
+      "match": "01-access.*normal member"
+    },
+    {
+      "area": "Access",
+      "feature": "Host typing /admin/ is turned away",
+      "role": "host",
+      "match": "01-access.*host typing"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Account menu shows the right items (Admin desk)",
+      "role": "admin",
+      "match": "02-nav.*admin account menu"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Account menu shows the right items (City desk)",
+      "role": "sub-admin",
+      "match": "02-nav.*subadmin account menu"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Account menu shows the right items (Add a plan)",
+      "role": "host",
+      "match": "02-nav.*host account menu"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Account menu shows the right items (no team items)",
+      "role": "user",
+      "match": "02-nav.*user account menu"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Mobile bottom bar (Home, Explore, My plans, Account)",
+      "role": "admin",
+      "match": "02-nav.*admin sees the mobile bottom bar"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Mobile bottom bar (Home, Explore, My plans, Account)",
+      "role": "sub-admin",
+      "match": "02-nav.*subadmin sees the mobile bottom bar"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Mobile bottom bar (Home, Explore, My plans, Account)",
+      "role": "host",
+      "match": "02-nav.*host sees the mobile bottom bar"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Mobile bottom bar (Home, Explore, My plans, Account)",
+      "role": "user",
+      "match": "02-nav.*user sees the mobile bottom bar"
+    },
+    {
+      "area": "Navigation",
+      "feature": "Logout, then log in as a different role (menu, bottom bar, data follow the new role)",
+      "role": "admin -> user -> host",
+      "match": "02-nav.*logout, then log in"
+    },
+    {
+      "area": "Host",
+      "feature": "Create a brand-new event from scratch",
+      "role": "host",
+      "match": "03a-host-create.*from scratch \\(title"
+    },
+    {
+      "area": "Host",
+      "feature": "Create an event with the optional Maps link",
+      "role": "host",
+      "match": "03a-host-create.*Maps link"
+    },
+    {
+      "area": "Host",
+      "feature": "Add a new date to an existing event and send it to the team",
+      "role": "host",
+      "match": "03b-host-lifecycle.*adds a new date"
+    },
+    {
+      "area": "Host",
+      "feature": "A waiting request is not public yet",
+      "role": "host/user",
+      "match": "03b-host-lifecycle.*not public yet"
+    },
+    {
+      "area": "Host",
+      "feature": "Team approves the new date (Approvals)",
+      "role": "admin",
+      "match": "03b-host-lifecycle.*finds it under Approvals"
+    },
+    {
+      "area": "Host",
+      "feature": "Approved date goes live in Explore",
+      "role": "user",
+      "match": "03b-host-lifecycle.*goes live|03b-host-lifecycle.*Explore now lists"
+    },
+    {
+      "area": "Host",
+      "feature": "Host desk lists own events only",
+      "role": "host",
+      "match": "07-host-guests.*lists the host's own events"
+    },
+    {
+      "area": "Host",
+      "feature": "Host sees who is coming to own event (count and photos, no names)",
+      "role": "host",
+      "match": "07-host-guests.*shows who is coming"
+    },
+    {
+      "area": "Host",
+      "feature": "Host cannot see another host's event or guests",
+      "role": "host",
+      "match": "07-host-guests.*cannot read another host"
+    },
+    {
+      "area": "User",
+      "feature": "Free event offers a request form with no payment",
+      "role": "user",
+      "match": "04-user.*free event page offers"
+    },
+    {
+      "area": "User",
+      "feature": "Empty name does not send a request (sad path)",
+      "role": "user",
+      "match": "04-user.*empty name"
+    },
+    {
+      "area": "User",
+      "feature": "Request a seat; double click sends once; refresh keeps it pending",
+      "role": "user",
+      "match": "04-user.*sends the request"
+    },
+    {
+      "area": "User",
+      "feature": "Team approves the seat request (Seat requests)",
+      "role": "admin",
+      "match": "04-user.*finds the request under Seat requests|04-user.*admin sees the request"
+    },
+    {
+      "area": "User",
+      "feature": "Notification and \"You're in\" after approval",
+      "role": "user",
+      "match": "04-user.*gets a notification"
+    },
+    {
+      "area": "User",
+      "feature": "Cancel the booking from Your plans",
+      "role": "user",
+      "match": "04-user.*cancels the booking"
+    },
+    {
+      "area": "User",
+      "feature": "Past plans list with the host review prompt",
+      "role": "user",
+      "match": "04-user.*Past plans"
+    },
+    {
+      "area": "User",
+      "feature": "Past event page says it ended and takes no request",
+      "role": "user",
+      "match": "04-user.*past event page"
+    },
+    {
+      "area": "Admin",
+      "feature": "Set an event inactive, hidden from users, set active again",
+      "role": "admin",
+      "match": "05-admin.*(sets the event inactive|inactive event is hidden|sets it active again)"
+    },
+    {
+      "area": "Admin",
+      "feature": "Assign a host (sent for the other admin's approval)",
+      "role": "admin",
+      "match": "05-admin.*assigns|05-admin.*waits under Approvals"
+    },
+    {
+      "area": "Admin",
+      "feature": "Dashboard counts an inactive event correctly",
+      "role": "admin",
+      "match": "05b-admin-dashboard"
+    },
+    {
+      "area": "Sub-admin",
+      "feature": "City desk shows only the city tools",
+      "role": "sub-admin",
+      "match": "06-subadmin.*city desk.*city tools|06-subadmin.*the desk is called"
+    },
+    {
+      "area": "Sub-admin",
+      "feature": "Sees only own-city requests; cannot change another city's event",
+      "role": "sub-admin",
+      "match": "06-subadmin.*(only Ahmedabad|through the API)"
+    },
+    {
+      "area": "Sub-admin",
+      "feature": "Main admin can see the other city",
+      "role": "admin",
+      "match": "06-subadmin.*main admin can see"
+    },
+    {
+      "area": "Public",
+      "feature": "Public pages load without errors or sideways scroll (9 pages)",
+      "role": "logged-out",
+      "match": "public\\.spec.*page /.*loads without errors",
+      "suite": "e2e"
+    },
+    {
+      "area": "Public",
+      "feature": "Past date shows 'ended', no request button, offers the next date",
+      "role": "logged-out",
+      "match": "public\\.spec.*past date shows",
+      "suite": "e2e"
+    },
+    {
+      "area": "Public",
+      "feature": "Lists mark events whose booking has closed",
+      "role": "logged-out",
+      "match": "public\\.spec.*lists mark events",
+      "suite": "e2e"
+    },
+    {
+      "area": "Public",
+      "feature": "Map zooms and pans",
+      "role": "logged-out",
+      "match": "public\\.spec.*map zooms",
+      "suite": "e2e"
+    },
+    {
+      "area": "Public",
+      "feature": "Swipe deck matches Explore",
+      "role": "logged-out",
+      "match": "public\\.spec.*swipe deck",
+      "suite": "e2e"
+    },
+    {
+      "area": "Public",
+      "feature": "Other public checks (gallery, host form, menus, games, deep link)",
+      "role": "logged-out",
+      "match": "public\\.spec.*(point 7|point 11|point 8|point 9|point 15|deep link)",
+      "suite": "e2e"
+    },
+    {
+      "area": "Public",
+      "feature": "Landing page loads, no console errors (deployed site)",
+      "role": "logged-out",
+      "match": "landing\\.spec",
+      "suite": "smoke"
+    },
+    {
+      "area": "End-to-end chains",
+      "feature": "Chain 1: host proposes an event with every field filled (title, categories, dates/times, repeat, address, Maps link, seats, price, house rules) and again with optional fields empty",
+      "role": "host",
+      "match": "^$never$",
+      "notTested": "Chains 1-4 and 6 notify the other main admins (a friend's real account is one of them). NOT TESTED until the owner says \"akash is informed\"."
+    },
+    {
+      "area": "End-to-end chains",
+      "feature": "Chain 2: the request arrives in the admin desk with all the host's data; the Maps link opens",
+      "role": "admin",
+      "match": "^$never$",
+      "notTested": "Chains 1-4 and 6 notify the other main admins (a friend's real account is one of them). NOT TESTED until the owner says \"akash is informed\"."
+    },
+    {
+      "area": "End-to-end chains",
+      "feature": "Chain 3: second admin approval (QA_admin2); event live on Explore, event page, host desk, dashboard counts, Events library with identical details",
+      "role": "admin",
+      "match": "^$never$",
+      "notTested": "Chains 1-4 and 6 notify the other main admins (a friend's real account is one of them). NOT TESTED until the owner says \"akash is informed\"."
+    },
+    {
+      "area": "End-to-end chains",
+      "feature": "Chain 4: assign a host via the picker; host desk, event page and dashboard counts agree",
+      "role": "admin/host",
+      "match": "^$never$",
+      "notTested": "Chains 1-4 and 6 notify the other main admins (a friend's real account is one of them). NOT TESTED until the owner says \"akash is informed\"."
+    },
+    {
+      "area": "End-to-end chains",
+      "feature": "Chain 5: QA_user requests a seat; host and admin see it; approve; notification and seat counts agree on every screen",
+      "role": "user/host/admin",
+      "match": "^$never$",
+      "notTested": "Only partly covered: tests/qa/04-user-lifecycle (user request, admin approve, user notification, cancel) and 11-member-notifications. The host's view of the request and the seat counts on every screen are not in a test yet. Chain 5 does not notify real people, so it can be built next."
+    },
+    {
+      "area": "End-to-end chains",
+      "feature": "Chain 6: add a date, edit a date, change schedule, cancel, delete, set inactive; every screen updates",
+      "role": "host/admin",
+      "match": "^$never$",
+      "notTested": "Chains 1-4 and 6 notify the other main admins (a friend's real account is one of them). NOT TESTED until the owner says \"akash is informed\". Only 'set inactive/active' is tested (05-admin)."
+    },
+    {
+      "area": "End-to-end chains",
+      "feature": "Chain 7: console clean and identical data on every role's screen after each step",
+      "role": "all",
+      "match": "^$never$",
+      "notTested": "Chains 1-4 and 6 notify the other main admins (a friend's real account is one of them). NOT TESTED until the owner says \"akash is informed\"."
+    }
   ],
   "findings": [
-    { "id": "BUG-1", "kind": "REAL BUG", "match": "03a-host-create|03b-host-lifecycle.*adds a new date", "title": "No host or admin can save an event: database error 'null value in column maps_url of relation event_locations violates not-null constraint'", "note": "save_event_location inserts a row with only plan_id, but event_locations.maps_url is NOT NULL and no migration relaxes it. Fails even with a valid Maps link. Everything after it (approve, go live) cannot be reached from the UI. Check whether the original database was patched by hand (drift)." },
-    { "id": "BUG-2", "kind": "REAL BUG", "match": "05b-admin-dashboard", "title": "Admin dashboard lists an inactive event as 'Active' and counts it in 'Active events'", "note": "The Event library shows it under Inactive, so the two screens disagree." },
-    { "id": "BUG-3", "kind": "REAL BUG", "match": "public\\.spec.*past date shows", "title": "A past real event never offers the next date", "note": "'Next date' looks up events with the same key, but every real event has its own unique key (x<id>), so only the old sample plans could ever show it. Product decision needed." }
+    {
+      "id": "BUG-1",
+      "kind": "REAL BUG",
+      "match": "03a-host-create|03b-host-lifecycle.*adds a new date",
+      "title": "No host or admin can save an event: database error 'null value in column maps_url of relation event_locations violates not-null constraint'",
+      "note": "save_event_location inserts a row with only plan_id, but event_locations.maps_url is NOT NULL and no migration relaxes it. Fails even with a valid Maps link. Everything after it (approve, go live) cannot be reached from the UI. Check whether the original database was patched by hand (drift)."
+    },
+    {
+      "id": "BUG-2",
+      "kind": "REAL BUG",
+      "match": "05b-admin-dashboard",
+      "title": "Admin dashboard lists an inactive event as 'Active' and counts it in 'Active events'",
+      "note": "The Event library shows it under Inactive, so the two screens disagree."
+    },
+    {
+      "id": "BUG-3",
+      "kind": "REAL BUG",
+      "match": "public\\.spec.*past date shows",
+      "title": "A past real event never offers the next date",
+      "note": "'Next date' looks up events with the same key, but every real event has its own unique key (x<id>), so only the old sample plans could ever show it. Product decision needed."
+    }
   ],
   "cannotTest": [
-    { "feature": "Payments (Razorpay checkout, paid seat requests)", "why": "The payments edge function and Razorpay keys are not deployed on meetra-test. Paid events fail with 'Couldn't start the payment'. Only free events are tested." },
-    { "feature": "Refunds", "why": "pay-refund function and Razorpay not on meetra-test." },
-    { "feature": "WhatsApp login and WhatsApp messages", "why": "wa-login / wa-webhook functions and Meta number not on meetra-test." },
-    { "feature": "Google login", "why": "Needs the Google provider and a real Google account; tests log in with email and password instead." },
-    { "feature": "Push notifications to phones (admin-push)", "why": "admin-push function, push keys and private.app_settings rows are not set on meetra-test." },
-    { "feature": "Second-admin approval (maker-checker, final step)", "why": "Only one QA main admin exists, and nobody can approve their own request. Needs a second QA admin account." },
-    { "feature": "Door check-in scanner with a camera", "why": "Needs a phone camera and a QR scan." }
+    {
+      "feature": "Payments (Razorpay checkout, paid seat requests)",
+      "why": "Payments are not touched on live. Paid events fail with 'Couldn't start the payment'. Only free events are tested."
+    },
+    {
+      "feature": "Refunds",
+      "why": "Refunds are not touched on live."
+    },
+    {
+      "feature": "WhatsApp login and WhatsApp messages",
+      "why": "Not touched on live."
+    },
+    {
+      "feature": "Google login",
+      "why": "Needs the Google provider and a real Google account; tests log in with email and password instead."
+    },
+    {
+      "feature": "Push notifications to phones (admin-push)",
+      "why": "Not touched on live; only in-app notifications are tested."
+    },
+    {
+      "feature": "Second-admin approval (maker-checker, final step)",
+      "why": "Submitting any request alerts every main admin, including real people (not only QA_admin2). Skipped on live: assign host, host adds an event or a date, admin edits as a request, approve/reject, host applications, partner enquiries."
+    },
+    {
+      "feature": "Door check-in scanner with a camera",
+      "why": "Needs a phone camera and a QR scan."
+    }
   ]
 }

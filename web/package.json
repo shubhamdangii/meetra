@@ -14,6 +14,8 @@
     "qa": "node tests/qa/run-qa.mjs",
     "qa:seed": "node tests/seed/seed.mjs",
     "qa:reset": "node tests/seed/seed.mjs --reset-only",
+    "qa:dry-run": "node tests/seed/seed.mjs --dry-run",
+    "clean-for-launch": "node tests/seed/clean-for-launch.mjs",
     "qa:build": "node tests/qa/build-test-site.mjs",
     "qa:roles": "node tests/seed/verify-roles.mjs",
     "qa:config": "node tests/qa/config-default.test.mjs",

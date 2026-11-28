@@ -1,13 +1,11 @@
-import { test, expect, settle, stateFile, type Page } from "./fixtures";
-import fs from "node:fs";
-import path from "node:path";
+import { test, expect, settle, stateFile, tenv, type Page } from "./fixtures";
 
 /**
  * A host sees the guests of THEIR OWN events (confirmed count and profile photos, never names) and nothing about another host's events.
- * QA_Host hosts: QA_Open with location, QA_Full event, QA_Future event, QA_Past event, QA_To edit (one per device), QA_To cancel.
- * QA_Other Host (no login) hosts: QA_Other host event, which has a seat request from QA_User.
+ * QA_host hosts: QA_Open with location, QA_Full event, QA_Future event, QA_Past event, QA_To edit (one per device), QA_To cancel.
+ * QA_Other Host (no login) hosts: QA_Other host event, which has a seat request from QA_user.
  */
-const env = (k: string) => fs.readFileSync(path.resolve(__dirname, "../../../.secrets/test-supabase.env"), "utf8").split(/\r?\n/).find((l) => l.startsWith(k + "="))!.slice(k.length + 1);
+const env = (k: "TEST_SUPABASE_URL" | "TEST_SUPABASE_ANON_KEY") => tenv()[k];
 async function token(page: Page) {
   return page.evaluate(() => { const k = Object.keys(localStorage).find((x) => /^sb-.*auth-token$/.test(x))!; return JSON.parse(localStorage.getItem(k)!).access_token as string; });
 }
@@ -30,7 +28,7 @@ test.describe("host desk shows own events and their guests", () => {
     const card = page.locator("article, li, div").filter({ hasText: "QA_Full event" }).filter({ hasText: /WHO'?S COMING/i }).last();
     await expect(card).toContainText(/2\/2 confirmed|2 people are going/);
     await expect(card).not.toContainText("QA User");          // names are never shown to the host here
-    await expect(card).not.toContainText("QA_User");
+    await expect(card).not.toContainText("QA_user");
   });
 });
 

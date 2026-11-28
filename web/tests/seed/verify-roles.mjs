@@ -1,13 +1,14 @@
-// First permission check on meetra-test: log in as each role through the Supabase API and count what it can read.
+// First permission check on the live project with the QA accounts: log in as each role through the Supabase API and count what it can read.
 // Never prints keys, passwords or tokens. Run: node tests/seed/verify-roles.mjs
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readEnv, guard } from "./seed.mjs";
+import { readEnv, guard, liveConfig } from "./seed.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const env = readEnv(path.join(root, ".secrets/test-supabase.env"));
+const live = liveConfig();
+const env = { TEST_SUPABASE_URL: live.url, TEST_SUPABASE_ANON_KEY: live.anonKey };
 const acc = readEnv(path.join(root, ".secrets/test-accounts.env"));
-guard(env.TEST_SUPABASE_URL, env);
+guard(live.url);
 const url = env.TEST_SUPABASE_URL.replace(/\/+$/, "");
 
 async function login(key) {
@@ -23,7 +24,7 @@ const get = async (tok, table, query = "select=*") => {
 const rpc = async (tok, fn, body = {}) => (await (await fetch(`${url}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: env.TEST_SUPABASE_ANON_KEY, Authorization: "Bearer " + tok, "content-type": "application/json" }, body: JSON.stringify(body) })).json());
 
 const out = {};
-for (const key of ["ADMIN", "SUBADMIN", "HOST", "USER"]) {
+for (const key of ["ADMIN1", "ADMIN2", "SUBADMIN", "HOST", "USER"]) {
   const tok = await login(key);
   if (!tok) { console.log(`${key.toLowerCase()} | login FAILED`); continue; }
   const me = await rpc(tok, "me");
@@ -41,7 +42,7 @@ for (const key of ["ADMIN", "SUBADMIN", "HOST", "USER"]) {
 
 console.log("\nPermission checks");
 const pass = (ok, msg) => console.log(`${ok ? "PASS" : "FAIL"} | ${msg}`);
-const U = out.USER, H = out.HOST, A = out.ADMIN, S = out.SUBADMIN;
+const U = out.USER, H = out.HOST, A = out.ADMIN1, S = out.SUBADMIN, A2 = out.ADMIN2;
 pass(U.audit === "denied" && U.notifs === 0 && U.queue === "denied", `QA_user cannot read admin-only data (audit log: ${U.audit}, admin notifications: ${U.notifs}, admin request list: ${U.queue})`);
 pass(U.privs === 1, `QA_user sees only their own private profile (${U.privs} row)`);
 pass(U.reqs === 6, `QA_user sees only their own 6 seat requests (${U.reqs})`);
@@ -49,5 +50,6 @@ pass(Array.isArray(H.hostEv) && H.hostEv.length === 8 && !H.hostEv.includes("QA_
 pass(H.reqs === 0 && H.privs === 1, `QA_host cannot read other people's seat requests or private profiles directly (requests ${H.reqs}, private profiles ${H.privs})`);
 pass(H.audit === "denied" && H.queue === "denied", "QA_host cannot read the audit log or the admin request list");
 pass(U.hostEv === "denied", "QA_user cannot use the host event list");
-pass(A.role === "admin" && A.queue >= 6 && S.queue >= 6, `QA_admin (${A.queue}) and QA_subadmin (${S.queue}) both see all 6 requests in their request list`);
+pass(A2.role === "admin" && A2.queue >= 6, `QA_admin2 is a main admin too (${A2.queue})`);
+pass(A.role === "admin" && A.queue >= 6 && S.queue >= 6, `QA_admin1 (${A.queue}) and QA_subadmin (${S.queue}) both see all 6 requests in their request list`);
 pass(S.role === "member" && S.queue >= 6, "QA_subadmin is a member plus a city admin, not a main admin");

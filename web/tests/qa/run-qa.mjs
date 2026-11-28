@@ -1,9 +1,9 @@
-// One command for the whole QA run on meetra-test:  npm run qa
+// One command for the whole QA run on the live project (QA_ data only):  npm run qa
 //   1. config check  2. reset + seed QA data  3. role/permission check  4. build the test copy of the site
 //   5. role + lifecycle tests (iPhone WebKit, Pixel Chromium, Desktop Chrome)  6. old public tests on the QA site
 //   7. deployed-site smoke test (skip with --no-deployed)  8. TESTING.md + baseline report
 // Flags: --no-build  --no-deployed  --no-seed
-// Never prints credentials. Never touches the original project (every step has a guard).
+// Never prints credentials. Seed/reset refuse any URL but the project in config.ts and delete only QA_ data.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";

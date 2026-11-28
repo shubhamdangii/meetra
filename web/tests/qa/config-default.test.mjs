@@ -12,7 +12,7 @@ const run = (env) => JSON.parse(sh(["--experimental-strip-types", "--no-warnings
 
 // the original values, read from the committed file (git HEAD), not from the working copy
 const head = execFileSync("git", ["show", "HEAD:web/src/lib/config.ts"], { cwd: web, encoding: "utf8" });
-const liveUrl = head.match(/supabaseUrl:\s*"([^"]+)"/)[1], liveKey = head.match(/supabaseAnonKey:\s*"([^"]+)"/)[1];
+const liveUrl = head.match(/supabaseUrl:\s*(?:process\.env\.\w+\s*\|\|\s*)?"([^"]+)"/)[1], liveKey = head.match(/supabaseAnonKey:\s*(?:process\.env\.\w+\s*\|\|\s*)?"([^"]+)"/)[1];
 
 let fails = 0;
 const check = (ok, msg) => { console.log((ok ? "PASS" : "FAIL") + " | " + msg); if (!ok) fails++; };

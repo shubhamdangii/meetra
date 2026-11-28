@@ -1,4 +1,4 @@
-import { test, expect, settle, stateFile, planRef, type Page } from "./fixtures";
+import { test, expect, settle, stateFile, planRef, tenv, type Page } from "./fixtures";
 
 /** A sub-admin runs ONE city (Ahmedabad). They must not see or change another city's events, and have a smaller desk than the main admin. */
 async function accessToken(page: Page): Promise<string> {
@@ -30,9 +30,7 @@ test.describe("sub-admin: city desk", () => {
   test("sub-admin cannot change a Jaipur event through the API either", async ({ page }) => {
     await page.goto("admin/"); await settle(page, 2500);
     const tok = await accessToken(page);
-    const env = (await import("node:fs")).readFileSync((await import("node:path")).resolve(__dirname, "../../../.secrets/test-supabase.env"), "utf8");
-    const get = (k: string) => env.split(/\r?\n/).find((l) => l.startsWith(k + "="))!.slice(k.length + 1);
-    const base = get("TEST_SUPABASE_URL"), anon = get("TEST_SUPABASE_ANON_KEY");
+    const { TEST_SUPABASE_URL: base, TEST_SUPABASE_ANON_KEY: anon } = tenv();
     const r = await fetch(`${base}/rest/v1/custom_plans?title=eq.QA_Jaipur%20event`, {
       method: "PATCH", headers: { apikey: anon, Authorization: "Bearer " + tok, "content-type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ blurb: "changed by a sub-admin" }),
     });

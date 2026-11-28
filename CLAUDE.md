@@ -60,21 +60,46 @@ Before changing any website file, for every point I give you, first reply with:
 3. Anything that could break or any question you have.
 Then STOP and wait. Change files only after I reply "approved" (or "approved except <point>"). Writing and running tests that only reproduce a bug does not need approval. Changing website code or database migrations does. After the change, show a short summary of what was actually changed, file by file.
 
+# SCOPE RULE (mandatory)
+- Change ONLY what is in my numbered points list. Never add or change anything else, even if you think it is a bug or an improvement. If you find something extra, tell me in one line and wait. Do not change it.
+- Do NOT change the "30+ hosted plans" headline. It is intentional: it shows "30+" until the real count passes 30.
+- In every approval request, explain in simple Hinglish: (1) which of MY points this is for (use my point number), (2) what will visibly change on the website, in plain words, (3) the file names. Keep it short. No technical jargon.
+
+# HUMAN-LIKE END-TO-END TESTING (mandatory)
+Test every feature the way a real person would use it, as the real chain of roles, not as isolated clicks. "Done" means the whole chain worked in the browser with screenshots.
+
+Chains that must be tested every time they are touched, by actually performing each step:
+1. Host proposes an event with every field filled: title, categories, dates and times, scheduling or repeat dates, address, Google Maps link, seats, price, house rules. Also test with the optional fields empty (for example no Maps link).
+2. Switch to an admin account and check that the request really ARRIVED in the admin desk with all the data the host entered (dates, Maps link, location, host). Open the Maps link and check it works.
+3. Do the second admin approval (QA_admin2) and check that the event goes live on Explore, the event page, the host desk, the dashboard counts and the Events library, all with the same dates and details.
+4. Assign a host: open the picker, assign, then check that the host sees the event, the event page shows the host, and the dashboard counts match.
+5. As QA_user: request a seat, check the host and admin see the request, approve it, check the user's notification and the seat count everywhere.
+6. Add a date, edit a date, change the schedule, cancel, delete and set inactive, and check that every screen updates and nothing is left inconsistent.
+7. After every step, check the browser console and that the data is identical on every role's screen.
+Each step needs a screenshot or database proof. If any link in the chain fails, report it as a bug, even if a smaller test passes.
+
+NOTIFICATIONS: These chains notify other main admins. akash.apply4@gmail.com is a friend's account. Never act as him. Only run the chains that notify him after I say "akash is informed". Until then, list them as NOT TESTED. Use only QA_ titles, and clean up all QA_ data after each run.
+
+REPORT: At the end of every task give a table: Chain step | Role | Result | Evidence, and list every step that was NOT tested and why. Never write "all working" if any step is not tested.
+
 # ACCOUNTS (no passwords or keys here, ever)
-Two separate Supabase projects exist. Accounts do NOT carry over between them.
+There is ONE Supabase project: live (https://shubhamdangii.github.io/meetra/, project eqzwolwhecotwiphmjrd). The separate meetra-test project was deleted on 2026-11-28. All testing happens on live with fake QA_ data, because there are no real users and no real domain yet. The old rule "never touch the original project" is replaced by: touch QA_ data only.
 
-## meetra-test (the QA project)
-- Holds the QA accounts that the seed script creates: QA admin, QA sub-admin (Ahmedabad), QA host, plain QA members. All names and emails start with QA_ or use the fake domain meetra-test.invalid.
-- Their logins live only in the git-ignored local secrets folder. They work ONLY on meetra-test and never on the live site.
-- Automated tests, the seed script and "reset QA data" run here. Safe to create and delete QA_ data.
+## QA data and accounts (live)
+- QA accounts are created by the seed script (`npm --prefix web run qa:seed`) with email + password: QA_admin1, QA_admin2 (both main admins), QA_subadmin (Ahmedabad), QA_host, QA_user. Emails are `qa-<name>@example.invalid`. Random passwords are written to the git-ignored `.secrets/test-accounts.env` and are never printed.
+- The seed and reset (`qa:seed`, `qa:reset`, `qa:dry-run`) refuse any URL except the project in `web/src/lib/config.ts`, and delete only QA_ events, QA_ host profiles and `qa-*@example.invalid` accounts. `npm --prefix web run qa:dry-run` shows what would be created and deleted without writing.
+- Playwright runs against a local build pointed at live (`npm --prefix web run qa:build`). The env-variable defaults in config.ts are unchanged.
+- Never modify or delete a non-QA row, the owner accounts, "Board Games & Chai" or host profile 23.
+- Payments, refunds, WhatsApp, Google login and push are not touched and not tested on live.
+- NEVER run a flow that notifies a real person. Any change request (assign host, host adds an event or date, admin edits as a request, host application, partner enquiry) notifies EVERY other main admin, including real ones. Those flows are skipped and listed as NOT TESTED in TESTING.md. Never act as or approve through a friend's admin account.
+- Before launch run `npm --prefix web run clean-for-launch` (dry run first) and follow `docs/PRE-LAUNCH.md`.
 
-## LIVE (https://shubhamdangii.github.io/meetra/, Supabase project eqzwolwhecotwiphmjrd)
-- Only real Google accounts. No QA accounts exist here and none may be created.
-- Main admins are decided by email, not by a role column: an account is admin only if its CONFIRMED email is in public.main_admin_emails (set by migration 20261123000000: "main admin 1" and "main admin 2"). The old "update users set role = 'admin'" in SETUP-LOGIN.md no longer grants admin.
+## Live admins and hosts
+- Main admins are decided by email, not by a role column: an account is admin only if its CONFIRMED email is in public.main_admin_emails. The old "update users set role = 'admin'" in SETUP-LOGIN.md no longer grants admin.
 - A working host is a row in public.host_profiles with user_id = the member's users.id, status 'active', deleted_at null. Normally created by "Approve as host" on an application, which the OTHER main admin must approve (maker-checker).
-- Shubham's own live login is the only account to use for live checks. Never ask for or type a password or code. If not logged in, ask the user to log in in the browser pane.
-- Live testing: no payments, refunds, WhatsApp or push. Prefix everything with QA_ and delete it afterwards. Never touch real events (for example "Board Games & Chai"). No direct database edits and no migrations from Claude.
+- Shubham logs in himself in the browser pane, one account at a time. Never ask for or type a password or code.
 - The deployed site is the last pushed commit on main. Uncommitted local changes and unapplied migrations are NOT live, so test results on live may differ from localhost.
+- Database migrations: show the exact SQL and wait for "approved" before applying. Never touch non-QA rows.
 
 ## Owner accounts and temporary test admin (live)
 - Real email addresses are NOT written in this file (the repo is public). The mapping from label to email is in the git-ignored local file accounts-map.md inside the local secrets folder. Read it there when you need an email.

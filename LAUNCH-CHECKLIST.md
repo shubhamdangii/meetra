@@ -36,3 +36,6 @@
 - Host waiting list, games page (7 decks, 14 party games)
 - Security: database rules on every table, no secret keys in the site, CSP
 - robots.txt and sitemap for Google
+
+## Before launch: remove test data
+- Follow `docs/PRE-LAUNCH.md` (`npm --prefix web run clean-for-launch`): removes all QA_ data, the QA accounts and the temporary test admin.

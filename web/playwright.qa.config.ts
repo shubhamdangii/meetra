@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// QA suite: runs against a LOCAL build of the site that talks to meetra-test (see tests/qa/build-test-site.mjs).
-// Override the site with QA_BASE_URL only to point at another copy built against meetra-test.
+// QA suite: runs against a LOCAL build of the site that talks to the live project with QA_ data (see tests/qa/build-test-site.mjs).
+// Override the site with QA_BASE_URL only to point at another copy of the site.
 const baseURL = (process.env.QA_BASE_URL ?? "http://localhost:3100/meetra/").replace(/\/?$/, "/");
 const dev = { iphone: devices["iPhone 13"], pixel: devices["Pixel 7"], desktop: devices["Desktop Chrome"] };
 

@@ -8,18 +8,12 @@ export const ROLES = ["admin", "subadmin", "host", "user"] as const;
 export type Role = (typeof ROLES)[number];
 export const stateFile = (r: Role) => path.resolve(__dirname, "../../test-results/qa-auth", `${r}.json`);
 /** Logins live only in .secrets and are never printed. */
-export const creds = (r: Role) => { const a = readEnv(path.join(ROOT, ".secrets/test-accounts.env")); return { email: a[`QA_${r.toUpperCase()}_EMAIL`], password: a[`QA_${r.toUpperCase()}_PASSWORD`] }; };
-const ORIGINAL_PROJECT = "eqzwolwhecotwiphmjrd";   // the original project: QA tests must never reach it
+export const creds = (r: Role | "admin2") => { const a = readEnv(path.join(ROOT, ".secrets/test-accounts.env")); const k = (r === "admin" ? "admin1" : r).toUpperCase(); return { email: a[`QA_${k}_EMAIL`], password: a[`QA_${k}_PASSWORD`] }; };
+/** Flows that create an approval request notify every other main admin, which on the live project means real people. They are skipped on purpose. */
+export const NOTIFIES_REAL_ADMINS = "NOT TESTED on live: this flow notifies every other main admin (real people)";
 
-/** Every QA test: any request to the original project is blocked and fails the test. */
-export const test = base.extend<{ guard: void }>({
-  guard: [async ({ context }, use) => {
-    const hits: string[] = [];
-    await context.route((u) => u.href.includes(ORIGINAL_PROJECT), (route) => { hits.push(route.request().url().slice(0, 60)); return route.abort(); });
-    await use();
-    expect(hits, "a request tried to reach the ORIGINAL project").toEqual([]);
-  }, { auto: true }],
-});
+/** One Supabase project only (live). QA tests create and use QA_ data on it; see tests/seed/seed.mjs for the guard. */
+export const test = base;
 export { expect };
 export type { Page, Locator };
 
@@ -35,7 +29,12 @@ export function collectErrors(page: Page) {
 }
 
 // ---------- helpers shared by the QA specs ----------
-export const tenv = () => readEnv(path.join(ROOT, ".secrets/test-supabase.env"));
+/** The project URL and public anon key, read from web/src/lib/config.ts (public by design; no secret involved). */
+export const tenv = () => {
+  const src = fs.readFileSync(path.join(ROOT, "web/src/lib/config.ts"), "utf8");
+  const get = (k: string) => src.match(new RegExp(k + String.raw`:\s*(?:process\.env\.\w+\s*\|\|\s*)?"([^"]+)"`))![1];
+  return { TEST_SUPABASE_URL: get("supabaseUrl"), TEST_SUPABASE_ANON_KEY: get("supabaseAnonKey") };
+};
 /** plan_ref (the id used in event page URLs) of a QA_ event, looked up through the public API. */
 export async function planRef(title: string): Promise<string> {
   const e = tenv();

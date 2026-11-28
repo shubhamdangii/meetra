@@ -1,13 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import fs from "node:fs";
-import path from "node:path";
+import { tenv } from "../qa/fixtures";
 
 // Logged-out visitor checks on the live site. Logged-in roles are covered by tests/db (rules) and manual checks.
 const istYmd = (offsetDays: number) => new Date(Date.now() + 5.5 * 36e5 + offsetDays * 864e5).toISOString().slice(0, 10).replace(/-/g, "");
-// The 4 tests marked "QA site" need real events, which only exist on the QA copy of the site (meetra-test, seeded with QA_ events).
+// The 4 tests marked "QA site" need real events, which only exist on the QA copy of the site (the local build, with the QA_ events seeded on the live project).
 // Run them with:  BASE_URL=http://localhost:3100/meetra/ npx playwright test   (the /qa command does this).
 const QA_SITE = /localhost:3100/.test(process.env.BASE_URL ?? "");
-const qaEnv = (k: string) => fs.readFileSync(path.resolve(__dirname, "../../../.secrets/test-supabase.env"), "utf8").split("\n").map((l) => l.trim()).find((l) => l.startsWith(k + "="))!.slice(k.length + 1);
+const qaEnv = (k: "TEST_SUPABASE_URL" | "TEST_SUPABASE_ANON_KEY") => tenv()[k];
 async function qaPlanRef(title: string) {
   const r = await fetch(`${qaEnv("TEST_SUPABASE_URL")}/rest/v1/custom_plans?select=plan_ref&deleted_at=is.null&order=starts_at.asc&title=eq.${encodeURIComponent(title)}`, { headers: { apikey: qaEnv("TEST_SUPABASE_ANON_KEY") } });
   const j = (await r.json()) as { plan_ref: string }[]; if (!j[0]) throw new Error("QA event missing: " + title);

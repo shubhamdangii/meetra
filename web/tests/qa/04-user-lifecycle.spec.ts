@@ -1,7 +1,7 @@
 import { test, expect, settle, stateFile, planRef, openAccountMenu, type Page } from "./fixtures";
 
 /**
- * User lifecycle on meetra-test, on a FREE QA event (paid events need Razorpay, which is not available on the test project):
+ * User lifecycle, on a FREE QA event (paid events need Razorpay, which is not available on the test project):
  * user requests a seat -> sees it pending -> the team approves -> user gets a notification and is "in" -> user cancels.
  * Also: past plans show up under "Past plans" with the review prompt.
  */
@@ -32,7 +32,7 @@ test.describe("user requests a seat", () => {
 
   test("user sends the request, double click sends it once, refresh keeps it pending", async ({ page }) => {
     await page.goto("event/?id=" + ref); await settle(page, 3500);
-    await page.locator("#nm").fill("QA_User");
+    await page.locator("#nm").fill("QA_user");
     await page.locator("#book button[type=submit]").dblclick();
     await expect(page.locator(".status-card.s-pending")).toBeVisible({ timeout: 20_000 });
     await page.reload(); await settle(page, 3500);

@@ -1,4 +1,6 @@
-import { test, expect, settle, stateFile, field, dtLocal, type Page } from "./fixtures";
+import { test, expect, NOTIFIES_REAL_ADMINS, settle, stateFile, field, dtLocal, type Page } from "./fixtures";
+
+test.skip(true, NOTIFIES_REAL_ADMINS);   // a host request alerts every main admin; see TESTING.md
 
 // Kept in its own file (not serial) so a failure here does not hide the rest of the host lifecycle.
 const toast = (page: Page) => page.locator('[class*="toast"]').first();
