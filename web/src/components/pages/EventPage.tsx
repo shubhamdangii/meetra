@@ -319,7 +319,7 @@ export default function EventPage() {
                   {auth.enabled && (
                     <div className="priority">
                       <b>Seats go to the most complete profiles first.</b>
-                      {score == null ? <span>Fill in your profile after logging in to move up the list.</span> : <>
+                      {score == null ? (auth.session ? null : <span>Log in and fill in your profile to move up the list.</span>) : <>
                         <span>Your profile score: <span className="score-pill">{score}/100</span></span>
                         {score < 100 ? <Link href="/profile/">Add details to move up →</Link> : <span>Top priority ✓</span>}
                       </>}

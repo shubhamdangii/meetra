@@ -6,6 +6,7 @@ import { useApp } from "../AppProvider";
 import { EventForm, type AdminHost, type EventFormValue, eventToForm, formToPayload, validateEvent } from "./Events";
 import { HostForm, type HostFormValue, hostPayload, hostToForm, validateHost } from "./Hosts";
 import { Chip, Diff, Empty, Modal, fmtDT, useAsk, useCall, useRpc } from "./shared";
+import { useEventExtras } from "./Events";
 
 export type Req = {
   id: number; req_no: string; entity: "event" | "host" | "team"; action: string; target_id: number | null; target_label: string;
@@ -36,6 +37,8 @@ export function AdminApprovals({ focus, onChanged }: { focus?: string; onChanged
 
   const list = (r.data ?? []).filter((x) => tab === "all" || (tab === "waiting" ? x.status === "pending" && !x.mine : tab === "mine" ? x.mine && ["pending", "rejected"].includes(x.status) : x.status === tab));
   const count = (t: string) => (r.data ?? []).filter((x) => t === "all" || (t === "waiting" ? x.status === "pending" && !x.mine : t === "mine" ? x.mine && ["pending", "rejected"].includes(x.status) : x.status === t)).length;
+  const openReq = (r.data ?? []).find((q) => q.id === openId);
+  const loc = useEventExtras(openReq?.entity === "event" && openReq.target_id ? [openReq.target_id] : null).get(openReq?.target_id ?? -1);
   const done = () => { r.reload(); hs.reload(); app.reloadCustom?.(); onChanged?.(); };
 
   async function decide(x: Req, approve: boolean) {
@@ -96,6 +99,13 @@ export function AdminApprovals({ focus, onChanged }: { focus?: string; onChanged
               <Chip s={x.status} /></div>
             {x.maker_note && <p className="adm-quote">“{x.maker_note}”</p>}
             <Diff oldV={x.old_value} newV={x.new_value} hostNames={hostNames} />
+            {x.entity === "event" && loc && (loc.maps_url || loc.address || loc.landmark || loc.meeting_point) && (
+              <div className="adm-loc"><b>📍 Exact location</b>
+                {loc.maps_url && <a href={loc.maps_url} target="_blank" rel="noopener noreferrer">Open in Google Maps ↗</a>}
+                {loc.address && <span>Address: {loc.address}</span>}
+                {loc.landmark && <span>Landmark: {loc.landmark}</span>}
+                {loc.meeting_point && <span>Meeting point: {loc.meeting_point}</span>}
+              </div>)}
             {x.decided_at && <p className="adm-decided"><b>{x.status === "approved" ? "Approved" : x.status === "rejected" ? "Rejected" : "Closed"}</b>{x.checker_name ? ` by ${x.checker_name}` : ""} · {fmtDT(x.decided_at)}
               {x.checker_remark && <><br />Remark: “{x.checker_remark}”</>}</p>}
             <div className="acts">
