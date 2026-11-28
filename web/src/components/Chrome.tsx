@@ -180,6 +180,13 @@ function TabBar({ active }: { active: string }) {
     document.addEventListener("focusin", on); document.addEventListener("focusout", off);
     return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
   }, []);
+  // A focused field that is removed from the page (login form after a successful login, a closed form) never fires focusout in WebKit,
+  // which left the bar hidden for good. Re-check what is really focused whenever the page or the login changes.
+  useEffect(() => {
+    const isField = (t: Element | null) => t instanceof HTMLElement && (t.matches("input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),textarea,select") || t.isContentEditable);
+    const id = setTimeout(() => setTyping(isField(document.activeElement)), 80);
+    return () => clearTimeout(id);
+  }, [path, session]);
   // every tab tap lands at the top of the page (same tab again = scroll up)
   const toTop = (href: string) => {
     const norm = (p: string) => p.replace(/\/$/, "") || "/";

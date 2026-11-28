@@ -33,6 +33,7 @@ const to24 = (label: string) => {
 const pad = (n: number) => String(n).padStart(2, "0");
 /** "2026-11-29T22:00" → same time on the next day (an event that ends after midnight) */
 const nextDay = (v: string) => { const d = new Date(v); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${v.slice(-5)}`; };
+const fmtDay = (s: string) => new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 const spring = { type: "spring", stiffness: 420, damping: 32 } as const;
 const cats = (CATEGORIES as { id: string; label: string; icon: string }[]).filter((c) => c.id !== "all");
@@ -101,6 +102,16 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
     const cf = lockCity ?? (city || null);
     return [...(events ?? []).filter((e) => !cf || e.city_slug === cf).map(eventCard), ...exampleCards(cf, hiddenKeys)];
   }, [events, hiddenKeys, city, lockCity]);
+  /** Active dates of every event with the same title in the same city, so each card can say "Active on 17 Jan, also 24 Jan". */
+  const activeDays = useMemo(() => {
+    const m = new Map<string, { id: number; at: string }[]>();
+    for (const e of events ?? []) {
+      if (e.is_active === false || e.status !== "approved" || e.display_status !== "active") continue;
+      const k = `${e.city_slug}|${e.title}`; m.set(k, [...(m.get(k) ?? []), { id: e.id, at: e.starts_at }]);
+    }
+    for (const v of m.values()) v.sort((a, b) => a.at.localeCompare(b.at));
+    return m;
+  }, [events]);
   const counts = useMemo(() => all.reduce((m, c) => { const t = tabOf(c); m[t] = (m[t] ?? 0) + 1; return m; }, {} as Record<Tab, number>), [all]);
   const sortOk = (c: Card) => (sort.cat === "all" || c.cat === sort.cat) && (sort.aud === "all" || c.aud === sort.aud) && (sort.part === "all" || c.part === sort.part);
   const cards = all.filter((c) => tabOf(c) === tab && sortOk(c) && (!q || `${c.title} ${c.area} ${c.sub} ${(c.variants ?? []).map((v) => `${v.area} ${cityName(v.city)}`).join(" ")}`.toLowerCase().includes(q.toLowerCase())));
@@ -253,10 +264,14 @@ export function EventLibrary({ mode, events, hosts = [], city: lockCity, onChang
                   {c.variants && c.variants.length > 1
                     ? <span className="lib-cities" aria-label={`Runs in ${c.variants.map((v) => cityName(v.city)).join(" and ")}`}>{c.variants.map((v) => <span key={v.city} title={v.area}>📍 {cityName(v.city)}</span>)}</span>
                     : <span className="lib-meta"><span aria-hidden="true">📍</span><span>{c.area ? `${c.area}, ` : ""}{cityName(c.city)}</span></span>}
+                  {e && <span className="lib-active">{live && c.active
+                    ? <>🟢 Active on <b>{fmtDay(e.starts_at)}</b>{(() => { const o = (activeDays.get(`${e.city_slug}|${e.title}`) ?? []).filter((x) => x.id !== e.id); return o.length ? <> · also {o.map((x) => fmtDay(x.at)).join(", ")}</> : null; })()}</>
+                    : <>⚪ Not active · {fmtDay(e.starts_at)}</>}</span>}
+                  {e && live && e.confirmed > 0 && <span className="lib-booked">🎟 {e.confirmed} booked{e.pending > 0 ? ` · ${e.pending} waiting` : ""}</span>}
                   {e && (canTools ? (
-                    <button type="button" className={`lib-hostbtn${e.host_name ? "" : " empty"}`} onClick={() => setHostFor(e)} aria-label={e.host_name ? `Host: ${e.host_name}. Change host` : "Assign a host"}>
+                    <button type="button" className={`lib-hostbtn${e.host_name ? "" : " empty"}${!e.host_name && e.confirmed > 0 ? " needs" : ""}`} onClick={() => setHostFor(e)} aria-label={e.host_name ? `Host: ${e.host_name}. Change host` : "Assign a host"}>
                       <span className="lib-av" aria-hidden="true">{e.host_name ? initials(e.host_name) : "+"}</span>
-                      <span className="nm">{e.host_name ?? "Assign a host"}</span><i className="go" aria-hidden="true">›</i>
+                      <span className="nm">{e.host_name ?? (e.confirmed > 0 ? "Needs a host - assign one" : "Assign a host")}</span><i className="go" aria-hidden="true">›</i>
                     </button>
                   ) : (
                     <span className={`lib-hostbtn static${e.host_name ? "" : " empty"}`}><span className="lib-av" aria-hidden="true">{e.host_name ? initials(e.host_name) : "?"}</span><span className="nm">{e.host_name ?? "Host announced soon"}</span></span>

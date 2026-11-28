@@ -9,6 +9,7 @@ import { useAuth } from "../AuthProvider";
 import { type MeetEvent, eventUrl, hostNames, relDay } from "@/lib/events";
 import { Empty, Pager, cityName, fmtDT, usePaged } from "./shared";
 import { rupees } from "@/lib/razorpay";
+import { CONFIG } from "@/lib/config";
 
 type R = {
   request_id: number; plan_ref: string; plan_date: string; city_slug: string; display_name: string; full_name: string | null; avatar_url: string | null;
@@ -127,7 +128,7 @@ export function SeatRequests({ cities }: { cities: string[] }) {
               <dl className="rq-facts">
                 <div><dt>Requested</dt><dd>{fmtDT(r.requested_at)}</dd></div>
                 <div><dt>Profile</dt><dd><span className="score-pill">{r.profile_score}</span></dd></div>
-                <div><dt>Verified</dt><dd>{r.phone_verified ? "WhatsApp ✓" : "WhatsApp ✕"}{r.email_verified ? " · Email ✓" : ""}</dd></div>
+                <div><dt>Verified</dt><dd>{CONFIG.mobileVerification ? (r.phone_verified ? "WhatsApp ✓" : "WhatsApp ✕") : ""}{r.email_verified ? `${CONFIG.mobileVerification ? " · " : ""}Email ✓` : "Email ✕"}</dd></div>
                 <div><dt>Payment</dt><dd><span className={`pay-chip ${pay[0]}`}>{pay[1]}</span></dd></div>
               </dl>
               {(ab?.three_words?.length || r.icebreaker || ab?.prompt_a) ? <div className="rq-about">

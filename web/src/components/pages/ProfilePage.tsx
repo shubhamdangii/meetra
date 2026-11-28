@@ -31,20 +31,15 @@ function linkedinUrl(v: string) {
   return m ? `https://www.linkedin.com/in/${m[1]}` : undefined;
 }
 
-// Same weights as db/schema.sql (private.refresh_profile_status).
-function scoreParts(f: Form, avatar: string | null, phoneVerified: boolean, emailVerified: boolean): [string, number, boolean][] {
+// Priority score: 7 parts, exactly 100. Same weights as the database (private.refresh_profile_status, migration 20261128060000).
+function scoreParts(f: Form, avatar: string | null, emailVerified: boolean, words: boolean, prompt: boolean): [string, number, boolean][] {
   const bio = f.bio.trim().length;
   return [
-    ["photo", 15, !!avatar], ["first name", 5, !!f.displayName.trim()], ["city", 5, !!f.city], ["what you do", 5, !!f.occupation.trim()],
-    ["bio of 20+ characters", 10, bio >= 20], ["longer bio (80+ characters)", 10, bio >= 80],
-    ["full name", 5, f.fullName.trim().length >= 2], ["date of birth", 5, !!f.dob], ["gender", 5, !!f.gender],
-    ["WhatsApp number", 5, /^[6-9]\d{9}$/.test(f.phone)], ["verified WhatsApp", 10, phoneVerified],
-    ["email", 5, /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())], ["verified email", 5, emailVerified],
-    ["house rules", 10, f.rules],   // Instagram / LinkedIn are optional and don't count (same weights as the database)
+    ["photo", 20, !!avatar], ["bio (20+ characters)", 15, bio >= 20], ["longer bio (80+ characters)", 10, bio >= 80],
+    ["house rules", 15, f.rules], ["email verified", 15, emailVerified],
+    ["three words", 10, words], ["prompt answer", 15, prompt],
   ];
 }
-
-
 
 const HOUSE_RULES = [
   "I'll be kind and include everyone at the table.",
@@ -107,14 +102,18 @@ export default function ProfilePage() {
   const [ticks, setTicks] = useState<boolean[]>(() => HOUSE_RULES.map(() => false));
   useEffect(() => { if (loaded) setTicks(HOUSE_RULES.map(() => f.rules)); }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
   const tick = (i: number, on: boolean) => { const t = ticks.map((x, j) => (j === i ? on : x)); setTicks(t); set("rules", t.every(Boolean)); };
-  const parts = scoreParts(f, avatar, !!me?.phone_verified, !!me?.email_verified);
+  const quest = useQuestData();
+  const parts = scoreParts(f, avatar, !!me?.email_verified, (quest.data?.three_words?.length ?? 0) === 3, !!quest.data?.prompt_a?.trim());
   const score = parts.reduce((s, p) => s + (p[2] ? p[1] : 0), 0);
   const todo = parts.filter((p) => !p[2]).sort((a, b) => b[1] - a[1]);
   const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })();
 
   const [cropFile, setCropFile] = useState<File | null>(null);
-  const quest = useQuestData();
   const invites = useInvites();
+  // the three words and the prompt are saved by the quest cards (their own save); the database recomputes the score, so fetch it again
+  const questKey = quest.data ? `${quest.data.three_words?.length ?? 0}|${quest.data.prompt_a ?? ""}` : "";
+  const firstQuest = useRef(true);
+  useEffect(() => { if (!questKey) return; if (firstQuest.current) { firstQuest.current = false; return; } auth.refreshMe(); }, [questKey]); // eslint-disable-line react-hooks/exhaustive-deps
   async function upload(file: File) {
     if (!auth.client || !auth.session || !me) { setAvatar(URL.createObjectURL(file)); return; }
     setPhotoMsg("Uploading…");
@@ -153,14 +152,14 @@ export default function ProfilePage() {
     if (li === undefined) return setMsg({ text: "Use your LinkedIn profile link, like linkedin.com/in/yourname.", ok: false });
     if (f.dob && f.dob > maxDob) return setMsg({ text: "You must be 18 or older to join.", ok: false });
     const phoneVal = /^[6-9]\d{9}$/.test(f.phone) ? "+91" + f.phone : null;
-    if (f.phone && !phoneVal) return setMsg({ text: "Enter a valid 10-digit WhatsApp number.", ok: false });
+    if (CONFIG.mobileVerification && f.phone && !phoneVal) return setMsg({ text: "Enter a valid 10-digit WhatsApp number.", ok: false });
     setSaving(true); setMsg({ text: "Saving…", ok: true });
     const pub = { display_name: f.displayName.trim() || "New member", city_slug: f.city || null, occupation: f.occupation.trim() || null, bio: f.bio.trim() || null };
     const pri: Record<string, unknown> = {
       full_name: f.fullName.trim() || null, date_of_birth: f.dob || null, gender: f.gender || null, instagram_url: insta, linkedin_url: li,
       heard_from: f.heard || null, accepted_rules_at: f.rules ? acceptedAt || new Date().toISOString() : null,
     };
-    if (!me.phone_verified) pri.phone = phoneVal;                 // verified values are locked
+    if (CONFIG.mobileVerification && !me.phone_verified) pri.phone = phoneVal;                 // verified values are locked
     if (!me.email_verified) pri.email = f.email.trim().toLowerCase() || null;
     // one after the other, then one final score recompute (two parallel saves could leave a stale score everywhere else)
     const r1 = await auth.client.from("users").update(pub).eq("id", me.id);
@@ -199,10 +198,11 @@ export default function ProfilePage() {
             <motion.i animate={{ width: `${score}%` }} transition={{ type: "spring", stiffness: 110, damping: 20 }} /><span className="ps-mark" title="High priority from 70" />
           </div>
           <div className="ps-verify">
-            {([["WhatsApp", !!me?.phone_verified, "#phone"], ["Email", !!me?.email_verified, "#email"]] as const).map(([l, ok, href]) => (
+            {([["WhatsApp", !!me?.phone_verified, "#phone"], ["Email", !!me?.email_verified, "#email"]] as const).filter(([l]) => CONFIG.mobileVerification || l !== "WhatsApp").map(([l, ok, href]) => (
               <a key={l} href={href} className={`ps-v ${ok ? "ok" : ""}`}><i aria-hidden="true">{ok ? "✓" : "!"}</i><span>{l}</span><b>{ok ? "Verified" : "Not verified"}</b></a>
             ))}
           </div>
+          <p className="ps-sum">Done: <b>{parts.filter((p) => p[2]).length}</b> of {parts.length} · Left: <b>{parts.filter((p) => !p[2]).reduce((n, p) => n + p[1], 0)}</b> points to get</p>
           <ul className="ps-checks" aria-label="Ways to raise your score">
             {[...todo, ...parts.filter((p) => p[2])].map(([l, w, ok]) => (
               <motion.li layout key={l} className={ok ? "ok" : ""}><i aria-hidden="true">{ok ? "✓" : ""}</i><span>{l[0].toUpperCase() + l.slice(1)}</span><b>+{w}</b></motion.li>
@@ -257,11 +257,13 @@ export default function ProfilePage() {
               <select id="gender" value={f.gender} onChange={(e) => set("gender", e.target.value)}>
                 <option value="">Choose…</option><option value="woman">Woman</option><option value="man">Man</option><option value="non_binary">Non-binary</option><option value="prefer_not_to_say">Prefer not to say</option>
               </select></div>
+            {CONFIG.mobileVerification && (
             <div className="full verify-row">
               <div className="field"><label htmlFor="phone">WhatsApp number <span className={`vtag ${me?.phone_verified ? "yes" : "no"}`}>{me?.phone_verified ? "✓ verified" : "not verified"}</span></label>
                 <div className="phone-row"><span>+91</span><input id="phone" inputMode="numeric" maxLength={10} autoComplete="tel-national" readOnly={!!me?.phone_verified} value={f.phone} onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} /></div></div>
               {auth.enabled && !me?.phone_verified && CONFIG.loginWithWhatsApp && <button className="btn btn-white btn-sm" type="button" onClick={verifyWhatsApp}>Verify</button>}
             </div>
+            )}
             <AnimatePresence>
               {link && (
                 <motion.div className="full" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>

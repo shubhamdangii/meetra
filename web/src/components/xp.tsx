@@ -50,7 +50,7 @@ export function XpCard({ score, hasPhoto, bio, phoneVerified, words = false, pro
   const badges = useMemo(() => [
     { id: "face", em: "📸", name: "Face card", how: "Add a clear photo", ok: hasPhoto, href: "#photo" },
     { id: "story", em: "✍️", name: "Storyteller", how: "Write a bio of 80+ characters", ok: bio >= 80, href: "#bio" },
-    { id: "verified", em: "✅", name: "Verified", how: "Verify your WhatsApp", ok: phoneVerified, href: "#phone" },
+    ...(CONFIG.mobileVerification ? [{ id: "verified", em: "✅", name: "Verified", how: "Verify your WhatsApp", ok: phoneVerified, href: "#phone" }] : []),
     { id: "complete", em: "💯", name: "All in", how: "Reach a priority score of 70", ok: score >= 70, href: "#bio" },
     { id: "picker", em: "🔥", name: "Plan picker", how: "Swipe right on 10 plans", ok: local.right >= 10, href: "/swipe/" },
     { id: "saver", em: "💖", name: "Collector", how: "Save 5 plans", ok: savedIds.length >= 5, href: "/events/" },

@@ -16,12 +16,19 @@ const b64ToBytes = (s: string) => { const p = "=".repeat((4 - (s.length % 4)) % 
 export function useNotifications() {
   const auth = useAuth(); const { toast } = useApp();
   const [list, setList] = useState<Note[]>([]);
+  const [unread, setUnread] = useState(0);   // the real number of unread notifications, not just the ones in the list below (which shows the latest 30)
   const uid = auth.me?.id;
+  const loadCount = useCallback(async () => {
+    if (!auth.client || !uid) { setUnread(0); return; }
+    const { count } = await auth.client.from("admin_notifications").select("id", { count: "exact", head: true }).is("read_at", null);
+    setUnread(count ?? 0);
+  }, [auth.client, uid]);
   const load = useCallback(async () => {
     if (!auth.client || !uid) { setList([]); return; }
     const { data } = await auth.client.from("admin_notifications").select("*").order("created_at", { ascending: false }).limit(30);
     setList((data as Note[]) ?? []);
-  }, [auth.client, uid]);
+    loadCount();
+  }, [auth.client, uid, loadCount]);
   useEffect(() => { load(); }, [load]);
   const toastRef = useRef(toast); toastRef.current = toast;
   useEffect(() => {
@@ -30,17 +37,19 @@ export function useNotifications() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "admin_notifications", filter: `user_id=eq.${uid}` }, (p) => {
         const n = p.new as Note;
         setList((l) => [n, ...l.filter((x) => x.id !== n.id)].slice(0, 30));
+        loadCount();
         toastRef.current(n.title);
         if (/approved|checked_in/.test(n.kind)) { buzz(60); burst(innerWidth / 2, innerHeight / 3, ["🎉", "✨", "💜", "🥳"], 18); }
       })
       .subscribe();
     return () => { auth.client?.removeChannel(ch); };
-  }, [auth.client, uid]);
+  }, [auth.client, uid, loadCount]);
   const markRead = async (ids: number[] | null) => {
     await auth.client?.rpc("admin_notifications_mark_read", { p_ids: ids });
     setList((l) => l.map((n) => (ids === null || ids.includes(n.id) ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n)));
+    loadCount();
   };
-  return { list, unread: list.filter((n) => !n.read_at).length, reload: load, markRead };
+  return { list, unread, reload: load, markRead };
 }
 
 export function usePushToggle() {
