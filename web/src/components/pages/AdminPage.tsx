@@ -18,6 +18,7 @@ import { AdminActivity, AdminTeamDesk } from "../admin/TeamActivity";
 import { SeatRequests } from "../admin/SeatRequests";
 import { AdminInterest } from "../admin/Interest";
 import { AdminBrands } from "../admin/Brands";
+import { useRpc } from "../admin/shared";
 import { CONFIG } from "@/lib/config";
 import { type MeetEvent, eventUrl, relDay } from "@/lib/events";
 
@@ -31,6 +32,10 @@ export default function AdminPage() {
   const [tab, setTabState] = useState<Tab>("interest");
   const [focusReq, setFocusReq] = useState<string | undefined>();
   const [unread, setUnread] = useState(0);
+  // the Approvals tab shows how many requests are really waiting for THIS admin (not the unread bell count)
+  const waitingQ = useRpc<{ approvals: { waiting_for_me: number } }>("admin_dashboard");
+  const waiting = waitingQ.data?.approvals?.waiting_for_me ?? 0;
+  useEffect(() => { waitingQ.reload(); }, [unread, tab]); // eslint-disable-line react-hooks/exhaustive-deps
   const setTab = useCallback((t: Tab, req?: string) => {
     setTabState(t); setFocusReq(req);
     try { const u = new URL(window.location.href); u.searchParams.set("tab", t); if (req) u.searchParams.set("req", req); else u.searchParams.delete("req"); window.history.replaceState(null, "", u.toString()); } catch {}
@@ -101,7 +106,7 @@ export default function AdminPage() {
       <nav className="adm-tabs" aria-label="Admin sections">
         {(isMain ? ([["dashboard", "📊 Dashboard"], ["approvals", "🛂 Approvals"], ["events", "🚀 Events"], ["hosts", "🎙️ Hosts"], ["requests", "🎟 Seat requests"], ["door", "📷 Door"], ["interest", "♥ Interest"], ["brands", "🤝 Brands"], ["team", "👥 Team"], ["activity", "🧾 Activity"]] as [Tab, string][])
           : ([["requests", "🎟 Seat requests"], ["door", "📷 Door check-in"], ["interest", "♥ Interest"], ["hosts", "🎙️ Host applications"]] as [Tab, string][])).map(([k, l]) => (
-          <button key={k} className={`pill ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}{k === "approvals" && unread > 0 ? <span className="adm-badge in">{unread}</span> : null}</button>
+          <button key={k} className={`pill ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}{k === "approvals" && waiting > 0 ? <span className="adm-badge in">{waiting}</span> : null}</button>
         ))}
       </nav>
 

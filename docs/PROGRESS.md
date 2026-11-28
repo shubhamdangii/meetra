@@ -9,8 +9,16 @@ Done
   WARNING: 8 "Rooftop Open Mic" drafts (REQ-1091..1098) that the owner created AFTER the backup were also deleted;
   their data is in public.audit_log (entity event, "Draft created: Rooftop Open Mic") if they must be re-created.
 
+- Multi-date "More dates" calendar picker live (b9ce4ce).
+- 7 real events added through the UI as the host (Pick an event > Add date > tap dates): Introverts' Dinner 30 Nov, 2, 4, 6 Dec;
+  Rooftop Open Mic 1, 3, 5 Dec (REQ-1099..1105), approved one by one by admin shujain19 in Approvals. Dashboard 7 active,
+  Events tab shows the dates, host desk shows 7 live, host got 7 "approved" notifications, user sees them in Explore.
+- Fixes after that check: Approvals tab badge now counts requests waiting for you (was unread bell count); sample plans
+  (made-up dates and seat counts) switched off, real events only.
+
 Next (in order)
-1. Step 3: npm script `seed:week` (web/tests/seed or web/scripts): 7 events, one per day from tomorrow (IST), built from the
+0. Seat request chain on a real event: every event is paid (Rs 99 / 299), so a request opens payment, not tested. Decide: one free event, or test payments.
+1. (replaced by the UI way above) Step 3: npm script `seed:week` (web/tests/seed or web/scripts): 7 events, one per day from tomorrow (IST), built from the
    hidden templates in web/src/lib/data.ts (TEMPLATES, Ahmedabad/Jaipur variants), host_profiles #23, approved + is_active,
    house rules and Maps link filled, booking open until start; re-runnable, only touches events it created (mark them, e.g. a
    fixed blurb marker or created_by). No QA_ or "test" words. Report: two-person approval bypassed for this setup.

@@ -26,7 +26,7 @@ export const CONFIG: {
   // LAUNCH SWITCH. true = the website also shows the example plans written in data.ts
   // (a plan almost every day). Set to false at launch so ONLY the plans your team adds
   // in Admin → Launch plans are shown, i.e. only plans that will really happen.
-  samplePlans: true,
+  samplePlans: false,   // real events only now (no made-up dates or seat counts); the examples still show in "Pick an event"
 
   siteUrl: "https://shubhamdangii.github.io/meetra",   // used for the sitemap and search engines
 
