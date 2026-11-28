@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",
-    "framer-motion": "14.10.1",
+    "framer-motion": "14.14.0",
     "jsqr": "1.4.0",
     "next": "16.4.5",
     "qrcode": "1.5.4",
