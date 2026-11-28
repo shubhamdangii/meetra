@@ -9,7 +9,16 @@
     "start": "npx serve@14.2.4 out -l 3000",
     "typecheck": "tsc --noEmit",
     "test:db": "node tests/db/roles.test.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:smoke": "playwright test -c playwright.smoke.config.ts",
+    "qa": "node tests/qa/run-qa.mjs",
+    "qa:seed": "node tests/seed/seed.mjs",
+    "qa:reset": "node tests/seed/seed.mjs --reset-only",
+    "qa:build": "node tests/qa/build-test-site.mjs",
+    "qa:roles": "node tests/seed/verify-roles.mjs",
+    "qa:config": "node tests/qa/config-default.test.mjs",
+    "qa:test": "playwright test -c playwright.qa.config.ts",
+    "qa:report": "node tests/qa/report.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",
@@ -21,7 +30,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
+    "@playwright/test": "^1.65.1",
     "@types/node": "24.19.2",
     "@types/qrcode": "1.5.6",
     "@types/react": "19.3.0",
