@@ -103,22 +103,22 @@ export function DayPartPick({ value, starts, onChange }: { value: string; starts
   );
 }
 
-/* ---------- repeat: pick weekdays like an alarm, for how many weeks ---------- */
+/* ---------- more dates: tap any dates on a small calendar (like picking alarm days), all at once ---------- */
 export const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 export const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-export type Repeat = { days: number[]; weeks: number };
-/** Every date from the first date on that falls on a chosen weekday, within the number of weeks. No days chosen = just the first date. */
+/** days/weeks: older "repeat on weekdays" rule (still understood); extra: dates picked one by one on the calendar. */
+export type Repeat = { days: number[]; weeks: number; extra?: string[] };
+const ymdOf = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+/** The first date plus every picked date (and weekday-rule date), sorted, no duplicates, never before the first date. */
 export function repeatDates(firstYmd: string, r: Repeat): string[] {
   if (!firstYmd) return [];
-  if (!r.days.length) return [firstYmd];
-  const [y, m, d] = firstYmd.split("-").map(Number);
-  const start = new Date(y, m - 1, d), out: string[] = [];
-  const p = (n: number) => String(n).padStart(2, "0");
-  for (let i = 0; i < r.weeks * 7; i++) {
-    const x = new Date(start); x.setDate(start.getDate() + i);
-    if (r.days.includes(x.getDay())) out.push(`${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`);
+  const out = new Set<string>([firstYmd]);
+  if (r.days.length) {
+    const [y, m, d] = firstYmd.split("-").map(Number); const start = new Date(y, m - 1, d);
+    for (let i = 0; i < r.weeks * 7; i++) { const x = new Date(start); x.setDate(start.getDate() + i); if (r.days.includes(x.getDay())) out.add(ymdOf(x)); }
   }
-  return out.length ? out : [firstYmd];
+  for (const e of r.extra ?? []) if (e >= firstYmd) out.add(e);
+  return [...out].sort();
 }
 /** The form copied onto every repeat date (same start/end time; an end before the start means it ends the next day). */
 export function expandRepeat(f: EventFormValue, r: Repeat): EventFormValue[] {
@@ -135,28 +135,32 @@ export function expandRepeat(f: EventFormValue, r: Repeat): EventFormValue[] {
 }
 
 export function RepeatPick({ value, onChange, firstYmd }: { value: Repeat; onChange: (r: Repeat) => void; firstYmd: string }) {
-  const n = repeatDates(firstYmd, value).length;
-  const toggle = (i: number) => onChange({ ...value, days: value.days.includes(i) ? value.days.filter((x) => x !== i) : [...value.days, i].sort() });
-  const preset = (days: number[]) => onChange({ ...value, days });
+  const all = repeatDates(firstYmd, value); const n = all.length;
+  if (!firstYmd) return <div className="field span2 rep"><label>More dates</label><small className="muted">Pick the first date and time above, then tap more dates here.</small></div>;
+  const [y, m, d] = firstYmd.split("-").map(Number); const first = new Date(y, m - 1, d);
+  const grid: Date[] = []; const g0 = new Date(first); g0.setDate(first.getDate() - first.getDay());   // from the Sunday of that week, 5 weeks
+  for (let i = 0; i < 35; i++) { const x = new Date(g0); x.setDate(g0.getDate() + i); grid.push(x); }
+  const set = (extra: string[]) => onChange({ days: [], weeks: value.weeks, extra: extra.filter((e) => e > firstYmd) });
+  const picked = new Set(all);
+  const toggle = (ymd: string) => set(picked.has(ymd) ? all.filter((x) => x !== ymd) : [...all, ymd]);
+  const fill = (ok: (x: Date) => boolean) => set(grid.filter((x) => ymdOf(x) > firstYmd && ok(x)).map(ymdOf));
+  const mon = (x: Date) => x.toLocaleString("en-IN", { month: "short" });
   return (
     <div className="field span2 rep">
-      <label>Repeat</label>
-      <div className="rep-days" role="group" aria-label="Repeat on these days">
-        {WEEKDAYS.map((w, i) => (
-          <button key={i} type="button" aria-pressed={value.days.includes(i)} aria-label={WEEKDAY_NAMES[i]} className={value.days.includes(i) ? "on" : ""} onClick={() => toggle(i)}>{w}</button>
-        ))}
+      <label>More dates <span className="hint">tap every date you want, all at once</span></label>
+      <div className="rep-presets">
+        <button type="button" className={n === 1 ? "on" : ""} onClick={() => set([])}>Only this date</button>
+        <button type="button" onClick={() => fill(() => true)}>Every day</button>
+        <button type="button" onClick={() => fill((x) => x.getDay() === 0 || x.getDay() === 6)}>Weekends</button>
+        <button type="button" onClick={() => fill((x) => x.getDay() === first.getDay())}>Same day every week</button>
       </div>
-      <div className="rep-row">
-        <div className="rep-presets">
-          <button type="button" className={!value.days.length ? "on" : ""} onClick={() => preset([])}>Once</button>
-          <button type="button" className={value.days.length === 7 ? "on" : ""} onClick={() => preset([0, 1, 2, 3, 4, 5, 6])}>Every day</button>
-          <button type="button" className={value.days.join() === "1,2,3,4,5" ? "on" : ""} onClick={() => preset([1, 2, 3, 4, 5])}>Weekdays</button>
-          <button type="button" className={value.days.join() === "0,6" ? "on" : ""} onClick={() => preset([0, 6])}>Weekends</button>
-        </div>
-        {value.days.length > 0 && <label className="rep-weeks">for <select value={value.weeks} onChange={(e) => onChange({ ...value, weeks: Number(e.target.value) })} aria-label="Number of weeks">
-          {[1, 2, 3, 4, 6, 8, 12].map((w) => <option key={w} value={w}>{w} week{w > 1 ? "s" : ""}</option>)}</select></label>}
+      <div className="rep-cal" role="group" aria-label="Pick dates">
+        {WEEKDAYS.map((w, i) => <b key={"h" + i} aria-hidden="true">{w}</b>)}
+        {grid.map((x) => { const k = ymdOf(x), past = k < firstYmd, on = picked.has(k), isFirst = k === firstYmd;
+          return <button key={k} type="button" disabled={past || isFirst} aria-pressed={on} aria-label={`${WEEKDAY_NAMES[x.getDay()]} ${x.getDate()} ${mon(x)}`}
+            className={`${on ? "on" : ""}${isFirst ? " first" : ""}`} onClick={() => toggle(k)}>{x.getDate() === 1 || isFirst ? <small>{mon(x)}</small> : null}{x.getDate()}</button>; })}
       </div>
-      <small className="muted">{value.days.length ? `${n} date${n === 1 ? "" : "s"}: ${value.days.map((d) => WEEKDAY_NAMES[d]).join(", ")}, starting from the first date. Each one goes for approval.` : "One date only. Tap days above to repeat, like an alarm."}</small>
+      <small className="muted">{n === 1 ? "One date. Tap more dates above to add them together." : `${n} dates: ${all.map((k) => { const [, mm, dd] = k.split("-").map(Number); return `${dd} ${new Date(2000, mm - 1, 1).toLocaleString("en-IN", { month: "short" })}`; }).join(", ")}. Same time on each.`}</small>
     </div>
   );
 }

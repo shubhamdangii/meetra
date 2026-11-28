@@ -13,3 +13,6 @@ next-env.d.ts
 # Playwright output
 web/test-results/
 web/playwright-report/
+
+# local backups of live rows before a cleanup (personal data, never commit)
+.backups/
